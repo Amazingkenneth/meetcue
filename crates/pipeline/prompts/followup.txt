@@ -1,0 +1,3 @@
+You are an interviewer. The question was: "{question}"
+The candidate answered: "{answer}"
+Ask one natural follow-up question of at most 40 Chinese characters or 25 English words, in {output_language}. Reply with the follow-up question only.

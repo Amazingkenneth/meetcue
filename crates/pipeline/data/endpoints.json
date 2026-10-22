@@ -1,0 +1,32 @@
+{
+  "providers": {
+    "soniox": {
+      "kind": "asr",
+      "hosts": ["stt-rt.soniox.com", "stt-rt.eu.soniox.com", "stt-rt.jp.soniox.com", "stt-rt.in.soniox.com"],
+      "apiHosts": {
+        "stt-rt.soniox.com": "api.soniox.com",
+        "stt-rt.eu.soniox.com": "api.eu.soniox.com",
+        "stt-rt.jp.soniox.com": "api.jp.soniox.com",
+        "stt-rt.in.soniox.com": "api.in.soniox.com"
+      }
+    },
+    "deepgram": {
+      "kind": "asr",
+      "hosts": ["api.deepgram.com", "api.eu.deepgram.com", "api.au.deepgram.com", "api.in.deepgram.com"]
+    },
+    "anthropic": {
+      "kind": "llm",
+      "hosts": ["api.anthropic.com"]
+    },
+    "bedrock": {
+      "kind": "llm",
+      "hostTemplate": "bedrock-runtime.{region}.amazonaws.com",
+      "hosts": []
+    },
+    "openai-compatible": {
+      "kind": "llm",
+      "userDefined": true,
+      "hosts": []
+    }
+  }
+}

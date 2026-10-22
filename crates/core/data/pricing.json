@@ -1,0 +1,100 @@
+{
+  "updated": "2026-10-22",
+  "currency": "USD",
+  "entries": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "label": "Claude Haiku 5.5",
+      "unit": "per_million_tokens",
+      "input": 0.10,
+      "output": 0.50,
+      "cacheRead": 0.01,
+      "cacheWrite": 0.125,
+      "note": "Prompts up to 100,000 tokens.",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "label": "Claude Sonnet 5.5",
+      "unit": "per_million_tokens",
+      "input": 2.0,
+      "output": 10.0,
+      "cacheRead": 0.10,
+      "cacheWrite": 2.50,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "label": "Claude Opus 5.5",
+      "unit": "per_million_tokens",
+      "input": 4.0,
+      "output": 20.0,
+      "cacheRead": 0.20,
+      "cacheWrite": 5.0,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "label": "Claude Haiku 4.5",
+      "unit": "per_million_tokens",
+      "input": 1.0,
+      "output": 5.0,
+      "cacheRead": 0.10,
+      "cacheWrite": 1.25,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "bedrock",
+      "model": "anthropic.claude-haiku-5-5",
+      "label": "Claude Haiku 5.5 (Bedrock)",
+      "unit": "per_million_tokens",
+      "input": 0.10,
+      "output": 0.50,
+      "cacheRead": 0.01,
+      "cacheWrite": 0.125,
+      "note": "Bedrock bills through AWS; regional endpoints can cost more than global ones.",
+      "source": "https://aws.amazon.com/bedrock/pricing/",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "bedrock",
+      "model": "anthropic.claude-sonnet-5-5",
+      "label": "Claude Sonnet 5.5 (Bedrock)",
+      "unit": "per_million_tokens",
+      "input": 2.0,
+      "output": 10.0,
+      "cacheRead": 0.10,
+      "cacheWrite": 2.50,
+      "note": "Bedrock bills through AWS; regional endpoints can cost more than global ones.",
+      "source": "https://aws.amazon.com/bedrock/pricing/",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "soniox",
+      "model": "stt-rt-v5",
+      "label": "Soniox stt-rt-v5",
+      "unit": "per_audio_hour",
+      "audio": 0.12,
+      "source": "https://soniox.com/pricing",
+      "verified": "2026-10-22"
+    },
+    {
+      "provider": "deepgram",
+      "model": "nova-3",
+      "label": "Deepgram Nova-3 (multilingual, streaming)",
+      "unit": "per_audio_minute",
+      "audio": 0.0092,
+      "note": "List price before add-ons; promotional rates may be lower.",
+      "source": "https://deepgram.com/pricing",
+      "verified": "2026-10-22"
+    }
+  ]
+}

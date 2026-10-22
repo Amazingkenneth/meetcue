@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/pipeline",
+    "crates/audio",
+    "crates/platform",
+    # "app/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Amazingkenneth/meetcue"
+homepage = "https://amazingkenneth.github.io/meetcue/"
+authors = ["Kenneth Zhong"]
+rust-version = "1.85"
+
+[workspace.dependencies]
+meetcue-core = { path = "crates/core" }
+meetcue-pipeline = { path = "crates/pipeline" }
+meetcue-audio = { path = "crates/audio" }
+meetcue-platform = { path = "crates/platform" }
+
+anyhow = "1"
+async-trait = "0.1"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+futures = "0.3"
+rand = "0.9"
+reqwest = { version = "0.13", features = ["json", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "io-util", "fs"] }
+tokio-tungstenite = { version = "0.30", features = ["rustls-tls-native-roots"] }
+rustls = "0.23"
+rustls-platform-verifier = "0.7"
+tokio-util = "0.7"
+tracing = "0.1"
+ts-rs = { version = "12", features = ["serde-json-impl", "no-serde-warnings"] }

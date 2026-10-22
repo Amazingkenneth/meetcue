@@ -1,0 +1,9 @@
+Question: {question}
+Reference answer: {reference}
+The user's answer (speech transcript): {answer}
+
+Give exactly 3 short pieces of feedback in {output_language}, each at most 40 Chinese characters or 25 English words:
+1) points the user missed;
+2) wording that could be improved;
+3) what the user did well.
+Reply as a JSON array of three strings and nothing else.

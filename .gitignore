@@ -1,0 +1,26 @@
+# Build output
+/target/
+node_modules/
+dist/
+app/ui/dist/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+app/src-tauri/gen/schemas/
+
+# Local configuration, secrets and personal data
+.env
+.env.*
+config/
+logs/
+*.log
+practice/
+latency-history.json
+*.pem
+*.key
+
+# Editors and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,4 @@
+Recent transcript:
+{transcript}
+Current question:
+{question}

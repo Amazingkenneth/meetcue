@@ -1,0 +1,3 @@
+Below are subtitles from a meeting, one sentence per line, prefixed with the line number.
+Decide for every line whether it is a question ("question") or anything else ("answer").
+Reply with a JSON array only, one element per line: [{"i":1,"type":"question"},{"i":2,"type":"answer"}]

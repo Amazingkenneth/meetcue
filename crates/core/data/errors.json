@@ -1,0 +1,258 @@
+{
+  "docsPage": "troubleshooting/error-codes",
+  "errors": [
+    {
+      "code": "MC-AUD-001",
+      "severity": "error",
+      "title": { "en": "The audio device is in exclusive use", "zh-CN": "音频设备被其他程序独占" },
+      "fix": {
+        "en": "In Sound settings, open the device's properties, and on the Advanced tab clear \"Allow applications to take exclusive control of this device\".",
+        "zh-CN": "在声音设置中打开该设备的属性，在“高级”选项卡里取消勾选“允许应用程序独占控制该设备”。"
+      }
+    },
+    {
+      "code": "MC-AUD-002",
+      "severity": "error",
+      "title": { "en": "Microphone access is blocked", "zh-CN": "麦克风权限被拒绝" },
+      "fix": {
+        "en": "Turn on microphone access for desktop apps in the system privacy settings, then restart capture.",
+        "zh-CN": "在系统隐私设置里允许桌面应用访问麦克风，然后重新开始拾取。"
+      },
+      "action": { "kind": "open-url", "target": "ms-settings:privacy-microphone" }
+    },
+    {
+      "code": "MC-AUD-003",
+      "severity": "error",
+      "title": { "en": "No usable audio device was found", "zh-CN": "找不到可用的音频设备" },
+      "fix": {
+        "en": "Connect a microphone or speakers, make sure they are enabled in Sound settings, then pick them again in Settings › Audio.",
+        "zh-CN": "连接麦克风或扬声器，确认它们在声音设置中已启用，然后在 设置 › 音频 中重新选择。"
+      }
+    },
+    {
+      "code": "MC-AUD-004",
+      "severity": "info",
+      "title": { "en": "The audio device changed; capture restarted", "zh-CN": "音频设备已切换，采集已自动恢复" },
+      "fix": {
+        "en": "Nothing to do. If the level bars stay flat, pick the device again in Settings › Audio.",
+        "zh-CN": "无需操作。若电平条不再跳动，请在 设置 › 音频 中重新选择设备。"
+      }
+    },
+    {
+      "code": "MC-AUD-005",
+      "severity": "warning",
+      "title": { "en": "System sound capture receives only silence", "zh-CN": "系统声音通道只收到静音" },
+      "fix": {
+        "en": "Check that the meeting plays through the default output device. Mute your speakers or use headphones while testing so the microphone does not pick up the sound instead.",
+        "zh-CN": "确认会议声音从默认播放设备输出。测试时将扬声器静音或戴上耳机，避免麦克风代替环回通道录到声音。"
+      }
+    },
+    {
+      "code": "MC-AUD-900",
+      "severity": "error",
+      "title": { "en": "Audio capture is not available on this platform yet", "zh-CN": "此平台暂不支持音频采集" },
+      "fix": {
+        "en": "This build supports audio capture on Windows only. Practice mode with simulated latency still works.",
+        "zh-CN": "当前版本只在 Windows 上支持音频采集。练习模式的“模拟延迟”方式仍可使用。"
+      }
+    },
+    {
+      "code": "MC-ASR-001",
+      "severity": "error",
+      "title": { "en": "The speech recognition API key was rejected", "zh-CN": "语音识别 API 密钥无效" },
+      "fix": {
+        "en": "Copy the key again from the provider console, paste it in Settings › Providers, and select Verify.",
+        "zh-CN": "从供应商控制台重新复制密钥，粘贴到 设置 › 供应商与费用 中，然后点“验证”。"
+      }
+    },
+    {
+      "code": "MC-ASR-002",
+      "severity": "error",
+      "title": { "en": "Could not connect to the speech recognition service", "zh-CN": "无法连接语音识别服务" },
+      "fix": {
+        "en": "Check your network or proxy, then run the latency probe to pick a reachable endpoint.",
+        "zh-CN": "检查网络或代理设置，然后运行延迟探测，选择一个可以连通的端点。"
+      }
+    },
+    {
+      "code": "MC-ASR-003",
+      "severity": "warning",
+      "title": { "en": "The speech recognition service is limiting requests", "zh-CN": "语音识别服务限流" },
+      "fix": {
+        "en": "Wait a minute and try again. If it keeps happening, check the quota and balance in the provider console.",
+        "zh-CN": "稍等一分钟再试。如果反复出现，请到供应商控制台检查配额与余额。"
+      }
+    },
+    {
+      "code": "MC-ASR-004",
+      "severity": "error",
+      "title": { "en": "The speech recognition service returned an unexpected response", "zh-CN": "语音识别服务返回了无法识别的响应" },
+      "fix": {
+        "en": "Update MeetCue to the latest version. If the problem persists, export diagnostics and open an issue.",
+        "zh-CN": "将 MeetCue 升级到最新版本。若问题仍在，请导出诊断信息并提交 Issue。"
+      }
+    },
+    {
+      "code": "MC-ASR-005",
+      "severity": "error",
+      "title": { "en": "No speech recognition provider is set up", "zh-CN": "尚未配置语音识别供应商" },
+      "fix": {
+        "en": "Choose a provider and enter its API key in Settings › Providers, or start demo mode to try MeetCue without keys.",
+        "zh-CN": "在 设置 › 供应商与费用 中选择供应商并填写密钥，或者用演示模式在没有密钥的情况下体验。"
+      }
+    },
+    {
+      "code": "MC-LLM-001",
+      "severity": "warning",
+      "title": { "en": "Hint generation timed out", "zh-CN": "提示生成超时" },
+      "fix": {
+        "en": "Run the latency probe and switch to a faster model or endpoint. Hints for the next question are generated as usual.",
+        "zh-CN": "运行延迟探测，换用更快的模型或端点。下一个问题会照常生成提示。"
+      }
+    },
+    {
+      "code": "MC-LLM-002",
+      "severity": "error",
+      "title": { "en": "The language model API key was rejected", "zh-CN": "大模型 API 密钥无效" },
+      "fix": {
+        "en": "Copy the key again from the provider console, paste it in Settings › Providers, and select Verify.",
+        "zh-CN": "从供应商控制台重新复制密钥，粘贴到 设置 › 供应商与费用 中，然后点“验证”。"
+      }
+    },
+    {
+      "code": "MC-LLM-003",
+      "severity": "warning",
+      "title": { "en": "The language model service is limiting requests", "zh-CN": "大模型服务限流" },
+      "fix": {
+        "en": "MeetCue retries automatically. If it keeps happening, check the rate limits and balance of your account.",
+        "zh-CN": "MeetCue 会自动重试。如果反复出现，请检查账户的速率限制与余额。"
+      }
+    },
+    {
+      "code": "MC-LLM-004",
+      "severity": "error",
+      "title": { "en": "The selected model is not available", "zh-CN": "所选模型不可用" },
+      "fix": {
+        "en": "Pick another model in Settings › Providers. On Amazon Bedrock, request access to the model in the AWS console first.",
+        "zh-CN": "在 设置 › 供应商与费用 中换一个模型。使用 Amazon Bedrock 时，需先在 AWS 控制台开通该模型的访问权限。"
+      }
+    },
+    {
+      "code": "MC-LLM-005",
+      "severity": "error",
+      "title": { "en": "The language model request failed", "zh-CN": "大模型请求失败" },
+      "fix": {
+        "en": "Check your network and the provider status page, then try again.",
+        "zh-CN": "检查网络与供应商的服务状态页，然后重试。"
+      }
+    },
+    {
+      "code": "MC-LLM-006",
+      "severity": "warning",
+      "title": { "en": "The model's answer could not be read", "zh-CN": "无法解析模型的输出" },
+      "fix": {
+        "en": "Usually a one-off. If it happens often, choose a more capable model for hint generation.",
+        "zh-CN": "通常只是偶发。若经常出现，请为要点生成选择能力更强的模型。"
+      }
+    },
+    {
+      "code": "MC-HK-001",
+      "severity": "warning",
+      "title": { "en": "A shortcut is already used by another program", "zh-CN": "快捷键已被其他程序占用" },
+      "fix": {
+        "en": "Open Settings › Shortcuts and assign a different key combination to the item marked in red.",
+        "zh-CN": "打开 设置 › 快捷键，为标红的项目换一个组合键。"
+      }
+    },
+    {
+      "code": "MC-SYS-001",
+      "severity": "error",
+      "title": { "en": "The WebView2 runtime is missing", "zh-CN": "缺少 WebView2 运行时" },
+      "fix": {
+        "en": "Install the Evergreen WebView2 Runtime from Microsoft, then start MeetCue again.",
+        "zh-CN": "从微软官网安装 Evergreen 版 WebView2 运行时，然后重新启动 MeetCue。"
+      }
+    },
+    {
+      "code": "MC-SYS-002",
+      "severity": "warning",
+      "title": { "en": "The settings folder is not writable", "zh-CN": "无法写入配置目录" },
+      "fix": {
+        "en": "MeetCue saved settings to your user profile instead. Check the folder permissions if you want portable settings.",
+        "zh-CN": "MeetCue 已改为把设置保存在用户目录中。如需便携配置，请检查程序目录的写入权限。"
+      }
+    },
+    {
+      "code": "MC-SYS-003",
+      "severity": "error",
+      "title": { "en": "The system credential store is unavailable", "zh-CN": "系统凭据库不可用" },
+      "fix": {
+        "en": "API keys are kept only in the system credential store. Make sure it is running (Credential Manager, Keychain or Secret Service) and try again.",
+        "zh-CN": "API 密钥只保存在系统凭据库中。请确认凭据服务（凭据管理器、钥匙串或 Secret Service）正常运行后重试。"
+      }
+    },
+    {
+      "code": "MC-SYS-004",
+      "severity": "info",
+      "title": { "en": "This feature is not supported on this platform yet", "zh-CN": "此平台暂不支持该功能" },
+      "fix": {
+        "en": "The feature is planned for a later release. See the platform support table in the docs.",
+        "zh-CN": "该功能将在后续版本中支持，请查看文档中的平台支持表。"
+      }
+    },
+    {
+      "code": "MC-NET-001",
+      "severity": "error",
+      "title": { "en": "A secure connection could not be established", "zh-CN": "无法建立安全连接" },
+      "fix": {
+        "en": "If your network uses an HTTPS proxy, set the proxy address in Settings › Providers › Advanced and make sure its certificate is trusted by the system.",
+        "zh-CN": "如果所在网络使用 HTTPS 代理，请在 设置 › 供应商与费用 › 高级 中填写代理地址，并确认系统信任其证书。"
+      }
+    },
+    {
+      "code": "MC-BUD-001",
+      "severity": "warning",
+      "title": { "en": "80% of the budget is used", "zh-CN": "预算已用 80%" },
+      "fix": {
+        "en": "Spending is close to the limit you set. Adjust the budget in Settings › Providers if needed.",
+        "zh-CN": "花费已接近你设定的上限，如有需要可在 设置 › 供应商与费用 中调整预算。"
+      }
+    },
+    {
+      "code": "MC-BUD-002",
+      "severity": "warning",
+      "title": { "en": "The budget is used up", "zh-CN": "预算已用完" },
+      "fix": {
+        "en": "MeetCue applied the action you chose for this case. Raise the budget in Settings › Providers to continue.",
+        "zh-CN": "MeetCue 已按你的设置处理。如需继续，请在 设置 › 供应商与费用 中提高预算。"
+      }
+    },
+    {
+      "code": "MC-PRC-001",
+      "severity": "error",
+      "title": { "en": "The practice file could not be read", "zh-CN": "无法读取练习文件" },
+      "fix": {
+        "en": "Use an .srt, .vtt, .txt, .md or .csv file. See the file format reference for examples.",
+        "zh-CN": "请使用 .srt、.vtt、.txt、.md 或 .csv 文件，格式示例见“文件格式”参考页。"
+      }
+    },
+    {
+      "code": "MC-PRC-002",
+      "severity": "warning",
+      "title": { "en": "Speech synthesis is not available", "zh-CN": "语音合成不可用" },
+      "fix": {
+        "en": "Install a text-to-speech voice for the question language in the system settings, or practice with on-screen questions only.",
+        "zh-CN": "在系统设置中安装对应语言的语音，或改为只在屏幕上显示问题进行练习。"
+      }
+    },
+    {
+      "code": "MC-DIAG-001",
+      "severity": "error",
+      "title": { "en": "Diagnostics could not be exported", "zh-CN": "诊断信息导出失败" },
+      "fix": {
+        "en": "Pick a folder you can write to, for example Documents, and try again.",
+        "zh-CN": "换一个有写入权限的文件夹（例如“文档”）后重试。"
+      }
+    }
+  ]
+}
