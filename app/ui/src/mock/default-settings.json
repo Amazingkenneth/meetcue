@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "general": {
+    "uiLanguage": "system",
+    "hintLanguage": "followQuestion",
+    "accent": "#F5B841",
+    "autostart": false,
+    "wizardCompleted": false
+  },
+  "audio": {
+    "micDevice": null,
+    "remoteSource": "allSystemSound",
+    "vadThresholdDb": -45.0,
+    "endpointSilenceMs": 700,
+    "stopTtsOnSpeech": true
+  },
+  "providers": {
+    "asr": {
+      "provider": null,
+      "model": null,
+      "endpoint": {
+        "mode": "auto"
+      }
+    },
+    "detect": {
+      "provider": null,
+      "model": null,
+      "endpoint": {
+        "mode": "auto"
+      }
+    },
+    "hints": {
+      "provider": null,
+      "model": null,
+      "endpoint": {
+        "mode": "auto"
+      }
+    },
+    "openaiBaseUrl": null,
+    "bedrockRegion": null,
+    "proxy": null,
+    "pricingOverrides": [],
+    "estimate": {
+      "speechRatio": 0.6,
+      "questionsPerHour": 20.0,
+      "systemTokens": 1500.0,
+      "detectInputTokens": 900.0,
+      "detectOutputTokens": 80.0,
+      "hintInputTokens": 1200.0,
+      "hintOutputTokens": 500.0,
+      "cancelOverhead": 0.1
+    },
+    "budget": {
+      "sessionLimitUsd": null,
+      "monthlyLimitUsd": null,
+      "onLimit": "notifyOnly"
+    }
+  },
+  "hints": {
+    "role": "",
+    "materials": [],
+    "onlyDirectedToMe": false,
+    "queueInterruptions": true,
+    "trackCoverage": true,
+    "earlyTrigger": true
+  },
+  "hotkeys": {
+    "toggleCapture": "Ctrl+Alt+Space",
+    "cyclePanel": "Ctrl+Alt+H",
+    "focusPrev": "Ctrl+Alt+[",
+    "focusNext": "Ctrl+Alt+]",
+    "markAnswered": "Ctrl+Alt+Enter"
+  },
+  "overlay": {
+    "clickThrough": false,
+    "hideInScreenShare": true,
+    "mode": "full",
+    "x": null,
+    "y": null
+  },
+  "practice": {
+    "playback": "realPipeline",
+    "hintLevel": "full",
+    "hintDelayS": 5.0,
+    "answerPauseS": 3.0,
+    "nudgeAfterS": 20.0,
+    "followUpProbability": 0.3,
+    "speechRate": 1.0,
+    "recognizeMe": true,
+    "fillersZh": [
+      "嗯",
+      "啊",
+      "那个",
+      "就是",
+      "然后"
+    ],
+    "fillersEn": [
+      "um",
+      "uh",
+      "like",
+      "you know"
+    ]
+  },
+  "diagnostics": {
+    "debugLogging": false
+  }
+}

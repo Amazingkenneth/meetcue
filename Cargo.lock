@@ -1106,9 +1106,7 @@ dependencies = [
  "meetcue-core",
  "ringbuf",
  "rubato",
- "serde",
  "tracing",
- "ts-rs",
  "wasapi",
 ]
 

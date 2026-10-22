@@ -15,21 +15,8 @@ mod unsupported;
 #[cfg(windows)]
 mod windows;
 
+pub use meetcue_core::ipc::DeviceInfo;
 use meetcue_core::{AudioFrame, Channel, MeetCueError};
-use serde::{Deserialize, Serialize};
-use ts_rs::TS;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export)]
-pub struct DeviceInfo {
-    pub id: String,
-    pub name: String,
-    pub is_default: bool,
-    /// Bluetooth headsets switch to a low-quality call profile when their
-    /// microphone is opened; the settings page warns about it.
-    pub is_bluetooth: bool,
-}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CaptureConfig {

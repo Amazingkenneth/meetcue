@@ -8,6 +8,7 @@ pub mod audio;
 pub mod clock;
 pub mod error;
 pub mod event;
+pub mod ipc;
 pub mod pricing;
 pub mod settings;
 

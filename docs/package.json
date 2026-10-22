@@ -1,0 +1,17 @@
+{
+  "name": "meetcue-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen": "node scripts/gen-errors.mjs && node scripts/gen-pricing.mjs",
+    "dev": "npm run gen && vitepress dev",
+    "build": "npm run gen && node scripts/check-i18n.mjs && vitepress build",
+    "preview": "vitepress preview",
+    "lint": "markdownlint-cli2"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.24.0",
+    "vitepress": "^1.6.4"
+  }
+}

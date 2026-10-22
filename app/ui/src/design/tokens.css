@@ -1,0 +1,115 @@
+/* Design tokens. The overlay always uses the dark palette; the settings,
+   wizard, practice and review windows follow the system light/dark mode. */
+
+:root {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "PingFang SC", "Noto Sans", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "SF Mono", ui-monospace, "Noto Sans Mono", Menlo, Consolas, monospace;
+
+  /* Overlay palette (dark). */
+  --ov-bg: rgba(20, 22, 27, 0.95);
+  --ov-card: #191c22;
+  --ov-card-focus: #1e222b;
+  --ov-line: #262a34;
+  --ov-text: #ecedef;
+  --ov-text-2: #a3a9b5;
+  --ov-text-3: #8a91a0;
+  --accent: #f5b841;
+  --accent-ink: #1a1405;
+  --link: #8cc0ff;
+  --done: #7fd9a6;
+  --done-bg: #1f3a2b;
+  --danger: #ff8a7a;
+
+  /* App windows, light. */
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f0f1f3;
+  --border: #d9dbe0;
+  --text: #17181c;
+  --text-2: #4a4f5a;
+  --text-3: #6b7180;
+  --brand: #a16207;
+  --brand-ink: #ffffff;
+  --focus-ring: #2563eb;
+  --ok: #15803d;
+  --warn: #a16207;
+  --err: #b91c1c;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161b;
+    --surface: #1b1e24;
+    --surface-2: #22262e;
+    --border: #2f3440;
+    --text: #ecedef;
+    --text-2: #b6bbc6;
+    --text-3: #8f96a4;
+    --brand: #f5b841;
+    --brand-ink: #1a1405;
+    --focus-ring: #8cc0ff;
+    --ok: #7fd9a6;
+    --warn: #f5b841;
+    --err: #ff8a7a;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14161b;
+  --surface: #1b1e24;
+  --surface-2: #22262e;
+  --border: #2f3440;
+  --text: #ecedef;
+  --text-2: #b6bbc6;
+  --text-3: #8f96a4;
+  --brand: #f5b841;
+  --brand-ink: #1a1405;
+  --focus-ring: #8cc0ff;
+  --ok: #7fd9a6;
+  --warn: #f5b841;
+  --err: #ff8a7a;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

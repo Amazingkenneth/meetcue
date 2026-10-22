@@ -10,11 +10,9 @@ rust-version.workspace = true
 
 [dependencies]
 meetcue-core.workspace = true
-serde.workspace = true
 tracing.workspace = true
 rubato = "0.16"
 ringbuf = "0.4"
-ts-rs.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 wasapi = "0.26"

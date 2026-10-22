@@ -402,6 +402,17 @@ mod tests {
         assert_eq!(s.hotkeys.toggle_capture, "Ctrl+Alt+Space");
     }
 
+    /// Writes the defaults for the UI's browser preview (next to the bindings).
+    #[test]
+    fn export_defaults_for_preview() {
+        if let Ok(dir) = std::env::var("TS_RS_EXPORT_DIR") {
+            let path = std::path::Path::new(&dir).join("../mock/default-settings.json");
+            if path.parent().is_some_and(|p| p.is_dir()) {
+                std::fs::write(path, Settings::default().to_json() + "\n").unwrap();
+            }
+        }
+    }
+
     #[test]
     fn endpoint_choice_json() {
         let v = serde_json::to_value(EndpointChoice::Host("api.example.com".into())).unwrap();
