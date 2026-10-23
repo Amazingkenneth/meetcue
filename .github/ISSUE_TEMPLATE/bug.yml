@@ -1,0 +1,59 @@
+name: Bug report / 问题反馈
+description: Something doesn't work as described in the documentation. / 功能与文档描述不符。
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please first check [Troubleshooting](https://amazingkenneth.github.io/meetcue/troubleshooting/). Never paste API keys, tokens or meeting content here.
+
+        感谢反馈。请先查看[排错总览](https://amazingkenneth.github.io/meetcue/zh/troubleshooting/)。请不要在这里粘贴 API 密钥、令牌或会议内容。
+  - type: input
+    id: code
+    attributes:
+      label: Error code / 错误码
+      description: Shown in the error message, for example MC-AUD-001. Leave empty if there was none. / 错误提示中的错误码，例如 MC-AUD-001；没有可留空。
+      placeholder: MC-AUD-001
+  - type: input
+    id: version
+    attributes:
+      label: MeetCue version / 版本
+      description: Output of `MeetCue.exe --version`. / `MeetCue.exe --version` 的输出。
+      placeholder: MeetCue 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version / Windows 版本
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: One action per step. / 每步一个动作。
+      placeholder: |
+        1. Start listening with Ctrl+Alt+Space
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected and what happened / 期望结果与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: selftest
+    attributes:
+      label: Self-test report / 自检报告
+      description: Optional. Output of `MeetCue.exe --self-test`. / 可选，`MeetCue.exe --self-test` 的输出。
+      render: text
+  - type: checkboxes
+    id: diagnostics
+    attributes:
+      label: Diagnostics / 诊断信息
+      options:
+        - label: I attached the diagnostics zip (tray menu › Export diagnostics…). It contains no keys or transcripts. / 我已附上诊断压缩包（托盘菜单 › 导出诊断信息…），其中不含密钥或转写。

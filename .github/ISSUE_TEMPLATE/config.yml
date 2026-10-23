@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://amazingkenneth.github.io/meetcue/
+    about: Guides, troubleshooting and error codes.
+  - name: 中文文档
+    url: https://amazingkenneth.github.io/meetcue/zh/
+    about: 使用指南、排错与错误码。

@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, publish and update the Scoop manifest
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.ref_name }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Check the tag and the commit identity
+        env:
+          GIT_NAME: ${{ vars.GIT_NAME }}
+          GIT_EMAIL: ${{ vars.GIT_EMAIL }}
+        run: |
+          if (-not $env:GIT_NAME -or -not $env:GIT_EMAIL) {
+            throw "Set the repository variables GIT_NAME and GIT_EMAIL (Settings > Secrets and variables > Actions > Variables)."
+          }
+          $cargo = Get-Content Cargo.toml -Raw
+          if ($cargo -notmatch '(?s)\[workspace\.package\].*?version\s*=\s*"([^"]+)"') { throw "no workspace version" }
+          $version = $Matches[1]
+          if ("v$version" -ne $env:TAG) { throw "Tag $env:TAG does not match the version $version in Cargo.toml" }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-versions.mjs
+
+      - name: Build MeetCue.exe
+        working-directory: app/src-tauri
+        run: npx tauri build --no-bundle
+
+      - name: Check the executable
+        run: |
+          $out = & target/release/MeetCue.exe --version | Out-String
+          Write-Output $out
+          if ($out -notmatch [regex]::Escape("MeetCue $env:VERSION")) { throw "unexpected --version output" }
+
+      - name: Pack the portable zip
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP "meetcue"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item target/release/MeetCue.exe, LICENSE, README.md, README.zh-CN.md -Destination $stage
+          $zip = Join-Path $env:RUNNER_TEMP "meetcue-win-x64.zip"
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+          "ZIP=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "SHA-256 $hash"
+
+      - name: Create the GitHub release
+        run: |
+          $notes = "Install or update with Scoop: ``scoop install meetcue`` / ``scoop update meetcue``. See the [installation guide](https://amazingkenneth.github.io/meetcue/install).`n`nSHA-256 of meetcue-win-x64.zip: ``$env:HASH``"
+          gh release create $env:TAG $env:ZIP --title "MeetCue $env:VERSION" --notes $notes --generate-notes
+
+      - name: Update the Scoop manifest on the default branch
+        env:
+          GIT_NAME: ${{ vars.GIT_NAME }}
+          GIT_EMAIL: ${{ vars.GIT_EMAIL }}
+        run: |
+          git fetch origin $env:DEFAULT_BRANCH
+          git switch --force -C $env:DEFAULT_BRANCH "origin/$env:DEFAULT_BRANCH"
+          # Edit the three values in place so the file keeps its formatting.
+          $path = "bucket/meetcue.json"
+          $url = "https://github.com/${{ github.repository }}/releases/download/$env:TAG/meetcue-win-x64.zip"
+          $text = Get-Content $path -Raw
+          $text = $text -replace '(?m)^(\s*"version":\s*)"[^"]*"', "`${1}`"$env:VERSION`""
+          $text = $text -replace '(?m)^(\s*"url":\s*)"[^"$]*/releases/download/v[^/"$]+/meetcue-win-x64\.zip"', "`${1}`"$url`""
+          $text = $text -replace '(?m)^(\s*"hash":\s*)"[0-9a-fA-F]{64}"', "`${1}`"$env:HASH`""
+          Set-Content -Path $path -Value $text -Encoding utf8NoBOM -NoNewline
+          $m = Get-Content $path -Raw | ConvertFrom-Json
+          if ($m.version -ne $env:VERSION -or $m.architecture.'64bit'.hash -ne $env:HASH -or $m.architecture.'64bit'.url -ne $url) {
+            throw "Could not update bucket/meetcue.json"
+          }
+          git config user.name $env:GIT_NAME
+          git config user.email $env:GIT_EMAIL
+          git add $path
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { Write-Output "Manifest already up to date"; exit 0 }
+          git commit -m "Update Scoop manifest to $env:VERSION"
+          git push origin "HEAD:$env:DEFAULT_BRANCH"
+
+      - name: Smoke test with Scoop
+        run: |
+          # The runner account is an administrator, which Scoop's installer refuses without -RunAsAdmin.
+          Invoke-RestMethod get.scoop.sh -OutFile install.ps1
+          .\install.ps1 -RunAsAdmin
+          $env:PATH = "$env:USERPROFILE\scoop\shims;$env:PATH"
+          scoop install .\bucket\meetcue.json
+          if ($LASTEXITCODE -ne 0) { throw "scoop install failed" }
+          $exe = "$env:USERPROFILE\scoop\apps\meetcue\current\MeetCue.exe"
+          $out = & $exe --version | Out-String
+          Write-Output $out
+          if ($out -notmatch [regex]::Escape("MeetCue $env:VERSION")) { throw "installed MeetCue reports the wrong version" }
