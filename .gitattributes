@@ -1,0 +1,6 @@
+# Keep text files LF on every platform; tests read some of them verbatim.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.wav binary

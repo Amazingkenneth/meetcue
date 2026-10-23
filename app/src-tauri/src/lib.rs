@@ -218,7 +218,8 @@ mod tests {
 
     #[test]
     fn interface_and_shell_list_the_same_commands() {
-        let ts = include_str!("../../ui/src/backend/types.ts");
+        // Checkouts may use CRLF line endings on Windows.
+        let ts = include_str!("../../ui/src/backend/types.ts").replace("\r\n", "\n");
         let start = ts.find("export interface Commands {").unwrap();
         let end = start + ts[start..].find("\n}\n").unwrap();
         let ui: BTreeSet<String> = ts[start..end]
