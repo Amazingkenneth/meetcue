@@ -12,7 +12,11 @@
     "remoteSource": "allSystemSound",
     "vadThresholdDb": -45.0,
     "endpointSilenceMs": 700,
-    "stopTtsOnSpeech": true
+    "stopTtsOnSpeech": true,
+    "languages": [
+      "zh",
+      "en"
+    ]
   },
   "providers": {
     "asr": {

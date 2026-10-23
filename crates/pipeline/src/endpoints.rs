@@ -77,7 +77,7 @@ mod tests {
         }
         assert_eq!(
             c.host_for_region("bedrock", "example-1").as_deref(),
-            Some("bedrock-runtime.example-1.amazonaws.com")
+            Some("bedrock-mantle.example-1.api.aws")
         );
     }
 }

@@ -17,4 +17,8 @@ endpointSilenceMs: number,
 /**
  * Stop interrupting practice playback when the user starts speaking.
  */
-stopTtsOnSpeech: boolean, };
+stopTtsOnSpeech: boolean, 
+/**
+ * Languages spoken in meetings, as ISO codes (`zh`, `en`).
+ */
+languages: Array<string>, };

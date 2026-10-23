@@ -193,7 +193,7 @@ pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
         channel: None,
         model: asr_m.clone(),
         host: asr_cfg.host.clone(),
-        languages: vec!["zh".into(), "en".into()],
+        languages: s.audio.languages.clone(),
         hotwords: materials::hotwords(&texts, materials::MAX_HOTWORDS),
         endpoint_silence_ms: s.audio.endpoint_silence_ms,
         proxy: s.providers.proxy.clone(),

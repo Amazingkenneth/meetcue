@@ -118,7 +118,12 @@
     "vadThreshold": "Voice detection threshold",
     "vadHint": "Lower picks up quieter speech; higher ignores more background noise.",
     "endpointSilence": "Sentence end after silence",
-    "endpointHint": "Shorter shows hints sooner but may split a question in two."
+    "endpointHint": "Shorter shows hints sooner but may split a question in two.",
+    "languages": "Meeting languages",
+    "languagesHint": "Helps speech recognition. Soniox handles Chinese and English mixed in one sentence best; Deepgram uses its Mandarin model whenever Chinese is selected.",
+    "langZhEn": "Chinese and English",
+    "langEn": "English",
+    "langZh": "Chinese"
   },
   "providers": {
     "asrTitle": "Speech recognition",

@@ -264,6 +264,22 @@ export function AudioFields({ settings, update }: { settings: Settings; update: 
           </option>
         </select>
       </Field>
+      <Field label={t("audio.languages")} htmlFor="speech-lang" hint={t("audio.languagesHint")}>
+        <select
+          id="speech-lang"
+          value={settings.audio.languages.join(",")}
+          onChange={(e) =>
+            void update((s) => {
+              s.audio.languages = e.target.value.split(",");
+              return s;
+            })
+          }
+        >
+          <option value="zh,en">{t("audio.langZhEn")}</option>
+          <option value="en">{t("audio.langEn")}</option>
+          <option value="zh">{t("audio.langZh")}</option>
+        </select>
+      </Field>
       <Field label={t("audio.levels")} hint={t("audio.levelsHint")}>
         <div style={{ display: "grid", gap: 6 }}>
           <span className="row">

@@ -117,7 +117,12 @@
     "vadThreshold": "人声检测门限",
     "vadHint": "调低能拾取更轻的说话声，调高能忽略更多背景噪声。",
     "endpointSilence": "静音多久算一句结束",
-    "endpointHint": "越短提示越快，但可能把一个问题切成两段。"
+    "endpointHint": "越短提示越快，但可能把一个问题切成两段。",
+    "languages": "会议语言",
+    "languagesHint": "用于提高识别准确率。中英混说时 Soniox 效果最好；选择包含中文时，Deepgram 使用其普通话模型。",
+    "langZhEn": "中文和英文",
+    "langEn": "英文",
+    "langZh": "中文"
   },
   "providers": {
     "asrTitle": "语音识别",

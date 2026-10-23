@@ -141,6 +141,8 @@ pub struct AudioSettings {
     pub endpoint_silence_ms: u32,
     /// Stop interrupting practice playback when the user starts speaking.
     pub stop_tts_on_speech: bool,
+    /// Languages spoken in meetings, as ISO codes (`zh`, `en`).
+    pub languages: Vec<String>,
 }
 
 impl Default for AudioSettings {
@@ -151,6 +153,7 @@ impl Default for AudioSettings {
             vad_threshold_db: -45.0,
             endpoint_silence_ms: 700,
             stop_tts_on_speech: true,
+            languages: vec!["zh".into(), "en".into()],
         }
     }
 }
