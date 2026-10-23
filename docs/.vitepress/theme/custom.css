@@ -1,0 +1,43 @@
+/* Brand: the app's accent color. Dark mode uses it as is; light mode uses a
+   darker shade of the same hue so links keep at least 4.5:1 contrast. */
+:root {
+  --vp-c-brand-1: #a16207;
+  --vp-c-brand-2: #8a5306;
+  --vp-c-brand-3: #a16207;
+  --vp-c-brand-soft: rgba(161, 98, 7, 0.12);
+  --vp-font-family-base: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --vp-button-brand-text: #ffffff;
+}
+
+.dark {
+  --vp-c-brand-1: #f5b841;
+  --vp-c-brand-2: #f7c563;
+  --vp-c-brand-3: #f5b841;
+  --vp-c-brand-soft: rgba(245, 184, 65, 0.16);
+  --vp-button-brand-text: #1a1405;
+  --vp-button-brand-hover-text: #1a1405;
+}
+
+/* Comfortable reading: 16px text, ~720px column, roomier CJK line height. */
+.vp-doc {
+  font-size: 16px;
+}
+
+.vp-doc p,
+.vp-doc li {
+  line-height: 1.75;
+}
+
+.VPDoc .content-container {
+  max-width: 720px;
+}
+
+.vp-doc kbd {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.85em;
+  padding: 1px 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "MeetCue",
+  "mainBinaryName": "MeetCue",
+  "identifier": "io.github.amazingkenneth.meetcue",
+  "build": {
+    "frontendDist": "../ui/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": { "script": "npm run dev", "cwd": "../ui" },
+    "beforeBuildCommand": { "script": "npm run build", "cwd": "../ui" }
+  },
+  "app": {
+    "windows": [],
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "category": "Productivity",
+    "shortDescription": "Meeting prompter and interview practice",
+    "copyright": "Copyright (c) 2026 Kenneth Zhong",
+    "licenseFile": "../../LICENSE",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"]
+  }
+}

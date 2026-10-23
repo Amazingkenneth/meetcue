@@ -56,7 +56,11 @@ pub struct VerifyResult {
 
 impl VerifyResult {
     pub fn ok() -> Self {
-        Self { ok: true, code: None, detail: None }
+        Self {
+            ok: true,
+            code: None,
+            detail: None,
+        }
     }
 
     pub fn err(e: &crate::MeetCueError) -> Self {
@@ -109,15 +113,32 @@ pub struct UsageSummary {
 
 /// App-level notifications on the `meetcue://app` channel.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
-#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 #[ts(export)]
 pub enum AppEvent {
-    SettingsChanged { settings: Box<Settings> },
-    PanelMode { mode: PanelMode },
-    HotkeyStatus { hotkeys: Vec<HotkeyState> },
+    SettingsChanged {
+        settings: Box<Settings>,
+    },
+    PanelMode {
+        mode: PanelMode,
+    },
+    HotkeyStatus {
+        hotkeys: Vec<HotkeyState>,
+    },
     /// A one-off notice for an error code (e.g. device changed).
-    Notice { code: String, detail: String },
-    ProbeProgress { done: u32, total: u32, label: String },
+    Notice {
+        code: String,
+        detail: String,
+    },
+    ProbeProgress {
+        done: u32,
+        total: u32,
+        label: String,
+    },
     PracticeProgress {
         index: u32,
         total: u32,
@@ -125,5 +146,7 @@ pub enum AppEvent {
         phase: String,
         question: String,
     },
-    PracticeFinished { report_id: String },
+    PracticeFinished {
+        report_id: String,
+    },
 }

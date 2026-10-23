@@ -5,7 +5,7 @@ members = [
     "crates/pipeline",
     "crates/audio",
     "crates/platform",
-    # "app/src-tauri",
+    "app/src-tauri",
 ]
 
 [workspace.package]

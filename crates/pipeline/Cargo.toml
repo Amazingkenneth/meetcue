@@ -23,10 +23,14 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-tungstenite.workspace = true
+tokio-rustls = "0.26"
+http = "1"
 tokio-util.workspace = true
 tracing.workspace = true
 encoding_rs = "0.8"
 chardetng = "1"
+pdf-extract = "0.12"
+zip = { version = "2", default-features = false, features = ["deflate"] }
 ts-rs.workspace = true
 
 [dev-dependencies]

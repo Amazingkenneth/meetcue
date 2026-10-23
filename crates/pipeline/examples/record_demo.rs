@@ -54,7 +54,10 @@ fn main() {
         drop(backend);
         collector.await.expect("collector")
     });
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../app/ui/src/mock/sdn-demo.json");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../app/ui/src/mock/sdn-demo.json"
+    );
     let json = serde_json::to_string(&events).expect("serialize");
     std::fs::write(path, json + "\n").expect("write demo file");
     println!("wrote {} events to {path}", events.len());

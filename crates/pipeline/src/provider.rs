@@ -58,6 +58,14 @@ pub trait AsrProvider: Send + Sync {
     /// Stable id: `soniox`, `deepgram`, `mock`, …
     fn id(&self) -> &'static str;
     async fn open(&self, opts: AsrOptions) -> Result<Box<dyn AsrStream>, MeetCueError>;
+    /// Checks the key without streaming audio (cheap REST call where possible).
+    async fn verify(&self) -> Result<(), MeetCueError> {
+        Ok(())
+    }
+    /// Models offered by the provider, when it has an API for that.
+    async fn list_models(&self) -> Result<Vec<ModelInfo>, MeetCueError> {
+        Ok(Vec::new())
+    }
 }
 
 #[async_trait]

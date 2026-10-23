@@ -114,6 +114,9 @@ impl AsrProvider for MockAsr {
     async fn open(&self, opts: AsrOptions) -> Result<Box<dyn AsrStream>, MeetCueError> {
         let (tx, rx) = mpsc::unbounded();
         let schedule = opts.channel.map(|c| self.schedule(c)).unwrap_or_default();
+        // Without a channel (latency probe) the stream reacts to the audio
+        // it receives instead of replaying the script.
+        let live = opts.channel.is_none().then(|| tx.clone());
         let start = tokio::time::Instant::now();
         let task = tokio::spawn(async move {
             for (t, result) in schedule {
@@ -127,6 +130,7 @@ impl AsrProvider for MockAsr {
             rx: Some(rx),
             task,
             sent_ms: 0,
+            live,
         }))
     }
 }
@@ -135,12 +139,35 @@ struct MockAsrStream {
     rx: Option<mpsc::UnboundedReceiver<AsrResult>>,
     task: tokio::task::JoinHandle<()>,
     sent_ms: u64,
+    live: Option<mpsc::UnboundedSender<AsrResult>>,
 }
 
 #[async_trait]
 impl AsrStream for MockAsrStream {
     async fn write(&mut self, pcm16k: &[i16], _capture_ts_ms: i64) -> Result<(), MeetCueError> {
+        let voiced = crate::text_level(pcm16k) > -40.0;
+        if let (Some(tx), true) = (&self.live, voiced) {
+            let t = self.sent_ms as i64;
+            let _ = tx.unbounded_send(AsrResult::Partial {
+                text: "…".into(),
+                t0_ms: t,
+                t1_ms: t,
+            });
+        }
         self.sent_ms += (pcm16k.len() as u64 * 1000) / 16_000;
+        Ok(())
+    }
+
+    async fn finalize(&mut self) -> Result<(), MeetCueError> {
+        if let Some(tx) = &self.live {
+            let t = self.sent_ms as i64;
+            let _ = tx.unbounded_send(AsrResult::Final {
+                text: "probe".into(),
+                t0_ms: 0,
+                t1_ms: t,
+            });
+            let _ = tx.unbounded_send(AsrResult::Endpoint { t_ms: t });
+        }
         Ok(())
     }
 
