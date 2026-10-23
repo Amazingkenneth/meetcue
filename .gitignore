@@ -10,10 +10,10 @@ app/src-tauri/gen/schemas/
 # Local configuration, secrets and personal data
 .env
 .env.*
-config/
-logs/
+/config/
+/logs/
 *.log
-practice/
+/practice/
 latency-history.json
 *.pem
 *.key
