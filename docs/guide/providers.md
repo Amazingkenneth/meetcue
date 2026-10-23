@@ -59,4 +59,4 @@ Some services don't report token usage while streaming. Usage and cost then show
 
 ## Corporate networks
 
-MeetCue uses the Windows certificate store, so certificates installed by your company are trusted. It follows the system proxy settings for HTTPS; to use a different proxy, enter it in **Settings › Providers & cost › Advanced › HTTPS proxy**. If connections fail with [MC-NET-001](/troubleshooting/error-codes#mc-net-001), see [High latency](/troubleshooting/latency#company-network).
+MeetCue uses the Windows certificate store, so certificates installed by your company are trusted. It follows the manual proxy set in Windows Settings (**Network & internet › Proxy**) for all connections, including speech recognition. Automatic configuration scripts are not evaluated; if your network uses one, or to use a different proxy, enter it in **Settings › Providers & cost › Advanced › HTTPS proxy**. If connections fail with [MC-NET-001](/troubleshooting/error-codes#mc-net-001), see [High latency](/troubleshooting/latency#company-network).

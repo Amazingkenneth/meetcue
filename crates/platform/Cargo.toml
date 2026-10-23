@@ -17,6 +17,7 @@ tts = "0.26"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3.6", features = ["windows-native"] }
+windows-registry = "0.6"
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",

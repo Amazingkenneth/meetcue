@@ -134,6 +134,14 @@ pub fn hint_llm(state: &AppState) -> Result<(Arc<dyn LlmProvider>, ModelRef), Me
     Ok((llm, ModelRef { provider, model }))
 }
 
+/// Re-reads the system proxy so WebSocket connections follow it like HTTPS
+/// requests do. Called before connecting, so changes apply without a restart.
+pub fn refresh_system_proxy() {
+    meetcue_pipeline::net::set_system_proxy(
+        meetcue_platform::proxy::system_proxy().map(|p| (p.server, p.bypass)),
+    );
+}
+
 /// Builds the session from settings and stored keys.
 pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
     build_config_with(state, true)
@@ -142,6 +150,7 @@ pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
 /// Like [`build_config`]; with `need_asr` false a missing recognition setup
 /// is allowed and recognition is left out (practice without recognition).
 pub fn build_config_with(state: &AppState, need_asr: bool) -> Result<SessionConfig, MeetCueError> {
+    refresh_system_proxy();
     let s = state.settings();
     if state.demo {
         let mock = ModelRef {

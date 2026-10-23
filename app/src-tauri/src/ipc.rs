@@ -290,6 +290,7 @@ fn probe_audio() -> Vec<i16> {
 
 #[tauri::command]
 pub async fn run_probe(app: AppHandle, request: ProbeRequest) -> Res<ProbeReport> {
+    session::refresh_system_proxy();
     let state = app.state::<AppState>();
     let s = state.settings();
     let resolve_app = app.clone();

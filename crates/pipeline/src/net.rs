@@ -6,7 +6,7 @@
 //!   `ALL_PROXY`, else the system proxy the app passes in. WebSocket
 //!   connections go through an HTTP `CONNECT` tunnel.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, RwLock};
 use std::time::Duration;
 
 use base64::Engine;
@@ -89,7 +89,54 @@ fn no_proxy(host: &str) -> bool {
         })
 }
 
-/// The proxy to use for `host`: explicit setting first, then environment.
+/// The system proxy (`ProxyServer`, `ProxyOverride` on Windows), set by the app.
+static SYSTEM_PROXY: RwLock<Option<(String, String)>> = RwLock::new(None);
+
+/// Sets or clears the system proxy used when no explicit or environment
+/// proxy applies.
+pub fn set_system_proxy(proxy: Option<(String, String)>) {
+    *SYSTEM_PROXY.write().unwrap() = proxy;
+}
+
+/// The HTTPS entry of a system proxy setting: `host:port`, or the `https=`
+/// (else `http=`) part of `http=a:80;https=b:443`.
+fn system_server(server: &str) -> Option<&str> {
+    if !server.contains('=') {
+        return Some(server.trim());
+    }
+    let entries: Vec<(&str, &str)> = server
+        .split(';')
+        .filter_map(|e| e.split_once('='))
+        .map(|(k, v)| (k.trim(), v.trim()))
+        .collect();
+    ["https", "http"]
+        .iter()
+        .find_map(|scheme| entries.iter().find(|(k, _)| k.eq_ignore_ascii_case(scheme)))
+        .map(|(_, v)| *v)
+}
+
+/// Whether `host` matches the system bypass list (`*` wildcards, `<local>`
+/// for names without a dot).
+fn system_bypass(host: &str, bypass: &str) -> bool {
+    let host = host.to_ascii_lowercase();
+    bypass.split(';').map(str::trim).any(|p| {
+        if p.eq_ignore_ascii_case("<local>") {
+            return !host.contains('.');
+        }
+        let p = p.to_ascii_lowercase();
+        match p.split_once('*') {
+            None => !p.is_empty() && host == p,
+            Some((pre, post)) => {
+                host.len() >= pre.len() + post.len()
+                    && host.starts_with(pre)
+                    && host.ends_with(post)
+            }
+        }
+    })
+}
+
+/// The proxy to use for `host`: explicit setting first, then environment,
+/// then the system proxy.
 pub fn proxy_for(host: &str, explicit: Option<&str>) -> Option<Proxy> {
     if let Some(p) = explicit.and_then(Proxy::parse) {
         return Some(p);
@@ -97,7 +144,14 @@ pub fn proxy_for(host: &str, explicit: Option<&str>) -> Option<Proxy> {
     if no_proxy(host) {
         return None;
     }
-    env_proxy().as_deref().and_then(Proxy::parse)
+    if let Some(p) = env_proxy().as_deref().and_then(Proxy::parse) {
+        return Some(p);
+    }
+    let system = SYSTEM_PROXY.read().unwrap().clone()?;
+    if system_bypass(host, &system.1) {
+        return None;
+    }
+    system_server(&system.0).and_then(Proxy::parse)
 }
 
 fn connect_err(host: &str, e: impl std::fmt::Display) -> MeetCueError {
@@ -310,6 +364,23 @@ mod tests {
             backoff(0, Some(Duration::from_secs(600))),
             Duration::from_secs(30)
         );
+    }
+
+    #[test]
+    fn system_proxy_entries_and_bypass() {
+        assert_eq!(system_server("proxy.corp:8080"), Some("proxy.corp:8080"));
+        assert_eq!(
+            system_server("http=a.corp:80;https=b.corp:443;ftp=c:21"),
+            Some("b.corp:443")
+        );
+        assert_eq!(system_server("http=a.corp:80"), Some("a.corp:80"));
+        assert_eq!(system_server("ftp=c:21"), None);
+        assert!(system_bypass("intranet", "<local>"));
+        assert!(!system_bypass("api.example.com", "<local>"));
+        assert!(system_bypass("wiki.corp.example", "*.corp.example;<local>"));
+        assert!(system_bypass("10.1.2.3", "10.*"));
+        assert!(!system_bypass("api.example.com", "*.corp.example"));
+        assert!(!system_bypass("api.example.com", ""));
     }
 
     #[tokio::test]

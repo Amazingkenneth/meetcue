@@ -2758,6 +2758,7 @@ dependencies = [
  "tracing",
  "tts",
  "windows 0.62.2",
+ "windows-registry",
 ]
 
 [[package]]

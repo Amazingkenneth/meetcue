@@ -59,4 +59,4 @@
 
 ## 公司网络 {#corporate-networks}
 
-MeetCue 使用 Windows 证书库，公司安装的证书会被信任。HTTPS 默认跟随系统代理设置；要使用其他代理，在 **设置 › 供应商与费用 › 高级 › HTTPS 代理** 中填写。如果连接失败并显示 [MC-NET-001](/zh/troubleshooting/error-codes#mc-net-001)，请看[延迟偏高](/zh/troubleshooting/latency#company-network)。
+MeetCue 使用 Windows 证书库，公司安装的证书会被信任。所有连接（包括语音识别）都跟随 Windows 设置中手动配置的代理（**网络和 Internet › 代理**）。MeetCue 不会执行自动配置脚本；如果你的网络使用自动配置脚本，或要使用其他代理，请在 **设置 › 供应商与费用 › 高级 › HTTPS 代理** 中填写。如果连接失败并显示 [MC-NET-001](/zh/troubleshooting/error-codes#mc-net-001)，请看[延迟偏高](/zh/troubleshooting/latency#company-network)。

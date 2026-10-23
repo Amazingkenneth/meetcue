@@ -5,9 +5,11 @@
 //! - [`credentials`]: API keys in the system credential store only.
 //! - [`speech`]: offline system text-to-speech for practice mode.
 //! - [`window`]: native window styles the webview cannot set (Windows).
+//! - [`proxy`]: the manually configured system proxy (Windows).
 
 pub mod credentials;
 pub mod paths;
+pub mod proxy;
 pub mod speech;
 pub mod window;
 
