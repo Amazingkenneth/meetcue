@@ -413,3 +413,22 @@ html.overlay-view body {
   border: 1px solid var(--accent);
   color: var(--accent);
 }
+
+/* Practice progress row */
+.ov-practice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ov-line);
+  font-size: 12px;
+}
+
+.ov-practice strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ov-practice .grow {
+  flex: 1;
+}

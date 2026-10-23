@@ -44,6 +44,7 @@
     "allow-export-diagnostics",
     "allow-import-material",
     "allow-practice-import",
+    "allow-practice-classify",
     "allow-practice-start",
     "allow-practice-control",
     "allow-practice-reports",

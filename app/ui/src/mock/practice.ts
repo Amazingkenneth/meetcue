@@ -48,7 +48,7 @@ export function mockPracticeReport(): PracticeReport {
         pointsTotal: 4,
         fillers: [{ word: "嗯", count: 2 }],
         pace: 212,
-        paceUnit: "chars",
+        paceUnit: "cpm",
         feedback: ["漏掉了故障收敛时间这个要点。", "可以先给结论，再展开细节。", "结构清晰，关键词覆盖完整。"],
         followUp: "能具体说说当时遇到的最大困难吗？",
         skipped: false,

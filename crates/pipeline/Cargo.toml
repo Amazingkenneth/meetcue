@@ -28,6 +28,7 @@ http = "1"
 tokio-util.workspace = true
 tracing.workspace = true
 encoding_rs = "0.8"
+csv = "1.3"
 chardetng = "1"
 pdf-extract = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }

@@ -93,6 +93,43 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
 
   const script = demo as TimedEvent[];
 
+  // Practice preview: walks through the questions on a timer.
+  let practiceIndex = 0;
+  let practiceTimer = 0;
+  const practiceTotal = () => practiceScript?.items.filter((i) => !i.isMe).length ?? 0;
+  const emitPractice = (phase: string) =>
+    emitApp({
+      type: "practiceProgress",
+      index: Math.min(practiceIndex, practiceTotal()),
+      total: practiceTotal(),
+      phase,
+      question: practiceScript?.items[practiceIndex - 1]?.text ?? "",
+    });
+  const finishPractice = () => {
+    window.clearTimeout(practiceTimer);
+    clearTimers();
+    state = "stopped";
+    emit({ type: "sessionState", state: "stopped", tMs: Date.now() - startWall });
+    emitApp({ type: "practiceProgress", index: 0, total: 0, phase: "done", question: "" });
+    emitApp({ type: "practiceFinished", reportId: "demo" });
+  };
+  const practiceStep = () => {
+    window.clearTimeout(practiceTimer);
+    practiceIndex++;
+    if (practiceIndex > practiceTotal()) {
+      finishPractice();
+      return;
+    }
+    emitPractice("speaking");
+    practiceTimer = window.setTimeout(() => {
+      emitPractice("waiting");
+      practiceTimer = window.setTimeout(() => {
+        emitPractice("answering");
+        practiceTimer = window.setTimeout(practiceStep, 14_000 / speed);
+      }, 2_000 / speed);
+    }, 3_000 / speed);
+  };
+
   const schedule = () => {
     const base = Date.now() - (script[replayIndex]?.tMs ?? 0) / speed;
     for (let i = replayIndex; i < script.length; i++) {
@@ -305,17 +342,26 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       practiceScript = mockPracticeScript();
       return practiceScript;
     },
-    practice_start: () => {
-      toggle();
+    practice_classify: ({ script }) => ({
+      ...script,
+      needsClassification: false,
+      items: script.items.map((it) => ({ ...it, isQuestion: /[?？]$/.test(it.text), isMe: !/[?？]$/.test(it.text) })),
+    }),
+    practice_start: ({ script }) => {
+      practiceScript = script;
+      practiceIndex = 0;
+      if (state !== "running") toggle();
+      practiceStep();
       return null;
     },
     practice_control: ({ control }) => {
       if (control === "stop") {
-        clearTimers();
-        state = "stopped";
-        emitApp({ type: "practiceFinished", reportId: "demo" });
+        finishPractice();
       } else if (control === "pause" || control === "resume") {
         toggle();
+        emitPractice(state === "paused" ? "paused" : "answering");
+      } else if (control === "skip" || control === "answered") {
+        practiceStep();
       }
       return null;
     },

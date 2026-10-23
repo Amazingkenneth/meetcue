@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
+import type { HintLevel } from "../bindings/HintLevel";
 import type { PanelMode } from "../bindings/PanelMode";
 import type { Settings } from "../bindings/Settings";
 import type { TranscriptLine } from "../bindings/TranscriptLine";
@@ -15,11 +16,20 @@ import {
   type SessionView,
 } from "../state/session";
 import { useAppEvents, useAppInfo, useNow, useSession, useSettings } from "../state/hooks";
+import { usePracticeProgress, type PracticeProgress } from "../state/practice";
 import { boldSegments, clock, seconds } from "../util/format";
 import { errorDocsUrl, errorFix, errorTitle } from "../util/errors";
 import "./overlay.css";
 
 const SLOW_MS = 2500;
+
+/** How hints are shown: always fully in meetings, per the practice level in practice. */
+export interface HintDisplay {
+  level: HintLevel;
+  delayS: number;
+}
+
+const FULL: HintDisplay = { level: "full", delayS: 0 };
 
 export function Overlay() {
   const [settings] = useSettings();
@@ -32,11 +42,43 @@ export function Overlay() {
   useAppEvents((e) => {
     if (e.type === "panelMode" && e.mode !== "hidden") setMode(e.mode);
   });
+  const practice = usePracticeProgress();
+  const display: HintDisplay =
+    practice && settings ? { level: settings.practice.hintLevel, delayS: settings.practice.hintDelayS } : FULL;
   const docsUrl = info?.docsUrl ?? "";
   if (mode === "mini") {
-    return <MiniBar view={view} onExpand={() => void backend().invoke("set_panel_mode", { mode: "full" })} />;
+    return <MiniBar view={view} display={display} onExpand={() => void backend().invoke("set_panel_mode", { mode: "full" })} />;
   }
-  return <FullPanel view={view} wallStart={wallStart} settings={settings} demo={!!info?.demo} docsUrl={docsUrl} />;
+  return (
+    <FullPanel
+      view={view}
+      wallStart={wallStart}
+      settings={settings}
+      demo={!!info?.demo}
+      docsUrl={docsUrl}
+      practice={practice}
+      display={display}
+    />
+  );
+}
+
+function PracticeBar({ p }: { p: PracticeProgress }) {
+  const { t } = useTranslation();
+  const paused = p.phase === "paused";
+  const control = (c: "pause" | "resume" | "skip") => void backend().invoke("practice_control", { control: c });
+  return (
+    <div className="ov-practice" role="status">
+      <strong>{t("practice.progress", { index: p.index, total: p.total })}</strong>
+      <span className="ov-muted">{p.nudge ? t("practice.phase.nudge") : t(`practice.phase.${p.phase}`)}</span>
+      <span className="grow" />
+      <button className="ov-icon" onClick={() => control(paused ? "resume" : "pause")}>
+        {paused ? t("practice.resume") : t("practice.pause")}
+      </button>
+      <button className="ov-icon" onClick={() => control("skip")}>
+        {t("practice.skip")}
+      </button>
+    </div>
+  );
 }
 
 function FullPanel({
@@ -45,12 +87,16 @@ function FullPanel({
   settings,
   demo,
   docsUrl,
+  practice,
+  display,
 }: {
   view: SessionView;
   wallStart: number | null;
   settings: Settings | null;
   demo: boolean;
   docsUrl: string;
+  practice: PracticeProgress | null;
+  display: HintDisplay;
 }) {
   const { t } = useTranslation();
   const now = useNow(1000);
@@ -98,6 +144,8 @@ function FullPanel({
         </button>
       </div>
 
+      {practice && <PracticeBar p={practice} />}
+
       <div className="ov-sources">
         <div className="ov-source">
           <span>{t("overlay.sourceMe")}</span>
@@ -125,7 +173,7 @@ function FullPanel({
 
       <ErrorToast view={view} docsUrl={docsUrl} />
 
-      <ChatList view={view} toggleKey={toggleKey} />
+      <ChatList view={view} toggleKey={toggleKey} display={display} />
 
       <Footer view={view} settings={settings} />
     </div>
@@ -173,7 +221,7 @@ function QueueCards({ view }: { view: SessionView }) {
   );
 }
 
-function ChatList({ view, toggleKey }: { view: SessionView; toggleKey: string }) {
+function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
   const { t } = useTranslation();
   const current = currentId(view);
   const refs = useRef(new Map<number, HTMLElement>());
@@ -211,6 +259,7 @@ function ChatList({ view, toggleKey }: { view: SessionView; toggleKey: string })
             key={id}
             q={q}
             view={view}
+            display={display}
             isCurrent={id === current}
             ref={(el: HTMLElement | null) => {
               if (el) refs.current.set(id, el);
@@ -223,18 +272,34 @@ function ChatList({ view, toggleKey }: { view: SessionView; toggleKey: string })
   );
 }
 
+/** Whether hints are hidden right now, and for how many more seconds. */
+export function hintVisibility(display: HintDisplay, shownAt: number, now: number): { hidden: boolean; waitS: number } {
+  if (display.level === "off") return { hidden: true, waitS: 0 };
+  if (display.level === "delayed") {
+    const left = display.delayS * 1000 - (now - shownAt);
+    if (left > 0) return { hidden: true, waitS: Math.ceil(left / 1000) };
+  }
+  return { hidden: false, waitS: 0 };
+}
+
 function ChatBlock({
   q,
   view,
+  display,
   isCurrent,
   ref,
 }: {
   q: QuestionView;
   view: SessionView;
+  display: HintDisplay;
   isCurrent: boolean;
   ref: (el: HTMLElement | null) => void;
 }) {
   const { t } = useTranslation();
+  const [shownAt] = useState(() => Date.now());
+  const now = useNow(display.level === "delayed" ? 500 : 60_000);
+  const vis = hintVisibility(display, shownAt, now);
+  const headsOnly = display.level === "headsOnly";
   const [showContext, setShowContext] = useState(false);
   const [showAnswer, setShowAnswer] = useState(false);
   const { done, total } = coverageCount(q);
@@ -284,14 +349,17 @@ function ChatBlock({
               : ""}
         </span>
       </div>
-      {q.points.length === 0 && !q.failedCode && <p className="ov-muted">{t("overlay.generating")}</p>}
+      {vis.hidden && (
+        <p className="ov-muted">{display.level === "off" ? t("practice.hintsOff") : t("practice.hintsIn", { seconds: vis.waitS })}</p>
+      )}
+      {!vis.hidden && q.points.length === 0 && !q.failedCode && <p className="ov-muted">{t("overlay.generating")}</p>}
       {q.failedCode && (
         <p className="ov-fail">
           {t("overlay.failed")} · <span className="mono">{q.failedCode}</span>
         </p>
       )}
-      <ol className="ov-points">
-        {q.points.map((p) => (
+      <ol className="ov-points" hidden={vis.hidden}>
+        {(vis.hidden ? [] : q.points).map((p) => (
           <li className="ov-point" key={p.n} data-status={p.status}>
             <span className="num">
               {p.status === "done" ? (
@@ -303,13 +371,13 @@ function ChatBlock({
               )}
             </span>
             <span className="body">
-              <span className="head">{p.head}</span> <span className="rest">{p.rest}</span>
+              <span className="head">{p.head}</span> {!headsOnly && <span className="rest">{p.rest}</span>}
             </span>
             {p.status === "next" && <span className="next-tag">{t("overlay.nextTag")}</span>}
           </li>
         ))}
       </ol>
-      {q.answer && (
+      {q.answer && !vis.hidden && !headsOnly && (
         <button className="ov-link" aria-expanded={showAnswer} onClick={() => setShowAnswer(!showAnswer)}>
           {showAnswer ? t("overlay.hideAnswer") : t("overlay.fullAnswer")}
         </button>
@@ -404,10 +472,12 @@ export function footerKeys(toggle = "Ctrl+Alt+Space", prev = "Ctrl+Alt+[", next 
   };
 }
 
-export function MiniBar({ view, onExpand }: { view: SessionView; onExpand: () => void }) {
+export function MiniBar({ view, display = FULL, onExpand }: { view: SessionView; display?: HintDisplay; onExpand: () => void }) {
   const { t } = useTranslation();
   const { current, next } = neighbours(view);
-  const point = current ? nextPoint(current) : null;
+  // The mini bar has no per-question timer, so "delayed" behaves like "off" here.
+  const hidden = display.level === "off" || display.level === "delayed";
+  const point = current && !hidden ? nextPoint(current) : null;
   const cov = current ? coverageCount(current) : null;
   const pending = view.order.filter((id) => view.questions[id]?.status === "pending").length;
   return (
@@ -426,8 +496,10 @@ export function MiniBar({ view, onExpand }: { view: SessionView; onExpand: () =>
         {point ? (
           <>
             {point.head}
-            <small>{point.rest}</small>
+            {display.level !== "headsOnly" && <small>{point.rest}</small>}
           </>
+        ) : current && hidden ? (
+          <small>{t("practice.hintsOff")}</small>
         ) : current && current.points.length > 0 ? (
           <small>{t("overlay.allCovered")}</small>
         ) : (

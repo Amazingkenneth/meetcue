@@ -1,6 +1,8 @@
 //! Starting, pausing and stopping a meeting session, and forwarding
 //! pipeline events to every window.
 
+use std::sync::Arc;
+
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::mpsc;
 
@@ -14,7 +16,7 @@ use meetcue_pipeline::backend::SessionConfig;
 use meetcue_pipeline::endpoints::EndpointCatalog;
 use meetcue_pipeline::engine::{EngineConfig, ModelRef};
 use meetcue_pipeline::probe::ProbeReport;
-use meetcue_pipeline::provider::AsrOptions;
+use meetcue_pipeline::provider::{AsrOptions, LlmProvider};
 use meetcue_pipeline::providers::{self, ProviderConfig};
 use meetcue_pipeline::{materials, HintBackend};
 
@@ -99,8 +101,47 @@ fn this_month() -> String {
     chrono::Utc::now().format("%Y-%m").to_string()
 }
 
+/// The hint model with its key, for practice follow-ups, labels and feedback.
+pub fn hint_llm(state: &AppState) -> Result<(Arc<dyn LlmProvider>, ModelRef), MeetCueError> {
+    if state.demo {
+        let llm = providers::llm(&ProviderConfig {
+            provider: "mock".into(),
+            ..Default::default()
+        })?;
+        return Ok((
+            llm,
+            ModelRef {
+                provider: "mock".into(),
+                model: "mock".into(),
+            },
+        ));
+    }
+    let s = state.settings();
+    let p = &s.providers;
+    let (Some(provider), Some(model)) = (p.hints.provider.clone(), p.hints.model.clone()) else {
+        return Err(MeetCueError::new(
+            codes::LLM_MODEL_UNAVAILABLE,
+            "no hint model chosen",
+        ));
+    };
+    let llm = providers::llm(&provider_config(
+        state,
+        &s,
+        &provider,
+        &model,
+        &p.hints.endpoint,
+    )?)?;
+    Ok((llm, ModelRef { provider, model }))
+}
+
 /// Builds the session from settings and stored keys.
 pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
+    build_config_with(state, true)
+}
+
+/// Like [`build_config`]; with `need_asr` false a missing recognition setup
+/// is allowed and recognition is left out (practice without recognition).
+pub fn build_config_with(state: &AppState, need_asr: bool) -> Result<SessionConfig, MeetCueError> {
     let s = state.settings();
     if state.demo {
         let mock = ModelRef {
@@ -126,11 +167,15 @@ pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
         return Ok(cfg);
     }
     let p = &s.providers;
-    let (Some(asr_p), Some(asr_m)) = (p.asr.provider.clone(), p.asr.model.clone()) else {
-        return Err(MeetCueError::new(
-            codes::ASR_NOT_CONFIGURED,
-            "no speech recognition model chosen",
-        ));
+    let asr_choice = (p.asr.provider.clone(), p.asr.model.clone());
+    let (Some(asr_p), Some(asr_m)) = asr_choice else {
+        if need_asr {
+            return Err(MeetCueError::new(
+                codes::ASR_NOT_CONFIGURED,
+                "no speech recognition model chosen",
+            ));
+        }
+        return build_without_asr(state, &s);
     };
     let (Some(hint_p), Some(hint_m)) = (p.hints.provider.clone(), p.hints.model.clone()) else {
         return Err(MeetCueError::new(
@@ -145,6 +190,9 @@ pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
     };
     let asr_cfg = provider_config(state, &s, &asr_p, &asr_m, &p.asr.endpoint)?;
     if asr_cfg.key.is_none() {
+        if !need_asr {
+            return build_without_asr(state, &s);
+        }
         return Err(MeetCueError::new(
             codes::ASR_NOT_CONFIGURED,
             format!("no key for {asr_p}"),
@@ -209,6 +257,32 @@ pub fn build_config(state: &AppState) -> Result<SessionConfig, MeetCueError> {
     Ok(cfg)
 }
 
+fn build_without_asr(state: &AppState, s: &Settings) -> Result<SessionConfig, MeetCueError> {
+    let (hints_llm, hints) = hint_llm(state)?;
+    let p = &s.providers;
+    let (detect_llm, detect) = match (p.detect.provider.clone(), p.detect.model.clone()) {
+        (Some(provider), Some(model)) => (
+            providers::llm(&provider_config(
+                state,
+                s,
+                &provider,
+                &model,
+                &p.detect.endpoint,
+            )?)?,
+            ModelRef { provider, model },
+        ),
+        _ => (hints_llm.clone(), hints.clone()),
+    };
+    let mut cfg = SessionConfig::new(engine_config(s, detect, hints), None, detect_llm, hints_llm);
+    cfg.recognize_me = false;
+    cfg.recognize_remote = false;
+    cfg.pricing_overrides = p.pricing_overrides.clone();
+    cfg.budget = p.budget.clone();
+    cfg.month_spent_micros =
+        usage::month_total(&usage::read(&state.paths.usage_ledger()), &this_month());
+    Ok(cfg)
+}
+
 pub async fn start(app: &AppHandle) -> Result<(), MeetCueError> {
     let state = app.state::<AppState>();
     let cfg = build_config(&state)?;
@@ -221,6 +295,10 @@ pub async fn start(app: &AppHandle) -> Result<(), MeetCueError> {
 
 /// Ctrl+Alt+Space: start when idle, otherwise pause or resume.
 pub async fn toggle(app: &AppHandle) -> Result<(), MeetCueError> {
+    if crate::practice::is_active(app) {
+        crate::practice::control(app, crate::practice::Control::Toggle);
+        return Ok(());
+    }
     let state = app.state::<AppState>();
     let running = state.backend.is_running();
     match (running, state.session_state()) {
@@ -244,7 +322,7 @@ pub async fn stop(app: &AppHandle) {
     state.backend.stop().await;
 }
 
-fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
+pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
     let state = app.state::<AppState>();
     let s = state.settings();
     let (tx, mut rx) = mpsc::unbounded_channel::<SourceEvent>();

@@ -1,6 +1,10 @@
 //! Practice mode: scripts imported from subtitles or question lists, the
 //! playback schedule, and the review report.
 
+pub mod parse;
+pub mod review;
+pub mod schedule;
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 

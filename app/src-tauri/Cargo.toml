@@ -28,6 +28,7 @@ meetcue-platform.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 futures.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
