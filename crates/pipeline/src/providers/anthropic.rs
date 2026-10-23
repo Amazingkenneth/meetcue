@@ -178,11 +178,7 @@ impl Usage {
 }
 
 /// Parses one SSE event of the Messages stream into chunks; `Err` ends the stream.
-fn handle_event(
-    name: &str,
-    data: &str,
-    usage: &mut Usage,
-) -> Result<Vec<LlmChunk>, MeetCueError> {
+fn handle_event(name: &str, data: &str, usage: &mut Usage) -> Result<Vec<LlmChunk>, MeetCueError> {
     let v: Value = serde_json::from_str(data).unwrap_or(Value::Null);
     let kind = v.get("type").and_then(Value::as_str).unwrap_or(name);
     match kind {

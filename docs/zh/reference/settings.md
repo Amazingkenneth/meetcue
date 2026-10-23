@@ -1,0 +1,96 @@
+# 设置项
+
+本页列出所有设置项、在应用中的位置，以及它们在 `settings.json` 中的键名。通常在应用里修改即可；只有自动化部署或恢复时才需要手工编辑文件。
+
+## 设置保存位置 {#where-settings-are-stored}
+
+| 安装方式 | 设置文件夹 |
+| --- | --- |
+| Scoop | `scoop\persist\meetcue\config`（升级后保留） |
+| 便携 zip | `MeetCue.exe` 同级的 `config` |
+| 上述文件夹不可写时的回退位置 | `%APPDATA%\MeetCue` |
+
+文件夹中有 `settings.json`、`latency-history.json`、`usage.jsonl`、`logs\` 和 `practice\`。**设置 › 诊断 › 关于** 会显示当前使用的文件夹。API 密钥不保存在这里，而是在 Windows 凭据管理器中。
+
+如果 `settings.json` 无法读取，MeetCue 会把它重命名为 `settings.json.bad` 并以默认设置启动。
+
+## 通用
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 界面语言 | `general.uiLanguage`：`system`、`en`、`zh-CN` | `system` |
+| 提示语言 | `general.hintLanguage`：`followQuestion`、`en`、`zh-CN` | `followQuestion` |
+| 强调色 | `general.accent` | `#F5B841` |
+| 登录系统时启动 MeetCue | `general.autostart` | `false` |
+| 共享屏幕时隐藏面板 | `overlay.hideInScreenShare` | `true` |
+| 鼠标穿透面板 | `overlay.clickThrough` | `false` |
+
+面板最后的形态（`overlay.mode`：`full`、`mini`、`hidden`）和位置（`overlay.x`、`overlay.y`）会自动记住。
+
+## 音频
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 麦克风（我） | `audio.micDevice`；留空表示系统默认 | 空 |
+| 与会者声音 | `audio.remoteSource`：`allSystemSound` | `allSystemSound` |
+| 会议语言 | `audio.languages`，例如 `["zh", "en"]` | `["zh", "en"]` |
+| 人声检测门限 | `audio.vadThresholdDb`，单位 dBFS | `-45` |
+| 静音多久算一句结束 | `audio.endpointSilenceMs` | `700` |
+
+## 供应商与费用
+
+| 设置 | 键名 |
+| --- | --- |
+| 语音识别 | `providers.asr` |
+| 问题检测模型 | `providers.detect` |
+| 要点模型 | `providers.hints` |
+| AWS 区域（Bedrock） | `providers.bedrockRegion` |
+| Base URL（OpenAI 兼容接口） | `providers.openaiBaseUrl` |
+| HTTPS 代理 | `providers.proxy`；留空表示使用系统代理 |
+| 手动填写的价格 | `providers.pricingOverrides` |
+| 费用估算假设 | `providers.estimate` |
+| 预算 | `providers.budget.sessionLimitUsd`、`monthlyLimitUsd`、`onLimit`（`notifyOnly`、`pauseHints`、`endSession`） |
+
+`asr`、`detect`、`hints` 各自包含 `provider`、`model` 和 `endpoint`。端点为 `{"mode": "auto"}`（实测最快）或 `{"mode": "host", "host": "<主机名>"}`。
+
+## 提示
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 我的角色 | `hints.role` | 空 |
+| 会前资料 | `hints.materials`（名称、路径和抽取的文字） | 无 |
+| 只提示指向我的问题 | `hints.onlyDirectedToMe` | `false` |
+| 插话自动排队 | `hints.queueInterruptions` | `true` |
+| 跟踪已讲要点 | `hints.trackCoverage` | `true` |
+| 提前触发 | `hints.earlyTrigger` | `true` |
+
+## 快捷键
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 开始 / 暂停拾取 | `hotkeys.toggleCapture` | `Ctrl+Alt+Space` |
+| 切换面板形态 | `hotkeys.cyclePanel` | `Ctrl+Alt+H` |
+| 上一问 | `hotkeys.focusPrev` | `Ctrl+Alt+[` |
+| 下一问 | `hotkeys.focusNext` | `Ctrl+Alt+]` |
+| 标为已答 | `hotkeys.markAnswered` | `Ctrl+Alt+Enter` |
+
+## 练习
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 播放方式 | `practice.playback`：`realPipeline`、`simulatedLatency` | `realPipeline` |
+| 提示难度 | `practice.hintLevel`：`full`、`headsOnly`、`delayed`、`off` | `full` |
+| 延迟显示的秒数 | `practice.hintDelayS` | `5` |
+| 停顿多久算答完（秒） | `practice.answerPauseS` | `3` |
+| 未开口提醒（秒） | `practice.nudgeAfterS` | `20` |
+| 追问概率 | `practice.followUpProbability` | `0.3` |
+| 朗读语速 | `practice.speechRate` | `1.0` |
+| 识别我的回答 | `practice.recognizeMe` | `true` |
+| 我开口时停止朗读 | `audio.stopTtsOnSpeech` | `true` |
+| 口头禅词表 | `practice.fillersZh`、`practice.fillersEn` | 见[练习模式](/zh/guide/practice#review-report) |
+
+## 诊断
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 调试日志 | `diagnostics.debugLogging` | `false` |

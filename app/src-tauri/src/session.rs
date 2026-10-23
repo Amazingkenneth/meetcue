@@ -393,7 +393,11 @@ pub fn spawn_forwarder(app: &AppHandle) {
                     channel,
                     ..
                 } if state.settings().diagnostics.debug_logging => {
-                    tracing::debug!(channel = channel.as_str(), "transcript: {text}");
+                    tracing::debug!(
+                        target: crate::diagnostics::TRANSCRIPT_TARGET,
+                        channel = channel.as_str(),
+                        "{text}"
+                    );
                 }
                 _ => {}
             }

@@ -14,6 +14,18 @@ use meetcue_core::{codes, MeetCueError, Settings};
 
 use crate::state::AppState;
 
+/// Log target for transcripts written with debug logging on. Lines with this
+/// target stay on the user's computer and are left out of the export.
+pub const TRANSCRIPT_TARGET: &str = "meetcue_transcript";
+
+fn strip_transcripts(log: &str) -> String {
+    let marker = format!(" {TRANSCRIPT_TARGET}:");
+    log.lines()
+        .filter(|l| !l.contains(&marker))
+        .map(|l| format!("{l}\n"))
+        .collect()
+}
+
 /// Log files from the last three days.
 fn recent_logs(dir: &Path) -> Vec<PathBuf> {
     let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(3 * 24 * 3600);
@@ -126,7 +138,7 @@ pub fn write_zip(app: &AppHandle, target: &Path) -> Result<(), MeetCueError> {
         let text = fs::read_to_string(&log).unwrap_or_default();
         zip.start_file(name, opts).map_err(|e| err(&e))?;
         // Logs are redacted when written; redact again in case of older lines.
-        zip.write_all(redact(&text).as_bytes())
+        zip.write_all(redact(&strip_transcripts(&text)).as_bytes())
             .map_err(|e| err(&e))?;
     }
     zip.start_file("settings.json", opts).map_err(|e| err(&e))?;
@@ -169,6 +181,16 @@ pub async fn export_interactive(app: &AppHandle) -> Result<Option<String>, MeetC
 mod tests {
     use super::*;
     use meetcue_core::settings::Material;
+
+    #[test]
+    fn export_leaves_out_transcripts() {
+        let log = "2026-10-23T10:00:00Z  INFO meetcue::session: started\n\
+                   2026-10-23T10:00:01Z DEBUG meetcue_transcript: channel=\"remote\" what is SDN\n\
+                   2026-10-23T10:00:02Z  INFO meetcue::session: stopped\n";
+        let out = strip_transcripts(log);
+        assert!(!out.contains("what is SDN"));
+        assert_eq!(out.lines().count(), 2);
+    }
 
     #[test]
     fn shareable_settings_drop_private_text() {

@@ -1,0 +1,65 @@
+# 延迟偏高
+
+本页用于提示明显慢于约一秒半，或在某些网络下请求失败的情况。
+
+## 提示要两三秒以上才出现 {#slow-hints}
+
+**可能原因**
+
+1. 之前选定的端点在当前网络下已经不是最快的。
+2. 要点模型是较大、较慢的模型。
+3. 会前资料太长，每次请求都变大。
+4. 句末静音时长设得较长。
+5. VPN 或代理绕了远路。
+
+**检查**
+
+1. 鼠标悬停在面板底栏的延迟数字上，查看中位数。
+2. 打开 **设置 › 诊断**：每条提示都会显示识别、检测和要点生成各用了多久。
+
+**解决**
+
+1. 重新运行[延迟探测](/zh/guide/latency)，应用最快的组合。
+2. 换一个更快的要点模型；探测的组合表会显示差别。
+3. 在 **设置 › 提示** 中保持 **提前触发** 开启。
+4. 把会前资料精简到这场会议需要的部分。
+5. 把 **设置 › 音频 › 高级 › 静音多久算一句结束** 调低一点。
+
+**仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
+
+## 面板建议重新探测 {#probe-again}
+
+**可能原因**
+
+1. 连续三个问题的延迟超过 2.5 秒。
+
+**检查**
+
+1. 把当前延迟与上次探测结果比较。
+
+**解决**
+
+1. 点击提示中的 **打开延迟探测** 并运行。填写网络标签，便于以后比较不同地点。
+
+**仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
+
+## 在公司网络下无法连接 {#company-network}
+
+**可能原因**
+
+1. 公司网络用自己的证书检查 HTTPS 流量（[MC-NET-001](/zh/troubleshooting/error-codes#mc-net-001)）。
+2. 上网需要经过代理，而 MeetCue 不知道这个代理。
+3. 防火墙拦截了语音识别使用的 WebSocket 连接。
+
+**检查**
+
+1. 在同一台电脑的浏览器里打开供应商网站。
+2. 询问 IT 部门是否需要代理，以及代理证书是否已安装到 Windows。
+
+**解决**
+
+1. MeetCue 信任 Windows 中安装的证书。如果公司证书尚未安装，请 IT 部门把它装入 Windows 证书库。
+2. 在 **设置 › 供应商与费用 › 高级 › HTTPS 代理** 中填写代理，例如 `http://proxy.example.com:8080`。
+3. 请 IT 部门放行到语音识别供应商主机名（见延迟探测结果）的 WebSocket 连接。
+
+**仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
