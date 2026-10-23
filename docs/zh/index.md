@@ -35,3 +35,9 @@ scoop install meetcue
 ```
 
 然后按照[首次设置](/zh/setup)完成配置。
+
+## 界面一览
+
+示例面试（`MeetCue.exe --demo`）中的面板：第一个问题已答完，要点全部打勾；第二个问题正在回答，下一条要讲的要点高亮显示。
+
+<img src="/screens/home-1-dark.zh.png" alt="MeetCue 面板，显示两个问题及其编号要点" width="440">

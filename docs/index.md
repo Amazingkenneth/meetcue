@@ -35,3 +35,9 @@ scoop install meetcue
 ```
 
 Then follow [first-time setup](/setup).
+
+## What it looks like
+
+The panel during the sample interview (`MeetCue.exe --demo`): the first question is answered and all its points are ticked; the second is being answered, with the next point to cover highlighted.
+
+<img src="/screens/home-1-dark.png" alt="The MeetCue panel showing two questions with numbered talking points" width="440">
