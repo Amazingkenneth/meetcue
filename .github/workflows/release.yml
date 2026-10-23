@@ -78,7 +78,18 @@ jobs:
       - name: Create the GitHub release
         run: |
           $notes = "Install or update with Scoop: ``scoop install meetcue`` / ``scoop update meetcue``. See the [installation guide](https://amazingkenneth.github.io/meetcue/install).`n`nSHA-256 of meetcue-win-x64.zip: ``$env:HASH``"
-          gh release create $env:TAG $env:ZIP --title "MeetCue $env:VERSION" --notes $notes --generate-notes
+          # The release may already exist when the tag was made with GitHub's "Draft a new release".
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:TAG $env:ZIP --clobber
+            if ($LASTEXITCODE -ne 0) { throw "upload failed" }
+            $body = (gh release view $env:TAG --json body --jq .body | Out-String).Trim()
+            $notes = if ($body) { "$notes`n`n$body" } else { $notes }
+            gh release edit $env:TAG --notes $notes
+          } else {
+            gh release create $env:TAG $env:ZIP --title "MeetCue $env:VERSION" --notes $notes --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) { throw "could not publish the release" }
 
       - name: Update the Scoop manifest on the default branch
         env:
