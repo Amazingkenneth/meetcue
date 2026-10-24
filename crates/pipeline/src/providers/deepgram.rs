@@ -54,17 +54,41 @@ impl Deepgram {
     }
 }
 
-/// Deepgram language parameter for the configured speech languages. Its
-/// code-switching mode does not cover Mandarin, so any Chinese uses the
-/// Mandarin model.
+/// Deepgram language parameter for the configured speech languages, main
+/// language first. Deepgram's code-switching mode (`multi`) doesn't cover
+/// Chinese, so a list with Chinese uses one model for the main language:
+/// Mandarin when Chinese comes first, English when English does.
 pub fn language_param(languages: &[String]) -> &'static str {
-    let has = |l: &str| languages.iter().any(|x| x.eq_ignore_ascii_case(l));
-    if has("zh") {
-        "zh-CN"
-    } else if languages.len() == 1 && has("en") || languages.is_empty() {
-        "en"
-    } else {
-        "multi"
+    let is = |x: &String, l: &str| {
+        x.eq_ignore_ascii_case(l) || x.to_lowercase().starts_with(&format!("{l}-"))
+    };
+    let has_zh = languages.iter().any(|x| is(x, "zh"));
+    match languages.first() {
+        None => "en",
+        Some(first) if is(first, "zh") => "zh-CN",
+        Some(first) if is(first, "en") && (languages.len() == 1 || has_zh) => "en",
+        Some(_) if has_zh => "zh-CN",
+        Some(_) => "multi",
+    }
+}
+
+/// Whether Deepgram can recognise every configured language in one stream.
+pub fn covers_all(languages: &[String]) -> bool {
+    let has_zh = languages.iter().any(|x| x.to_lowercase().starts_with("zh"));
+    !(has_zh && languages.len() > 1)
+}
+
+/// Deepgram sends each segment of a sentence as its own trimmed text. The
+/// engine concatenates segments, so a segment that continues a sentence in a
+/// spaced language starts with a space ("what is your" + " experience").
+/// Chinese and Japanese text is joined without one.
+fn segment(text: &str) -> String {
+    let t = text.trim();
+    match t.chars().next() {
+        Some(c) if !crate::text::is_cjk(c) && !",.?!;:，。？！；：、".contains(c) => {
+            format!(" {t}")
+        }
+        _ => t.to_string(),
     }
 }
 
@@ -188,7 +212,7 @@ pub fn parse_message(text: &str) -> Vec<AsrResult> {
                 .channel
                 .and_then(|c| serde_json::from_value::<ChannelResult>(c).ok())
                 .and_then(|c| c.alternatives.into_iter().next())
-                .map(|a| tidy(a.transcript.trim()))
+                .map(|a| segment(&tidy(a.transcript.trim())))
                 .unwrap_or_default();
             let (t0, t1) = (ms(env.start), ms(env.start + env.duration));
             let mut out = Vec::new();
@@ -402,9 +426,16 @@ mod tests {
     fn language_choice() {
         let l = |v: &[&str]| language_param(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>());
         assert_eq!(l(&["zh", "en"]), "zh-CN");
+        // English first: the meeting is mainly English, so don't send it to
+        // the Mandarin model.
+        assert_eq!(l(&["en", "zh"]), "en");
         assert_eq!(l(&["en"]), "en");
+        assert_eq!(l(&["zh"]), "zh-CN");
         assert_eq!(l(&["en", "de"]), "multi");
         assert_eq!(l(&[]), "en");
+        let all = |v: &[&str]| covers_all(&v.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        assert!(!all(&["zh", "en"]));
+        assert!(all(&["zh"]) && all(&["en", "de"]));
     }
 
     #[test]
@@ -413,7 +444,7 @@ mod tests {
         assert_eq!(
             parse_message(interim),
             vec![AsrResult::Partial {
-                text: "how do you".into(),
+                text: " how do you".into(),
                 t0_ms: 500,
                 t1_ms: 1700
             }]
@@ -423,7 +454,7 @@ mod tests {
             parse_message(fin),
             vec![
                 AsrResult::Final {
-                    text: "how do you scale it?".into(),
+                    text: " how do you scale it?".into(),
                     t0_ms: 500,
                     t1_ms: 2500
                 },
@@ -453,5 +484,30 @@ mod tests {
             parse_message(r#"{"type":"Error","variant":"SchemaError","description":"bad"}"#)[0],
             AsrResult::Error(_)
         ));
+    }
+
+    #[test]
+    fn segments_of_one_sentence_join_with_spaces() {
+        // Two final segments and a partial, as the engine concatenates them.
+        let seg = |t: &str| {
+            match parse_message(&format!(
+            r#"{{"type":"Results","duration":1.0,"start":0.0,"is_final":true,"channel":{{"alternatives":[{{"transcript":"{t}"}}]}}}}"#
+        ))
+        .remove(0)
+        {
+            AsrResult::Final { text, .. } => text,
+            other => panic!("{other:?}"),
+        }
+        };
+        let joined = format!(
+            "{}{}{}",
+            seg("so what is your"),
+            seg("experience with"),
+            seg("Rust?")
+        );
+        assert_eq!(joined.trim(), "so what is your experience with Rust?");
+        let zh = format!("{}{}", seg("你 在 项 目"), seg("中 用 过 吗"));
+        assert_eq!(zh.trim(), "你在项目中用过吗");
+        assert_eq!(seg(", right?"), ", right?");
     }
 }

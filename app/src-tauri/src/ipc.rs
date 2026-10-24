@@ -64,6 +64,16 @@ pub fn save_settings(
     let old = state.settings();
     config::save(&state.paths.settings_file(), &settings).map_err(io_err)?;
     *state.settings.write().unwrap() = settings.clone();
+    // A model, language or hint setting changed during a session: apply it now.
+    if old.providers != settings.providers
+        || old.audio.languages != settings.audio.languages
+        || old.audio.endpoint_silence_ms != settings.audio.endpoint_silence_ms
+        || old.hints != settings.hints
+        || old.general.hint_language != settings.general.hint_language
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
+    }
     if old.hotkeys != settings.hotkeys {
         hotkeys::register_all(&app);
     }
@@ -118,19 +128,29 @@ pub fn credential_status(state: State<'_, AppState>) -> BTreeMap<String, bool> {
 }
 
 #[tauri::command]
-pub fn set_credential(state: State<'_, AppState>, key: String, value: String) -> Res<()> {
+pub fn set_credential(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    key: String,
+    value: String,
+) -> Res<()> {
     if !PROVIDER_IDS.contains(&key.as_str()) {
         return Err(MeetCueError::new(
             codes::SYS_CREDENTIALS,
             "unknown credential",
         ));
     }
-    state.credentials.set(&key, &value)
+    state.credentials.set(&key, &value)?;
+    // A running session picks up the new key without restarting.
+    tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
+    Ok(())
 }
 
 #[tauri::command]
-pub fn delete_credential(state: State<'_, AppState>, key: String) -> Res<()> {
-    state.credentials.delete(&key)
+pub fn delete_credential(app: AppHandle, state: State<'_, AppState>, key: String) -> Res<()> {
+    state.credentials.delete(&key)?;
+    tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
+    Ok(())
 }
 
 fn kind_of(provider: &str) -> &'static str {

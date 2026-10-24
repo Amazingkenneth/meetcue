@@ -121,10 +121,12 @@
     "endpointSilence": "Sentence end after silence",
     "endpointHint": "Shorter shows hints sooner but may split a question in two.",
     "languages": "Meeting languages",
-    "languagesHint": "Helps speech recognition. Soniox handles Chinese and English mixed in one sentence best; Deepgram uses its Mandarin model whenever Chinese is selected.",
-    "langZhEn": "Chinese and English",
+    "languagesHint": "Main language first. Soniox recognises Chinese and English mixed in one sentence; Deepgram recognises only the main language.",
+    "langZhEn": "Mostly Chinese, some English",
     "langEn": "English",
-    "langZh": "Chinese"
+    "langZh": "Chinese",
+    "langEnZh": "Mostly English, some Chinese",
+    "deepgramMixed": "Deepgram can't recognise Chinese and English in the same stream, so it will only recognise {{language}}. For mixed speech, choose Soniox in Providers & cost."
   },
   "providers": {
     "asrTitle": "Speech recognition",

@@ -24,7 +24,7 @@ Streaming speech recognition, billed per minute of audio.
 1. **Get a key**: sign in to the Deepgram console, open your project and create an API key with member permissions.
 2. **Enter it**: **Settings › Providers & cost › API keys › Deepgram key**, then **Save and verify**.
 3. **Check**: verification lists your projects and the available speech models.
-4. **Languages**: set **Settings › Audio › Meeting languages**. Deepgram uses its Mandarin model whenever Chinese is selected and its multilingual model otherwise.
+4. **Languages**: set **Settings › Audio › Meeting languages**, main language first. Deepgram can't recognise Chinese and English in the same stream, so with both selected it recognises only the main one; for meetings that mix them, Soniox works better.
 
 Common errors: [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001), [MC-ASR-003](/troubleshooting/error-codes#mc-asr-003) (rate limited).
 

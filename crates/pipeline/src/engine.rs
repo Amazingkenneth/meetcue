@@ -7,9 +7,9 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use meetcue_core::settings::HintLanguage;
+use meetcue_core::settings::{BudgetSettings, HintLanguage};
 use meetcue_core::{
-    codes, Channel, MeetCueError, MeetCueEvent, PointStatus, QuestionBrief, QuestionId,
+    codes, Channel, MeetCueError, MeetCueEvent, PointStatus, PriceEntry, QuestionBrief, QuestionId,
     QuestionStatus, SessionState, TranscriptLine, UsageKind, UsagePurpose, UserAction,
 };
 
@@ -283,6 +283,18 @@ impl Engine {
 
     pub fn meter(&self) -> &CostMeter {
         &self.meter
+    }
+
+    /// New settings during a session: later requests use the new models,
+    /// role, materials and options; questions and hints so far are kept.
+    pub fn configure(
+        &mut self,
+        cfg: EngineConfig,
+        overrides: Vec<PriceEntry>,
+        budget: BudgetSettings,
+    ) {
+        self.cfg = cfg;
+        self.meter.set_rules(overrides, budget);
     }
 
     pub fn state(&self) -> SessionState {

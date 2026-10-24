@@ -4,14 +4,14 @@
 //! the engine loop, and the model calls the engine asks for. All model calls
 //! are cancellable; cancelling drops the HTTP stream so billing stops.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::StreamExt;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{broadcast, mpsc, watch};
 use tokio::task::JoinHandle;
 use tokio::time::{interval, sleep, sleep_until, timeout, Instant, MissedTickBehavior};
 use tokio_util::sync::CancellationToken;
@@ -39,6 +39,9 @@ pub struct SessionConfig {
     pub asr: Option<Arc<dyn AsrProvider>>,
     pub asr_options: AsrOptions,
     pub asr_model: ModelRef,
+    /// Identifies the recognition setup (provider, model, key, endpoint,
+    /// options). A running session reconnects recognition when it changes.
+    pub asr_signature: String,
     pub recognize_me: bool,
     pub recognize_remote: bool,
     pub detect_llm: Arc<dyn LlmProvider>,
@@ -65,6 +68,7 @@ impl SessionConfig {
             asr,
             asr_options: AsrOptions::default(),
             asr_model: ModelRef::default(),
+            asr_signature: String::new(),
             recognize_me: true,
             recognize_remote: true,
             detect_llm,
@@ -99,6 +103,10 @@ pub trait HintBackend: Send + Sync {
     /// Practice mode: a known question; skips detection.
     async fn inject_question(&self, text: String, ts_ms: i64);
     async fn send(&self, action: UserAction);
+    /// Applies new settings to the running session without restarting it:
+    /// later model calls use the new models, recognition reconnects if its
+    /// setup changed, and calls already running finish on the old ones.
+    async fn reconfigure(&self, cfg: SessionConfig);
     fn events(&self) -> broadcast::Receiver<MeetCueEvent>;
     /// Events of the current session so far, for windows opened mid-session.
     fn history(&self) -> Vec<TimedEvent>;
@@ -115,6 +123,10 @@ const HISTORY_LIMIT: usize = 5_000;
 
 struct Running {
     input: mpsc::UnboundedSender<Input>,
+    reconfig: mpsc::UnboundedSender<Reconfig>,
+    /// Recognition setup shared with both channels; `None` without recognition.
+    asr_setup: Option<watch::Sender<AsrSetup>>,
+    asr_signature: String,
     audio: [Option<mpsc::Sender<AudioFrame>>; 2],
     levels: Arc<[AtomicU32; 2]>,
     asr_cancel: CancellationToken,
@@ -173,7 +185,15 @@ impl HintBackend for LocalHintBackend {
 
         let mut audio: [Option<mpsc::Sender<AudioFrame>>; 2] = [None, None];
         let mut asr_tasks = Vec::new();
+        let mut asr_setup = None;
         if let Some(asr) = cfg.asr.clone() {
+            let (setup_tx, setup_rx) = watch::channel(AsrSetup {
+                provider: asr,
+                options: cfg.asr_options.clone(),
+                model: cfg.asr_model.clone(),
+                hangover_ms: cfg.hangover_ms,
+            });
+            asr_setup = Some(setup_tx);
             for (ch, enabled) in [
                 (Channel::Me, cfg.recognize_me),
                 (Channel::Remote, cfg.recognize_remote),
@@ -183,18 +203,13 @@ impl HintBackend for LocalHintBackend {
                 }
                 let (tx, rx) = mpsc::channel(500);
                 audio[ch_index(ch)] = Some(tx);
-                let mut opts = cfg.asr_options.clone();
-                opts.channel = Some(ch);
                 asr_tasks.push(tokio::spawn(asr_channel(AsrChannelCtx {
                     channel: ch,
-                    provider: asr.clone(),
-                    options: opts,
-                    model: cfg.asr_model.clone(),
+                    setup: setup_rx.clone(),
                     frames: rx,
                     input: input_tx.clone(),
                     paused: paused.clone(),
                     cancel: asr_cancel.clone(),
-                    hangover_ms: cfg.hangover_ms,
                 })));
             }
         }
@@ -205,6 +220,7 @@ impl HintBackend for LocalHintBackend {
             cfg.month_spent_micros,
         );
         let engine = Engine::new(cfg.engine.clone(), meter);
+        let (reconfig_tx, reconfig_rx) = mpsc::unbounded_channel();
         let ctx = LoopCtx {
             events: self.events.clone(),
             history: self.history.clone(),
@@ -222,9 +238,12 @@ impl HintBackend for LocalHintBackend {
             active: self.active.clone(),
         };
         self.active.store(true, Ordering::SeqCst);
-        let loop_task = tokio::spawn(run_loop(engine, input_rx, ctx));
+        let loop_task = tokio::spawn(run_loop(engine, input_rx, reconfig_rx, ctx));
         *self.running.lock().await = Some(Running {
             input: input_tx,
+            reconfig: reconfig_tx,
+            asr_setup,
+            asr_signature: cfg.asr_signature.clone(),
             audio,
             levels,
             asr_cancel,
@@ -270,6 +289,33 @@ impl HintBackend for LocalHintBackend {
             known_question: true,
         })
         .await;
+    }
+
+    async fn reconfigure(&self, cfg: SessionConfig) {
+        let mut guard = self.running.lock().await;
+        let Some(r) = guard.as_mut() else {
+            return;
+        };
+        let _ = r.reconfig.send(Reconfig {
+            detect_llm: cfg.detect_llm.clone(),
+            hints_llm: cfg.hints_llm.clone(),
+            engine: cfg.engine.clone(),
+            overrides: cfg.pricing_overrides.clone(),
+            budget: cfg.budget.clone(),
+        });
+        // Recognition reconnects only when its setup really changed; a
+        // session started without recognition keeps running without it.
+        if let (Some(setup), Some(asr)) = (r.asr_setup.as_ref(), cfg.asr.clone()) {
+            if cfg.asr_signature != r.asr_signature {
+                r.asr_signature = cfg.asr_signature.clone();
+                setup.send_replace(AsrSetup {
+                    provider: asr,
+                    options: cfg.asr_options.clone(),
+                    model: cfg.asr_model.clone(),
+                    hangover_ms: cfg.hangover_ms,
+                });
+            }
+        }
     }
 
     async fn send(&self, action: UserAction) {
@@ -347,10 +393,20 @@ impl LoopCtx {
     }
 }
 
+/// New models and settings for a running session.
+struct Reconfig {
+    detect_llm: Arc<dyn LlmProvider>,
+    hints_llm: Arc<dyn LlmProvider>,
+    engine: EngineConfig,
+    overrides: Vec<PriceEntry>,
+    budget: BudgetSettings,
+}
+
 async fn run_loop(
     mut engine: Engine,
     mut rx: mpsc::UnboundedReceiver<Input>,
-    ctx: LoopCtx,
+    mut reconfig: mpsc::UnboundedReceiver<Reconfig>,
+    mut ctx: LoopCtx,
 ) -> SessionSummary {
     let start = now_ms();
     let mut tasks: HashMap<ReqId, CancellationToken> = HashMap::new();
@@ -378,6 +434,27 @@ async fn run_loop(
                 }
                 execute(&ctx, start, outs, &mut tasks, &mut end);
                 break;
+            }
+            Some(r) = reconfig.recv() => {
+                // Clients and model ids change together, so every request
+                // goes to the provider of the model it names. Calls already
+                // running keep their own client and finish normally.
+                let changed = ctx.detect_model != r.engine.detect || ctx.hints_model != r.engine.hints;
+                ctx.detect_llm = r.detect_llm;
+                ctx.hints_llm = r.hints_llm;
+                ctx.detect_model = r.engine.detect.clone();
+                ctx.hints_model = r.engine.hints.clone();
+                if changed {
+                    tracing::info!(
+                        "models switched: detection {}/{}, hints {}/{}",
+                        ctx.detect_model.provider,
+                        ctx.detect_model.model,
+                        ctx.hints_model.provider,
+                        ctx.hints_model.model
+                    );
+                }
+                engine.configure(r.engine, r.overrides, r.budget);
+                continue;
             }
             _ = tick.tick() => engine.handle(Input::Tick, now_ms()),
             _ = level_tick.tick() => {
@@ -648,16 +725,22 @@ async fn hints_task(t: HintsTask) {
     });
 }
 
-struct AsrChannelCtx {
-    channel: Channel,
+/// The recognition provider and options; replaced live when settings change.
+#[derive(Clone)]
+struct AsrSetup {
     provider: Arc<dyn AsrProvider>,
     options: AsrOptions,
     model: ModelRef,
+    hangover_ms: i64,
+}
+
+struct AsrChannelCtx {
+    channel: Channel,
+    setup: watch::Receiver<AsrSetup>,
     frames: mpsc::Receiver<AudioFrame>,
     input: mpsc::UnboundedSender<Input>,
     paused: Arc<AtomicBool>,
     cancel: CancellationToken,
-    hangover_ms: i64,
 }
 
 struct OpenStream {
@@ -666,13 +749,15 @@ struct OpenStream {
     reader: JoinHandle<()>,
 }
 
-async fn open_stream(ctx: &AsrChannelCtx) -> Result<OpenStream, MeetCueError> {
+async fn open_stream(ctx: &AsrChannelCtx, setup: &AsrSetup) -> Result<OpenStream, MeetCueError> {
+    let mut options = setup.options.clone();
+    options.channel = Some(ctx.channel);
     let mut last = None;
     for attempt in 0..2 {
         if attempt > 0 {
             sleep(Duration::from_millis(500)).await;
         }
-        match ctx.provider.open(ctx.options.clone()).await {
+        match setup.provider.open(options.clone()).await {
             Ok(mut stream) => {
                 let map = Arc::new(Mutex::new(TimeMap::new(now_ms())));
                 let results = stream.results();
@@ -740,7 +825,39 @@ fn audio_usage(model: &ModelRef, ms: u64) -> Input {
     }
 }
 
-/// One recognition channel: gates frames, writes them, reconnects once.
+/// Audio kept from before speech starts and sent when the gate opens, so
+/// quiet word onsets below the voice threshold reach the recognizer.
+const PREROLL_MS: i64 = 300;
+
+/// Waits between attempts to reopen a lost recognition stream.
+const RECONNECT_BACKOFF_MS: [u64; 5] = [1_000, 2_000, 5_000, 10_000, 30_000];
+
+/// When the next attempt to reopen a lost stream is due.
+struct Outage {
+    attempts: usize,
+    next: Instant,
+}
+
+impl Outage {
+    fn after(attempts: usize) -> Self {
+        let wait = RECONNECT_BACKOFF_MS[attempts.min(RECONNECT_BACKOFF_MS.len() - 1)];
+        Self {
+            attempts,
+            next: Instant::now() + Duration::from_millis(wait),
+        }
+    }
+}
+
+async fn close_stream(open: OpenStream) {
+    let _ = open.stream.close().await;
+    // Give the reader a moment to deliver the last results.
+    let _ = timeout(Duration::from_millis(500), open.reader).await;
+}
+
+/// One recognition channel: gates frames and writes them; keeps the
+/// connection alive while paused; reconnects whenever the stream is lost
+/// (network, provider session limits) and when the recognition settings
+/// change during the session.
 async fn asr_channel(mut ctx: AsrChannelCtx) {
     let report = |ctx: &AsrChannelCtx, e: MeetCueError| {
         let _ = ctx.input.send(Input::Asr {
@@ -748,43 +865,146 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
             result: AsrResult::Error(e),
         });
     };
-    let mut current = match open_stream(&ctx).await {
-        Ok(s) => Some(s),
+    let mut setup = ctx.setup.borrow_and_update().clone();
+    let mut current = None;
+    let mut outage = None;
+    match open_stream(&ctx, &setup).await {
+        Ok(s) => current = Some(s),
         Err(e) => {
             report(&ctx, e);
-            None
+            outage = Some(Outage::after(0));
         }
-    };
-    let mut gate = SendGate::new(ctx.hangover_ms);
+    }
+    let mut gate = SendGate::new(setup.hangover_ms);
+    let mut preroll: VecDeque<AudioFrame> = VecDeque::new();
     let mut billed_ms: u64 = 0;
     let mut sent_total: u64 = 0;
     let mut usage_tick = interval(Duration::from_secs(60));
     usage_tick.tick().await;
-    let mut reconnected = false;
 
     loop {
         tokio::select! {
             _ = ctx.cancel.cancelled() => break,
+            Ok(()) = ctx.setup.changed() => {
+                let next = ctx.setup.borrow_and_update().clone();
+                // Bill what the old model recognised before switching.
+                if sent_total > billed_ms {
+                    let _ = ctx.input.send(audio_usage(&setup.model, sent_total - billed_ms));
+                    billed_ms = sent_total;
+                }
+                if let Some(mut old) = current.take() {
+                    // Flush and close the old stream in the background: its
+                    // last words still reach the engine while the new stream
+                    // opens right away.
+                    tokio::spawn(async move {
+                        let _ = old.stream.finalize().await;
+                        close_stream(old).await;
+                    });
+                }
+                if next.hangover_ms != setup.hangover_ms {
+                    gate = SendGate::new(next.hangover_ms);
+                }
+                setup = next;
+                tracing::info!(
+                    channel = ctx.channel.as_str(),
+                    "recognition switched to {}/{}",
+                    setup.model.provider,
+                    setup.model.model
+                );
+                match open_stream(&ctx, &setup).await {
+                    Ok(s) => {
+                        current = Some(s);
+                        outage = None;
+                    }
+                    Err(e) => {
+                        report(&ctx, e);
+                        outage = Some(Outage::after(0));
+                    }
+                }
+            }
             _ = usage_tick.tick() => {
                 if sent_total > billed_ms {
-                    let _ = ctx.input.send(audio_usage(&ctx.model, sent_total - billed_ms));
+                    let _ = ctx.input.send(audio_usage(&setup.model, sent_total - billed_ms));
                     billed_ms = sent_total;
                 }
             }
             frame = ctx.frames.recv() => {
                 let Some(frame) = frame else { break };
-                if ctx.paused.load(Ordering::Relaxed) {
-                    continue;
-                }
-                let Some(open) = current.as_mut() else { continue };
                 let dur = frame.duration_ms();
-                let result = match gate.decide(frame.voiced, dur) {
-                    GateDecision::Drop => Ok(()),
-                    GateDecision::KeepAlive => open.stream.keepalive().await,
+                let paused = ctx.paused.load(Ordering::Relaxed);
+
+                // The provider ended the stream (idle close, session limit,
+                // error): reopen it rather than waiting for a write to fail.
+                if current.as_ref().is_some_and(|o| o.reader.is_finished()) {
+                    tracing::warn!(channel = ctx.channel.as_str(), "recognition stream closed by the provider; reconnecting");
+                    if let Some(old) = current.take() {
+                        close_stream(old).await;
+                    }
+                    outage = Some(Outage { attempts: 0, next: Instant::now() });
+                }
+                if current.is_none() {
+                    if let Some(o) = outage.as_ref().filter(|o| Instant::now() >= o.next) {
+                        let attempts = o.attempts + 1;
+                        match open_stream(&ctx, &setup).await {
+                            Ok(s) => {
+                                tracing::info!(channel = ctx.channel.as_str(), "recognition reconnected");
+                                current = Some(s);
+                                outage = None;
+                            }
+                            Err(e) => {
+                                // One message per outage, not one per attempt.
+                                if attempts == 1 {
+                                    report(&ctx, e);
+                                } else {
+                                    tracing::warn!(channel = ctx.channel.as_str(), "reconnect attempt {attempts} failed: {e}");
+                                }
+                                outage = Some(Outage::after(attempts));
+                            }
+                        }
+                    }
+                }
+
+                let decision = if paused {
+                    // Audio from before the pause must not lead the next sentence.
+                    preroll.clear();
+                    gate.paused(dur)
+                } else {
+                    gate.decide(frame.voiced, dur)
+                };
+                let Some(open) = current.as_mut() else {
+                    if !paused {
+                        push_preroll(&mut preroll, frame);
+                    }
+                    continue;
+                };
+                let result = match decision {
+                    GateDecision::Drop | GateDecision::KeepAlive => {
+                        if !paused {
+                            push_preroll(&mut preroll, frame);
+                        }
+                        if decision == GateDecision::KeepAlive {
+                            open.stream.keepalive().await
+                        } else {
+                            Ok(())
+                        }
+                    }
                     d @ (GateDecision::Send | GateDecision::SendAndFinalize) => {
-                        open.map.lock().unwrap().record(frame.capture_ts_ms, dur);
-                        sent_total += dur as u64;
-                        let r = open.stream.write(&frame.samples, frame.capture_ts_ms).await;
+                        let lead: Vec<AudioFrame> = if gate.opened() {
+                            preroll.drain(..).collect()
+                        } else {
+                            preroll.clear();
+                            Vec::new()
+                        };
+                        let mut r = Ok(());
+                        for f in lead.iter().chain(std::iter::once(&frame)) {
+                            let fd = f.duration_ms();
+                            open.map.lock().unwrap().record(f.capture_ts_ms, fd);
+                            sent_total += fd as u64;
+                            r = open.stream.write(&f.samples, f.capture_ts_ms).await;
+                            if r.is_err() {
+                                break;
+                            }
+                        }
                         if r.is_ok() && d == GateDecision::SendAndFinalize {
                             open.stream.finalize().await
                         } else {
@@ -793,18 +1013,19 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                     }
                 };
                 if let Err(e) = result {
-                    tracing::warn!(channel = ctx.channel.as_str(), error = %e, "recognition stream failed");
+                    tracing::warn!(channel = ctx.channel.as_str(), error = %e, "recognition stream failed; reconnecting");
                     if let Some(old) = current.take() {
                         old.reader.abort();
                         let _ = old.stream.close().await;
                     }
-                    if reconnected {
-                        report(&ctx, MeetCueError::new(codes::ASR_CONNECT, e.detail));
-                    } else {
-                        reconnected = true;
-                        match open_stream(&ctx).await {
-                            Ok(s) => current = Some(s),
-                            Err(e) => report(&ctx, e),
+                    match open_stream(&ctx, &setup).await {
+                        Ok(s) => {
+                            tracing::info!(channel = ctx.channel.as_str(), "recognition reconnected");
+                            current = Some(s);
+                        }
+                        Err(e) => {
+                            report(&ctx, e);
+                            outage = Some(Outage::after(1));
                         }
                     }
                 }
@@ -813,7 +1034,6 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
     }
     if let Some(open) = current.take() {
         let closed = open.stream.close().await;
-        // Give the reader a moment to deliver the last results.
         let _ = timeout(Duration::from_millis(500), open.reader).await;
         if let Ok(u) = closed {
             sent_total = sent_total.max(u.audio_ms);
@@ -822,7 +1042,19 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
     if sent_total > billed_ms {
         let _ = ctx
             .input
-            .send(audio_usage(&ctx.model, sent_total - billed_ms));
+            .send(audio_usage(&setup.model, sent_total - billed_ms));
     }
     ctx.frames.close();
+}
+
+/// Keeps the last [`PREROLL_MS`] of frames that were not sent.
+fn push_preroll(preroll: &mut VecDeque<AudioFrame>, frame: AudioFrame) {
+    preroll.push_back(frame);
+    let mut kept: i64 = preroll.iter().map(AudioFrame::duration_ms).sum();
+    while kept > PREROLL_MS {
+        match preroll.pop_front() {
+            Some(f) => kept -= f.duration_ms(),
+            None => break,
+        }
+    }
 }

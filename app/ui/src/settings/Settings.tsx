@@ -278,9 +278,15 @@ export function AudioFields({ settings, update }: { settings: Settings; update: 
           }
         >
           <option value="zh,en">{t("audio.langZhEn")}</option>
+          <option value="en,zh">{t("audio.langEnZh")}</option>
           <option value="en">{t("audio.langEn")}</option>
           <option value="zh">{t("audio.langZh")}</option>
         </select>
+        {settings.providers.asr.provider === "deepgram" && settings.audio.languages.length > 1 && settings.audio.languages.includes("zh") && (
+          <p className="note note-warn" style={{ margin: "6px 0 0", width: "100%" }}>
+            {t("audio.deepgramMixed", { language: t(settings.audio.languages[0] === "zh" ? "audio.langZh" : "audio.langEn") })}
+          </p>
+        )}
       </Field>
       <Field label={t("audio.levels")} hint={t("audio.levelsHint")}>
         <div style={{ display: "grid", gap: 6 }}>

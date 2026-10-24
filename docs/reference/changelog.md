@@ -8,6 +8,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 - Prices are read live from Anthropic's, Soniox's and Deepgram's official pricing pages, and from OpenAI-compatible servers that list prices with their models. Every current Claude model now shows its price and estimated cost; only a model with no price anywhere links to the pricing page.
 - Deepgram shows the rate billed today, including limited-time promotions, with the regular rate in the tooltip.
+- Changing a model, key, language or hint setting during a meeting takes effect right away: the next question uses the new models, and recognition switches without losing the sentence in progress.
 
 ### Added
 
@@ -19,6 +20,12 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 - Notices such as a shortcut that's already taken were never shown.
 - The meeting clock kept counting while paused.
 - The settings tab list scrolled away on long pages.
+- Speech recognition:
+  - The first sound of a sentence was often cut off; the 0.3 s before speech is now sent with it.
+  - Recognition stopped for the rest of the meeting after a second connection drop, and after pausing for more than a few seconds; it now keeps the connection alive while paused and reconnects whenever needed.
+  - With Deepgram, English sentences lost the spaces between their parts ("yourexperience").
+  - With Deepgram and both Chinese and English selected, English was sent to the Mandarin model. The first language in **Meeting languages** is now the main one, and there is a "Mostly English, some Chinese" choice.
+  - The end-of-sentence silence setting was cut short at 0.8 s.
 
 ## 0.1.2 — 2026-10-24
 

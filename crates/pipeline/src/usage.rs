@@ -48,6 +48,17 @@ impl CostMeter {
         }
     }
 
+    /// Changes prices and budget during a session. Limits are checked
+    /// again from scratch, so a raised limit stops warning.
+    pub fn set_rules(&mut self, overrides: Vec<PriceEntry>, budget: BudgetSettings) {
+        if budget != self.budget {
+            self.warned = [false; 2];
+            self.reached = [false; 2];
+        }
+        self.overrides = overrides;
+        self.budget = budget;
+    }
+
     pub fn session_total(&self) -> Usd {
         self.session
     }

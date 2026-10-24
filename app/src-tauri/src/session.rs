@@ -167,6 +167,7 @@ pub fn build_config_with(state: &AppState, need_asr: bool) -> Result<SessionConf
             })?,
         );
         cfg.asr_model = mock;
+        cfg.asr_signature = "mock".into();
         return Ok(cfg);
     }
     let p = &s.providers;
@@ -250,14 +251,87 @@ pub fn build_config_with(state: &AppState, need_asr: bool) -> Result<SessionConf
         proxy: s.providers.proxy.clone(),
     };
     cfg.asr_model = ModelRef {
-        provider: asr_p,
+        provider: asr_p.clone(),
         model: asr_m,
     };
+    cfg.asr_signature = asr_signature(&asr_cfg, &cfg.asr_options);
+    cfg.hangover_ms = hangover_ms(s.audio.endpoint_silence_ms);
+    if asr_p == "deepgram" && !meetcue_pipeline::providers::deepgram::covers_all(&s.audio.languages)
+    {
+        tracing::warn!(
+            "Deepgram can't recognise Chinese and English in one stream; using {} for {:?}",
+            meetcue_pipeline::providers::deepgram::language_param(&s.audio.languages),
+            s.audio.languages
+        );
+    }
     cfg.pricing_overrides = p.pricing_overrides.clone();
     cfg.budget = p.budget.clone();
     cfg.month_spent_micros =
         usage::month_total(&usage::read(&state.paths.usage_ledger()), &this_month());
     Ok(cfg)
+}
+
+/// Identifies a recognition setup, so a running session reconnects only when
+/// something that matters changed. The key is included as a hash, so a new
+/// key reconnects too; the signature itself is never logged or stored.
+fn asr_signature(cfg: &ProviderConfig, opts: &AsrOptions) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut key = std::collections::hash_map::DefaultHasher::new();
+    cfg.key.hash(&mut key);
+    format!(
+        "{}|{}|{:?}|{:x}|{:?}|{:?}|{}|{:?}",
+        cfg.provider,
+        cfg.model,
+        cfg.host,
+        key.finish(),
+        opts.languages,
+        opts.hotwords,
+        opts.endpoint_silence_ms,
+        opts.proxy
+    )
+}
+
+/// Silence still sent after speech: a little longer than the end-of-sentence
+/// silence the provider waits for, so its own endpoint fires first and the
+/// forced finalize is only a backstop.
+fn hangover_ms(endpoint_silence_ms: u32) -> i64 {
+    (i64::from(endpoint_silence_ms) + 300).clamp(800, 3300)
+}
+
+/// Applies changed settings or keys to a running meeting or practice session
+/// without restarting it. If the new settings can't be used (say a key is
+/// missing), the session keeps its current models and the reason is shown.
+pub async fn apply_live(app: &AppHandle) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    // Typing in the role box saves on every key; apply once it settles.
+    static LATEST: AtomicU64 = AtomicU64::new(0);
+    let me = LATEST.fetch_add(1, Ordering::SeqCst) + 1;
+    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+    if LATEST.load(Ordering::SeqCst) != me {
+        return;
+    }
+    let state = app.state::<AppState>();
+    if !state.backend.is_running() || state.demo {
+        return;
+    }
+    let built = if crate::practice::is_active(app) {
+        build_config_with(&state, crate::practice::needs_asr(&state.settings()))
+    } else {
+        build_config(&state)
+    };
+    match built {
+        Ok(cfg) => state.backend.reconfigure(cfg).await,
+        Err(e) => {
+            tracing::warn!(code = %e.code, "new settings not applied to the running session: {}", e.detail);
+            let _ = app.emit(
+                PIPELINE_EVENT,
+                MeetCueEvent::Error {
+                    code: e.code,
+                    detail: e.detail,
+                },
+            );
+        }
+    }
 }
 
 fn build_without_asr(state: &AppState, s: &Settings) -> Result<SessionConfig, MeetCueError> {
@@ -650,5 +724,44 @@ mod tests {
             choose_host("deepgram", &EndpointChoice::Auto, &[]),
             Some(first)
         );
+    }
+
+    #[test]
+    fn recognition_reconnects_only_when_its_setup_changes() {
+        let cfg = ProviderConfig {
+            provider: "soniox".into(),
+            model: "stt-rt-v5".into(),
+            key: Some("k1".into()),
+            ..Default::default()
+        };
+        let opts = AsrOptions {
+            languages: vec!["zh".into(), "en".into()],
+            endpoint_silence_ms: 700,
+            ..Default::default()
+        };
+        let base = asr_signature(&cfg, &opts);
+        assert_eq!(base, asr_signature(&cfg.clone(), &opts.clone()));
+        let new_key = ProviderConfig {
+            key: Some("k2".into()),
+            ..cfg.clone()
+        };
+        assert_ne!(base, asr_signature(&new_key, &opts), "a new key reconnects");
+        assert!(
+            !base.contains("k1"),
+            "the key itself is not in the signature"
+        );
+        let english = AsrOptions {
+            languages: vec!["en".into()],
+            ..opts.clone()
+        };
+        assert_ne!(base, asr_signature(&cfg, &english));
+    }
+
+    #[test]
+    fn hangover_follows_the_end_of_sentence_silence() {
+        assert_eq!(hangover_ms(700), 1000);
+        assert_eq!(hangover_ms(1500), 1800);
+        assert_eq!(hangover_ms(100), 800);
+        assert_eq!(hangover_ms(10_000), 3300);
     }
 }

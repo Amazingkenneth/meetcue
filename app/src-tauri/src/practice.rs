@@ -78,6 +78,12 @@ pub fn control(app: &AppHandle, c: Control) {
     let _ = runner.tx.send(Msg::Control(c));
 }
 
+/// Whether a practice run recognises speech: the other side unless its
+/// latency is simulated, and the user when their answers are recognised.
+pub fn needs_asr(s: &meetcue_core::Settings) -> bool {
+    s.practice.playback != PlaybackMode::SimulatedLatency || s.practice.recognize_me
+}
+
 pub fn is_active(app: &AppHandle) -> bool {
     app.state::<AppState>().practice.lock().unwrap().is_some()
 }
@@ -227,8 +233,7 @@ pub async fn start(app: &AppHandle, script: PracticeScript) -> Result<(), MeetCu
 
     let s = state.settings();
     let simulated = s.practice.playback == PlaybackMode::SimulatedLatency;
-    let need_asr = !simulated || s.practice.recognize_me;
-    let mut cfg = session::build_config_with(&state, need_asr)?;
+    let mut cfg = session::build_config_with(&state, needs_asr(&s))?;
     if cfg.asr.is_some() {
         cfg.recognize_remote = !simulated;
         cfg.recognize_me = s.practice.recognize_me;
@@ -295,6 +300,14 @@ struct RunCtx {
     script: PracticeScript,
     started_at: chrono::DateTime<chrono::Utc>,
     started_ms: i64,
+}
+
+/// The hint model to use now, so a change in the settings applies to the
+/// next follow-up or feedback call; the model the run started with if the
+/// new one can't be set up.
+fn current_hint_llm(ctx: &RunCtx) -> (Arc<dyn LlmProvider>, ModelRef) {
+    session::hint_llm(&ctx.app.state::<AppState>())
+        .unwrap_or_else(|_| (ctx.hints_llm.clone(), ctx.hints_model.clone()))
 }
 
 async fn run(mut ctx: RunCtx, mut pacer: Pacer) {
@@ -427,8 +440,7 @@ async fn apply(ctx: &mut RunCtx, outputs: Vec<PacerOutput>) {
                 });
             }
             PacerOutput::GenerateFollowUp { question, answer } => {
-                let llm = ctx.hints_llm.clone();
-                let model = ctx.hints_model.clone();
+                let (llm, model) = current_hint_llm(ctx);
                 let tx = ctx.tx.clone();
                 let pref = app.state::<AppState>().settings().general.hint_language;
                 let app = app.clone();
@@ -491,12 +503,14 @@ async fn finish(ctx: &RunCtx, pacer: &Pacer) {
         .filter(|(_, q)| q.reference.is_some() && !q.skipped && !q.answer.trim().is_empty())
         .map(|(i, _)| i)
         .collect();
+    let (llm, model) = current_hint_llm(ctx);
     for batch in jobs.chunks(3) {
         let calls = batch.iter().map(|&i| {
             let q = &questions[i];
             let lang = output_language(s.general.hint_language, &q.question);
+            let (llm, model) = (llm.clone(), model.clone());
             let req = review::feedback_request(
-                &ctx.hints_model.model,
+                &model.model,
                 &q.question,
                 q.reference.as_deref().unwrap_or_default(),
                 &q.answer,
@@ -505,7 +519,7 @@ async fn finish(ctx: &RunCtx, pacer: &Pacer) {
             async move {
                 let reply = tokio::time::timeout(
                     Duration::from_secs(20),
-                    call(app, ctx.hints_llm.as_ref(), &ctx.hints_model, req),
+                    call(app, llm.as_ref(), &model, req),
                 )
                 .await;
                 (i, reply)

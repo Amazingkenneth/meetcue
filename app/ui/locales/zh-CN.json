@@ -120,10 +120,12 @@
     "endpointSilence": "静音多久算一句结束",
     "endpointHint": "越短提示越快，但可能把一个问题切成两段。",
     "languages": "会议语言",
-    "languagesHint": "用于提高识别准确率。中英混说时 Soniox 效果最好；选择包含中文时，Deepgram 使用其普通话模型。",
-    "langZhEn": "中文和英文",
+    "languagesHint": "主要语言放在前面。Soniox 能识别同一句中的中英混说；Deepgram 只识别主要语言。",
+    "langZhEn": "以中文为主，夹杂英文",
     "langEn": "英文",
-    "langZh": "中文"
+    "langZh": "中文",
+    "langEnZh": "以英文为主，夹杂中文",
+    "deepgramMixed": "Deepgram 无法在同一路音频中同时识别中文和英文，因此只会识别{{language}}。如需中英混说，请在“供应商与费用”中选择 Soniox。"
   },
   "providers": {
     "asrTitle": "语音识别",
