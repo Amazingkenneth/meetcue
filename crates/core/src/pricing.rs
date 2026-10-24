@@ -204,18 +204,54 @@ impl PriceTable {
         Ok(t)
     }
 
-    /// Looks up a price, letting user overrides win over the published list.
+    /// Looks up a price, letting user overrides win over the list. A dated
+    /// snapshot such as `claude-opus-4-5-20251101` takes the price of its
+    /// alias `claude-opus-4-5` when it has no entry of its own.
     pub fn find<'a>(
         &'a self,
         overrides: &'a [PriceEntry],
         provider: &str,
         model: &str,
     ) -> Option<&'a PriceEntry> {
-        overrides
-            .iter()
-            .chain(self.entries.iter())
+        let all = || overrides.iter().chain(self.entries.iter());
+        all()
             .find(|e| e.provider == provider && e.model == model)
+            .or_else(|| {
+                let alias = snapshot_alias(model)?;
+                all().find(|e| e.provider == provider && e.model == alias)
+            })
     }
+
+    /// Adds prices read live from the providers, replacing listed ones for
+    /// the same model. Called with today's date when any were read.
+    pub fn with_live(&self, live: Vec<PriceEntry>, today: &str) -> PriceTable {
+        if live.is_empty() {
+            return self.clone();
+        }
+        let mut entries: Vec<PriceEntry> = self
+            .entries
+            .iter()
+            .filter(|e| {
+                !live
+                    .iter()
+                    .any(|l| l.provider == e.provider && l.model == e.model)
+            })
+            .cloned()
+            .collect();
+        entries.extend(live);
+        PriceTable {
+            updated: today.max(self.updated.as_str()).to_string(),
+            currency: self.currency.clone(),
+            entries,
+        }
+    }
+}
+
+/// `claude-opus-4-5-20251101` → `claude-opus-4-5`: a model id ending in an
+/// eight-digit date is a snapshot of the id without it.
+pub fn snapshot_alias(model: &str) -> Option<&str> {
+    let (alias, date) = model.rsplit_once('-')?;
+    (date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit())).then_some(alias)
 }
 
 /// Assumptions behind the "estimated cost per hour" figure. Users can edit
@@ -419,6 +455,39 @@ mod tests {
     }
 
     #[test]
+    fn dated_snapshots_use_their_alias_price() {
+        let t = PriceTable::parse(PUBLISHED).unwrap();
+        let alias = t.find(&[], "anthropic", "claude-haiku-4-5").unwrap();
+        let dated = t
+            .find(&[], "anthropic", "claude-haiku-4-5-20251001")
+            .unwrap();
+        assert_eq!(alias, dated);
+        assert!(t.find(&[], "anthropic", "claude-haiku-4-5-2025").is_none());
+        assert_eq!(
+            snapshot_alias("claude-opus-4-5-20251101"),
+            Some("claude-opus-4-5")
+        );
+        assert_eq!(snapshot_alias("nova-3"), None);
+    }
+
+    #[test]
+    fn live_prices_replace_listed_ones() {
+        let t = PriceTable::parse(PUBLISHED).unwrap();
+        let mut live = t.find(&[], "deepgram", "nova-3").unwrap().clone();
+        live.audio = Some(0.0048);
+        let mut new = live.clone();
+        new.model = "nova-4".into();
+        let merged = t.with_live(vec![live, new], "2099-01-01");
+        assert_eq!(merged.updated, "2099-01-01");
+        assert_eq!(merged.entries.len(), t.entries.len() + 1);
+        assert_eq!(
+            merged.find(&[], "deepgram", "nova-3").unwrap().audio,
+            Some(0.0048)
+        );
+        assert_eq!(t.with_live(vec![], "2099-01-01"), t);
+    }
+
+    #[test]
     fn hourly_estimate() {
         let a = CostAssumptions::default();
         let asr = entry(PriceUnit::PerAudioHour);
@@ -426,6 +495,9 @@ mod tests {
         let est = estimate_hourly(Some(&asr), Some(&llm), None, &a);
         // 2 channels x 0.6 x $0.12 = $0.144
         assert_eq!(est.asr, Some(144_000));
+        // (900 x $1 + 80 x $5 + 1500 x $0.10) per MTok x 20 questions x 1.1;
+        // app/ui/src/util/cost.test.ts checks the interface gives the same.
+        assert_eq!(est.detect, Some(31_900));
         assert!(!est.complete);
         assert_eq!(est.total, est.asr.unwrap() + est.detect.unwrap());
     }

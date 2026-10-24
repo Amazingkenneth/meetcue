@@ -12,6 +12,7 @@ pub mod engine;
 pub mod gate;
 pub mod hints;
 pub mod latency;
+pub mod live_prices;
 pub mod materials;
 pub mod net;
 pub mod practice;

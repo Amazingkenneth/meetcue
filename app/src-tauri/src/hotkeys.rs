@@ -5,10 +5,10 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use meetcue_core::ipc::{AppEvent, HotkeyState};
-use meetcue_core::{codes, FocusTarget, MeetCueEvent, UserAction};
+use meetcue_core::{codes, FocusTarget, UserAction};
 
 use crate::state::AppState;
-use crate::{session, windows, APP_EVENT, PIPELINE_EVENT};
+use crate::{session, windows, APP_EVENT};
 
 #[derive(Clone, Copy)]
 enum Action {
@@ -25,15 +25,7 @@ fn run(app: &AppHandle, action: Action) {
         let state = app.state::<AppState>();
         match action {
             Action::Toggle => {
-                if let Err(e) = session::toggle(&app).await {
-                    let _ = app.emit(
-                        PIPELINE_EVENT,
-                        MeetCueEvent::Error {
-                            code: e.code,
-                            detail: e.detail,
-                        },
-                    );
-                }
+                let _ = session::reported(&app, session::toggle(&app).await);
             }
             Action::Cycle => windows::cycle_mode(&app),
             Action::Prev => {

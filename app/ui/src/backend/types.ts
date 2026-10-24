@@ -7,6 +7,7 @@ import type { AppInfo } from "../bindings/AppInfo";
 import type { DeviceList } from "../bindings/DeviceList";
 import type { HotkeyState } from "../bindings/HotkeyState";
 import type { HourlyEstimate } from "../bindings/HourlyEstimate";
+import type { LogLine } from "../bindings/LogLine";
 import type { CostAssumptions } from "../bindings/CostAssumptions";
 import type { Material } from "../bindings/Material";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
@@ -40,7 +41,7 @@ export interface Commands {
   verify_provider: { args: { provider: string }; result: VerifyResult };
   list_models: { args: { provider: string }; result: ModelInfo[] };
   get_pricing: { args: undefined; result: PriceTable };
-  refresh_pricing: { args: undefined; result: PriceTable };
+  refresh_pricing: { args: { force: boolean }; result: PriceTable };
   estimate_cost: {
     args: { asr: PriceEntry | null; detect: PriceEntry | null; hints: PriceEntry | null; assumptions: CostAssumptions };
     result: HourlyEstimate;
@@ -57,6 +58,7 @@ export interface Commands {
   open_window: { args: { view: View; section?: string }; result: null };
   open_url: { args: { url: string }; result: null };
   hotkey_status: { args: undefined; result: HotkeyState[] };
+  recent_logs: { args: { after: number }; result: LogLine[] };
   run_probe: { args: { request: ProbeRequest }; result: ProbeReport };
   probe_history: { args: undefined; result: ProbeReport[] };
   usage_summary: { args: { month: string | null }; result: UsageSummary };

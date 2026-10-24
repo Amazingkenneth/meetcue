@@ -81,6 +81,7 @@ impl Soniox {
             .map(|m| ModelInfo {
                 display_name: m.name.unwrap_or_else(|| m.id.clone()),
                 id: m.id,
+                price: None,
             })
             .collect())
     }

@@ -34,7 +34,7 @@ With speakers, your microphone also picks up the other participants. MeetCue fil
 
 For each of the three tasks, pick a model from the list. Each line shows the model's price (per audio hour, or per million input and output tokens), an estimated cost per hour of meeting, and the measured latency once you have run the latency probe. The list is sorted by estimated cost; **Cheapest** and **Fastest** mark the best figures. You choose each model yourself, and you can't continue until all three are chosen.
 
-Prices are not built into MeetCue. It downloads the [price reference](/reference/pricing), which is checked against each provider's official pricing page, and keeps the last copy for offline use; **Update prices** fetches it again. A model the list doesn't cover links to the provider's official pricing page instead of showing a figure.
+Prices are not built into MeetCue. It reads them from each provider's official pricing page (Anthropic, Soniox, Deepgram) when the list opens, and from the model list of OpenAI-compatible servers that include prices. Anything a page doesn't cover comes from the [price reference](/reference/pricing), and the last prices are kept for offline use; **Update prices** reads them again. Only a model with no price anywhere links to the provider's pricing page instead of showing a figure.
 
 ## Step 4: API keys
 

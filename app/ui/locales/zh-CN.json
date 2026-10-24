@@ -74,7 +74,8 @@
     "pendingCount_other": "{{count}} 个排队"
   },
   "errors": {
-    "seeFix": "查看解决办法"
+    "seeFix": "查看解决办法",
+    "openLog": "查看日志"
   },
   "settings": {
     "title": "设置",
@@ -172,7 +173,7 @@
     "tokenPrice": "输入 {{input}} · 输出 {{output}} / 百万 token",
     "officialPricing": "查看官网价格",
     "enterPrice": "填写价格",
-    "priceSource": "价格取自各供应商官网，核对于 {{date}}。仅为估算，以实际账单为准。",
+    "priceSource": "价格读取自各供应商官网价格页（{{date}}）。仅为估算，以实际账单为准。",
     "priceMissing": "尚未下载价格表，请通过链接查看官网价格。",
     "refreshPrices": "更新价格",
     "refreshing": "正在更新…",
@@ -278,7 +279,15 @@
     "aboutTitle": "关于",
     "version": "版本",
     "configDir": "配置目录",
-    "portable": "便携模式"
+    "portable": "便携模式",
+    "logTitle": "运行日志",
+    "logLead": "MeetCue 当前在做什么：开始与暂停、是否收到音频、识别出的句子、问题和错误。只有开启调试日志时才会记录转写原文。",
+    "logProblemsOnly": "只看警告和错误",
+    "logCopy": "复制",
+    "logCopied": "已复制",
+    "logLatest": "跳到最新",
+    "logEmpty": "暂无日志。",
+    "logNoProblems": "没有警告或错误。"
   },
   "wizard": {
     "title": "设置 MeetCue",
@@ -443,6 +452,7 @@
     "resetPanel": "重置面板位置",
     "exportDiagnostics": "导出诊断信息…",
     "help": "帮助",
-    "quit": "退出 MeetCue"
+    "quit": "退出 MeetCue",
+    "log": "运行日志…"
   }
 }

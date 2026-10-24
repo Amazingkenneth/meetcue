@@ -8,7 +8,9 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
-use meetcue_core::ipc::{AppEvent, AppInfo, DeviceList, HotkeyState, UsageSummary, VerifyResult};
+use meetcue_core::ipc::{
+    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, UsageSummary, VerifyResult,
+};
 use meetcue_core::pricing::{
     estimate_hourly, CostAssumptions, HourlyEstimate, PriceEntry, PriceTable,
 };
@@ -179,13 +181,23 @@ pub async fn verify_provider(state: State<'_, AppState>, provider: String) -> Re
 }
 
 #[tauri::command]
-pub async fn list_models(state: State<'_, AppState>, provider: String) -> Res<Vec<ModelInfo>> {
+pub async fn list_models(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    provider: String,
+) -> Res<Vec<ModelInfo>> {
     let cfg = config_for(&state, &provider)?;
-    if kind_of(&provider) == "asr" {
-        providers::asr(&cfg)?.list_models().await
+    let models = if kind_of(&provider) == "asr" {
+        providers::asr(&cfg)?.list_models().await?
     } else {
-        providers::llm(&cfg)?.list_models().await
-    }
+        providers::llm(&cfg)?.list_models().await?
+    };
+    // Prices that come with the model list are the provider's own, live.
+    prices::add_listed(
+        &app,
+        models.iter().filter_map(|m| m.price.clone()).collect(),
+    );
+    Ok(models)
 }
 
 #[tauri::command]
@@ -193,9 +205,10 @@ pub fn get_pricing() -> PriceTable {
     (*PriceTable::current()).clone()
 }
 
+/// Reads prices again; `force` false allows a recent result to be reused.
 #[tauri::command]
-pub async fn refresh_pricing(app: AppHandle) -> Res<PriceTable> {
-    prices::refresh(&app).await
+pub async fn refresh_pricing(app: AppHandle, force: bool) -> Res<PriceTable> {
+    prices::refresh(&app, force).await
 }
 
 #[tauri::command]
@@ -220,7 +233,7 @@ pub fn audio_preview(app: AppHandle, on: bool) -> Res<()> {
 
 #[tauri::command]
 pub async fn start_session(app: AppHandle) -> Res<()> {
-    session::start(&app).await
+    session::reported(&app, session::start(&app).await)
 }
 
 #[tauri::command]
@@ -231,7 +244,7 @@ pub async fn stop_session(app: AppHandle) -> Res<()> {
 
 #[tauri::command]
 pub async fn toggle_capture(app: AppHandle) -> Res<()> {
-    session::toggle(&app).await
+    session::reported(&app, session::toggle(&app).await)
 }
 
 #[tauri::command]
@@ -275,6 +288,11 @@ pub fn open_url(app: AppHandle, url: String) -> Res<()> {
         return Err(io_err("blocked URL"));
     }
     app.opener().open_url(url, None::<&str>).map_err(io_err)
+}
+
+#[tauri::command]
+pub fn recent_logs(after: u64) -> Vec<LogLine> {
+    crate::logging::recent(after)
 }
 
 #[tauri::command]
@@ -510,6 +528,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         open_window,
         open_url,
         hotkey_status,
+        recent_logs,
         run_probe,
         probe_history,
         usage_summary,

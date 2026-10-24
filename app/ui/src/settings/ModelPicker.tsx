@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { ModelSlot } from "../backend/types";
-import type { HourlyEstimate } from "../bindings/HourlyEstimate";
+import type { ModelInfo } from "../bindings/ModelInfo";
 import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
 import type { ProbeReport } from "../bindings/ProbeReport";
 import type { Settings } from "../bindings/Settings";
+import { estimateTask } from "../util/cost";
 import { day, millis, price, usd } from "../util/format";
 import { audioPerHour, PROVIDERS, providerName, providersFor, tokensPerMillion, type ProviderMeta } from "./providers";
 
@@ -23,10 +24,19 @@ export interface Row {
 
 const SLOTS: ModelSlot[] = ["asr", "detect", "hints"];
 
+/** `claude-opus-4-5-20251101` → `claude-opus-4-5` (a dated snapshot of an alias). */
+export function snapshotAlias(model: string): string | null {
+  const m = /^(.+)-\d{8}$/.exec(model);
+  return m ? m[1] : null;
+}
+
+/** The price for a model: the user's own figure, else the price list (live or published). */
 export function findPrice(table: PriceTable | null, settings: Settings, provider: string, model: string): PriceEntry | null {
-  const o = settings.providers.pricingOverrides.find((e) => e.provider === provider && e.model === model);
-  if (o) return o;
-  return table?.entries.find((e) => e.provider === provider && e.model === model) ?? null;
+  const all = [...settings.providers.pricingOverrides, ...(table?.entries ?? [])];
+  const exact = all.find((e) => e.provider === provider && e.model === model);
+  if (exact) return exact;
+  const alias = snapshotAlias(model);
+  return (alias && all.find((e) => e.provider === provider && e.model === alias)) || null;
 }
 
 export function latencyFor(probe: ProbeReport | null, slot: ModelSlot, provider: string, model: string): number | null {
@@ -83,14 +93,16 @@ export function ModelsPanel({
   const [refreshing, setRefreshing] = useState(false);
   const [failed, setFailed] = useState(false);
   const loaded = !!table?.entries.length;
-  const refresh = () => {
+  const refresh = (force: boolean) => {
     setRefreshing(true);
     setFailed(false);
     void backend()
-      .invoke("refresh_pricing")
+      .invoke("refresh_pricing", { force })
       .catch(() => setFailed(true))
       .finally(() => setRefreshing(false));
   };
+  // Read the providers' current prices whenever the model list is shown.
+  useEffect(() => refresh(false), []);
   return (
     <div className="models">
       {SLOTS.map((slot) => (
@@ -103,7 +115,7 @@ export function ModelsPanel({
       ))}
       <p className="price-note">
         {loaded ? t("providers.priceSource", { date: day(table!.updated) }) : t("providers.priceMissing")}{" "}
-        <button className="btn-link" disabled={refreshing} onClick={refresh}>
+        <button className="btn-link" disabled={refreshing} onClick={() => refresh(true)}>
           {refreshing ? t("providers.refreshing") : t("providers.refreshPrices")}
         </button>
         {failed && <span className="price-failed"> · {t("providers.refreshFailed")}</span>}
@@ -129,8 +141,7 @@ export function ModelPicker({
   credentials: Record<string, boolean>;
 }) {
   const { t } = useTranslation();
-  const [listed, setListed] = useState<Record<string, { id: string; displayName: string }[]>>({});
-  const [estimates, setEstimates] = useState<Record<string, number | null>>({});
+  const [listed, setListed] = useState<Record<string, ModelInfo[]>>({});
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const providers = useMemo(() => providersFor(slot).filter((p) => p.available), [slot]);
@@ -160,41 +171,29 @@ export function ModelPicker({
       const fromTable = (table?.entries ?? []).filter((e) => e.provider === p.id);
       const fromApi = listed[p.id] ?? [];
       const current = choice.provider === p.id && choice.model ? [{ id: choice.model, displayName: choice.model }] : [];
-      for (const m of [...fromTable.map((e) => ({ id: e.model, displayName: e.label })), ...fromApi, ...current]) {
+      const models: ModelInfo[] = [...fromTable.map((e) => ({ id: e.model, displayName: e.label })), ...fromApi, ...current];
+      for (const m of models) {
         const key = `${p.id}/${m.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        out.push({ provider: p.id, model: m.id, label: m.displayName || m.id, entry: findPrice(table, settings, p.id, m.id) });
+        // A price listed with the model (OpenAI-compatible servers) is the provider's own.
+        const listedPrice = m.price ?? null;
+        out.push({
+          provider: p.id,
+          model: m.id,
+          label: m.displayName || m.id,
+          entry: findPrice(table, settings, p.id, m.id) ?? listedPrice,
+        });
       }
     }
     return out;
   }, [providers, table, listed, settings, choice.provider, choice.model]);
 
-  useEffect(() => {
-    let alive = true;
-    const a = settings.providers.estimate;
-    void Promise.all(
-      baseRows.map(async (r) => {
-        if (!r.entry) return [`${r.provider}/${r.model}`, null] as const;
-        const est: HourlyEstimate = await backend().invoke("estimate_cost", {
-          asr: slot === "asr" ? r.entry : null,
-          detect: slot === "detect" ? r.entry : null,
-          hints: slot === "hints" ? r.entry : null,
-          assumptions: a,
-        });
-        return [`${r.provider}/${r.model}`, est[slot]] as const;
-      }),
-    ).then((pairs) => alive && setEstimates(Object.fromEntries(pairs)));
-    return () => {
-      alive = false;
-    };
-  }, [baseRows, settings.providers.estimate, slot]);
-
   const isSelected = (r: Row) => choice.provider === r.provider && choice.model === r.model;
   const rows: Row[] = baseRows
     .map((r) => ({
       ...r,
-      hourly: estimates[`${r.provider}/${r.model}`] ?? null,
+      hourly: r.entry ? estimateTask(r.entry, slot, settings.providers.estimate) : null,
       latencyMs: latencyFor(probe, slot, r.provider, r.model),
     }))
     .sort((a, b) => (a.hourly ?? Number.POSITIVE_INFINITY) - (b.hourly ?? Number.POSITIVE_INFINITY));

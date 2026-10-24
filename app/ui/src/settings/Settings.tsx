@@ -15,6 +15,7 @@ import { useAppEvents, useAppInfo } from "../state/hooks";
 import { millis, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
 import { KeyField } from "./Keys";
+import { LogView } from "./LogView";
 import { ModelsPanel } from "./ModelPicker";
 import { ProbePanel } from "./Probe";
 import { PROVIDERS, providerName } from "./providers";
@@ -29,6 +30,7 @@ function initialTab(): { tab: Tab; anchor: string | null } {
   const hash = window.location.hash.replace("#", "");
   if ((TABS as readonly string[]).includes(hash)) return { tab: hash as Tab, anchor: null };
   if (hash === "probe" || hash === "keys" || hash === "budget") return { tab: "providers", anchor: hash };
+  if (hash === "log") return { tab: "diagnostics", anchor: hash };
   return { tab: "general", anchor: null };
 }
 
@@ -809,6 +811,9 @@ function DiagnosticsTab({ settings, update }: { settings: Settings; update: Upda
             {!recent.length && <li className="muted">{t("diag.noEvents")}</li>}
           </ol>
         </Field>
+      </Section>
+      <Section title={t("diag.logTitle")} lead={t("diag.logLead")}>
+        <LogView />
       </Section>
       <Section title={t("diag.exportTitle")} lead={t("diag.exportLead")}>
         {preview && (

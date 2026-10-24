@@ -5,8 +5,6 @@
 // example), so what you see here is what the pipeline actually emits.
 
 import type { AppEvent } from "../bindings/AppEvent";
-import type { CostAssumptions } from "../bindings/CostAssumptions";
-import type { HourlyEstimate } from "../bindings/HourlyEstimate";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
 import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
@@ -19,6 +17,8 @@ import type { PracticeReport } from "../bindings/PracticeReport";
 import pricing from "../../../../crates/core/data/pricing.json";
 import { emptySession, reduce, type SessionView } from "../state/session";
 import type { Backend, CommandName, Commands } from "../backend/types";
+import type { LogLine } from "../bindings/LogLine";
+import { estimateHourly } from "../util/cost";
 import defaults from "./default-settings.json";
 import demo from "./sdn-demo.json";
 import { mockPracticeReport, mockPracticeScript } from "./practice";
@@ -32,35 +32,6 @@ const HOSTS: Record<string, string[]> = {
   "openai-compatible": [],
 };
 
-export function estimate(
-  asr: PriceEntry | null,
-  detect: PriceEntry | null,
-  hints: PriceEntry | null,
-  a: CostAssumptions,
-): HourlyEstimate {
-  const perToken = (p: PriceEntry) => (p.unit === "per_thousand_tokens" ? 1e-3 : 1e-6);
-  const perMs = (p: PriceEntry) =>
-    p.unit === "per_audio_hour" ? 1 / 3_600_000 : p.unit === "per_audio_minute" ? 1 / 60_000 : 1 / 1000;
-  const micros = (usd: number) => Math.round(usd * 1_000_000);
-  const asrCost = asr ? micros(3_600_000 * 2 * a.speechRatio * (asr.audio ?? 0) * perMs(asr)) : null;
-  const llm = (p: PriceEntry | null, input: number, output: number) => {
-    if (!p) return null;
-    const k = perToken(p);
-    const call =
-      input * (p.input ?? 0) * k + output * (p.output ?? 0) * k + a.systemTokens * (p.cacheRead ?? p.input ?? 0) * k;
-    return Math.round(micros(call) * a.questionsPerHour * (1 + a.cancelOverhead));
-  };
-  const d = llm(detect, a.detectInputTokens, a.detectOutputTokens);
-  const h = llm(hints, a.hintInputTokens, a.hintOutputTokens);
-  const parts = [asrCost, d, h];
-  return {
-    asr: asrCost,
-    detect: d,
-    hints: h,
-    total: parts.reduce<number>((s, x) => s + (x ?? 0), 0),
-    complete: parts.every((x) => x !== null),
-  };
-}
 
 export function createMockBackend(options: { speed?: number } = {}): Backend {
   const speed = options.speed ?? 1;
@@ -78,8 +49,26 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
   const probes: ProbeReport[] = [];
   let practiceScript: PracticeScript | null = null;
   let previewTimer = 0;
+  let prices = structuredClone(pricing) as PriceTable;
+
+  // Activity log in the same shape as the desktop shell's log lines.
+  const logs: LogLine[] = [];
+  const log = (level: "INFO" | "WARN", target: string, message: string) => {
+    logs.push({ seq: (logs[logs.length - 1]?.seq ?? 0) + 1, line: `${new Date().toISOString()}  ${level.padStart(5)} ${target}: ${message}` });
+    if (logs.length > 1000) logs.shift();
+  };
+  log("INFO", "meetcue", "MeetCue preview starting (scripted backend)");
+  const logEvent = (e: MeetCueEvent) => {
+    const target = "meetcue::session";
+    if (e.type === "sessionState") log("INFO", target, `session ${e.state}`);
+    if (e.type === "transcript" && e.isFinal) log("INFO", target, `recognised a sentence from ${e.channel} (${[...e.text].length} characters)`);
+    if (e.type === "questionNew") log("INFO", target, `question ${e.id} detected (version ${e.version})`);
+    if (e.type === "answerDone") log("INFO", target, `hints for question ${e.id} ready`);
+    if (e.type === "error") log("WARN", target, `code=${e.code} ${e.detail}`);
+  };
 
   const emit = (e: MeetCueEvent) => {
+    logEvent(e);
     view = reduce(view, e);
     if (!(e.type === "transcript" && !e.isFinal) && e.type !== "levels") {
       history.push({ tMs: Date.now() - startWall, event: e });
@@ -262,9 +251,26 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       // Providers also list models the price list doesn't cover.
       ...(provider === "anthropic" ? [{ id: "claude-opus-4-8", displayName: "Claude Opus 4.8" }] : []),
     ],
-    get_pricing: () => pricing as PriceTable,
-    refresh_pricing: () => pricing as PriceTable,
-    estimate_cost: ({ asr, detect, hints, assumptions }) => estimate(asr, detect, hints, assumptions),
+    get_pricing: () => prices,
+    refresh_pricing: () => {
+      // Like the shell, add the prices read live from the providers' pages.
+      const live: PriceEntry = {
+        provider: "anthropic",
+        model: "claude-opus-4-8",
+        label: "Claude Opus 4.8",
+        unit: "per_million_tokens",
+        input: 5,
+        output: 25,
+        cacheRead: 0.5,
+        cacheWrite: 6.25,
+        source: "https://platform.claude.com/docs/en/about-claude/pricing",
+        verified: new Date().toISOString().slice(0, 10),
+      };
+      prices = { ...prices, updated: live.verified, entries: [...prices.entries.filter((e) => e.model !== live.model), live] };
+      emitApp({ type: "pricingChanged", pricing: prices });
+      return prices;
+    },
+    estimate_cost: ({ asr, detect, hints, assumptions }) => estimateHourly(asr, detect, hints, assumptions),
     provider_hosts: ({ provider }) => HOSTS[provider] ?? [],
     audio_preview: ({ on }) => {
       if (previewTimer) window.clearInterval(previewTimer);
@@ -296,6 +302,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       return null;
     },
     session_history: () => [...history],
+    recent_logs: ({ after }) => logs.filter((l) => l.seq > after),
     set_panel_mode: ({ mode }) => {
       settings = { ...settings, overlay: { ...settings.overlay, mode } };
       emitApp({ type: "panelMode", mode });

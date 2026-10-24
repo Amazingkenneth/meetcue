@@ -128,7 +128,7 @@ pub fn run(opts: cli::Options) -> i32 {
             if !opts.self_test {
                 let h = handle.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = prices::refresh(&h).await {
+                    if let Err(e) = prices::refresh(&h, true).await {
                         tracing::warn!("could not update the price list: {e}");
                     }
                 });

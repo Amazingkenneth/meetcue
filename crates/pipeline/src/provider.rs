@@ -165,6 +165,10 @@ pub enum LlmChunk {
 pub struct ModelInfo {
     pub id: String,
     pub display_name: String,
+    /// The price, when the provider's model list includes one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub price: Option<meetcue_core::PriceEntry>,
 }
 
 pub type LlmStream = BoxStream<'static, Result<LlmChunk, MeetCueError>>;

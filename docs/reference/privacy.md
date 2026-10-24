@@ -15,6 +15,10 @@ This page explains what MeetCue sends to which provider, what it keeps on your c
 - In practice mode: questions, your recognised answers, reference answers for feedback, and subtitle lines to classify.
 - During the latency probe: a short built-in sample transcript.
 
+## Price lookups
+
+To show current prices, MeetCue reads the public pricing pages of Anthropic, Soniox and Deepgram and the [price reference](/reference/pricing) on this site, at start-up and when you open the model list. These are ordinary page downloads: no key, account or meeting content is sent.
+
 Each provider's own privacy policy and data retention terms apply to what you send them. Check them before using MeetCue in confidential meetings.
 
 ## What stays on your computer
@@ -25,7 +29,8 @@ Each provider's own privacy policy and data retention terms apply to what you se
 | Settings, role and extracted briefing text | `settings.json` in the settings folder |
 | Latency results | `latency-history.json` |
 | Usage and cost per call (no content) | `usage.jsonl` |
-| Logs, kept 7 days, without transcripts unless debug logging is on | `logs\` |
+| Logs, kept 7 days, without transcripts unless debug logging is on (the last lines are also shown in **Settings › Diagnostics › Activity log**) | `logs\` |
+| Last price list, for offline use | `pricing.json` |
 | Practice reports | `practice\` |
 
 See [Settings](/reference/settings#where-settings-are-stored) for the folder location. Audio is never saved to disk.

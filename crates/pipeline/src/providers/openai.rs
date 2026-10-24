@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde_json::{json, Value};
 
-use meetcue_core::{codes, MeetCueError};
+use meetcue_core::{codes, MeetCueError, PriceEntry, PriceUnit};
 
 use crate::net;
 use crate::provider::{LlmChunk, LlmProvider, LlmRequest, LlmStream, ModelInfo, Role};
@@ -103,6 +103,36 @@ pub fn handle_data(data: &str) -> Option<Result<Vec<LlmChunk>, MeetCueError>> {
     Some(Ok(out))
 }
 
+/// The price some servers (OpenRouter and others) put in their model list:
+/// `"pricing": {"prompt": "0.000002", "completion": "0.00001"}` in USD per token.
+pub fn listed_price(
+    m: &Value,
+    id: &str,
+    name: &str,
+    source: &str,
+    today: &str,
+) -> Option<PriceEntry> {
+    let per_token = |k: &str| {
+        let v = &m["pricing"][k];
+        let n = v.as_f64().or_else(|| v.as_str()?.trim().parse().ok())?;
+        (n.is_finite() && n >= 0.0).then_some(n * 1e6)
+    };
+    Some(PriceEntry {
+        provider: "openai-compatible".into(),
+        model: id.into(),
+        label: name.into(),
+        unit: PriceUnit::PerMillionTokens,
+        input: Some(per_token("prompt")?),
+        output: Some(per_token("completion")?),
+        cache_read: per_token("input_cache_read"),
+        cache_write: per_token("input_cache_write"),
+        audio: None,
+        note: None,
+        source: source.into(),
+        verified: today.into(),
+    })
+}
+
 #[async_trait]
 impl LlmProvider for OpenAiCompatible {
     fn id(&self) -> &'static str {
@@ -127,14 +157,20 @@ impl LlmProvider for OpenAiCompatible {
             .json()
             .await
             .map_err(|e| MeetCueError::new(codes::LLM_REQUEST, e.to_string()))?;
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let source = format!("{}/models", self.base);
         Ok(v["data"]
             .as_array()
             .into_iter()
             .flatten()
-            .filter_map(|m| m["id"].as_str())
-            .map(|id| ModelInfo {
-                id: id.into(),
-                display_name: id.into(),
+            .filter_map(|m| {
+                let id = m["id"].as_str()?;
+                let name = m["name"].as_str().unwrap_or(id);
+                Some(ModelInfo {
+                    id: id.into(),
+                    display_name: name.into(),
+                    price: listed_price(m, id, name, &source, &today),
+                })
             })
             .collect())
     }
@@ -246,5 +282,30 @@ mod tests {
         assert!(handle_data(r#"{"error":{"message":"bad"}}"#)
             .unwrap()
             .is_err());
+    }
+
+    #[test]
+    fn reads_prices_from_the_model_list() {
+        let m = serde_json::json!({
+            "id": "moonshotai/kimi-k3.1-pro",
+            "name": "MoonshotAI: Kimi K3.1 Pro",
+            "pricing": {"prompt": "0.000002", "completion": "0.00001", "input_cache_read": "0.0000002"}
+        });
+        let p = listed_price(
+            &m,
+            "moonshotai/kimi-k3.1-pro",
+            "Kimi",
+            "https://h/v1/models",
+            "2026-10-24",
+        )
+        .unwrap();
+        assert!((p.input.unwrap() - 2.0).abs() < 1e-9);
+        assert!((p.output.unwrap() - 10.0).abs() < 1e-9);
+        assert!((p.cache_read.unwrap() - 0.2).abs() < 1e-9);
+        assert_eq!(p.cache_write, None);
+        let none = serde_json::json!({"id": "x"});
+        assert!(listed_price(&none, "x", "x", "s", "d").is_none());
+        let bad = serde_json::json!({"pricing": {"prompt": "-1", "completion": "1"}});
+        assert!(listed_price(&bad, "x", "x", "s", "d").is_none());
     }
 }

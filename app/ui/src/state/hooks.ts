@@ -67,6 +67,30 @@ export interface SessionHandle {
   view: SessionView;
   /** Wall-clock time (Date.now()) when the session started. */
   wallStart: number | null;
+  /** Time spent paused, so the meeting clock stops while paused. */
+  pauses: PauseClock;
+}
+
+export interface PauseClock {
+  /** Total of finished pauses, in milliseconds. */
+  pausedMs: number;
+  /** Wall-clock start of the current pause, if paused now. */
+  pausedAt: number | null;
+}
+
+export const NO_PAUSES: PauseClock = { pausedMs: 0, pausedAt: null };
+
+/** Updates the pause clock for a session state change at wall time `at`. */
+export function trackPause(c: PauseClock, state: string, at: number): PauseClock {
+  if (state === "paused") return c.pausedAt === null ? { ...c, pausedAt: at } : c;
+  if (state === "running") return c.pausedAt === null ? c : { pausedMs: c.pausedMs + Math.max(0, at - c.pausedAt), pausedAt: null };
+  if (state === "stopped" || state === "idle") return NO_PAUSES;
+  return c;
+}
+
+/** Listening time: time since the start minus the time spent paused. */
+export function activeMs(now: number, wallStart: number, c: PauseClock): number {
+  return Math.max(0, (c.pausedAt ?? now) - wallStart - c.pausedMs);
 }
 
 type Action = { kind: "event"; e: MeetCueEvent } | { kind: "replay"; events: MeetCueEvent[] };
@@ -79,6 +103,7 @@ function sessionReducer(s: SessionView, a: Action): SessionView {
 export function useSession(): SessionHandle {
   const [view, dispatch] = useReducer(sessionReducer, undefined, emptySession);
   const [wallStart, setWallStart] = useState<number | null>(null);
+  const [pauses, setPauses] = useState<PauseClock>(NO_PAUSES);
   const started = useRef(false);
   useEffect(() => {
     let alive = true;
@@ -92,6 +117,10 @@ export function useSession(): SessionHandle {
         if (e.type === "sessionState" && e.state === "running" && !started.current) {
           started.current = true;
           setWallStart(Date.now());
+          setPauses(NO_PAUSES);
+        } else if (e.type === "sessionState") {
+          const at = Date.now();
+          setPauses((c) => trackPause(c, e.state, at));
         }
         if (e.type === "sessionState" && e.state === "stopped") started.current = false;
         if (replayed) dispatch({ kind: "event", e });
@@ -105,7 +134,16 @@ export function useSession(): SessionHandle {
         if (history.length) {
           const last = history[history.length - 1];
           started.current = history.some((t) => t.event.type === "sessionState" && t.event.state === "running");
-          if (started.current) setWallStart(Date.now() - last.tMs);
+          if (started.current) {
+            const start = Date.now() - last.tMs;
+            setWallStart(start);
+            let c = NO_PAUSES;
+            for (const t of history) {
+              if (t.event.type === "sessionState" && t.event.state !== "running") c = trackPause(c, t.event.state, start + t.tMs);
+              else if (t.event.type === "sessionState") c = trackPause(c, "running", start + t.tMs);
+            }
+            setPauses(c);
+          }
         }
         replayed = true;
         for (const e of queued) dispatch({ kind: "event", e });
@@ -115,7 +153,7 @@ export function useSession(): SessionHandle {
       unlisten?.();
     };
   }, []);
-  return { view, wallStart };
+  return { view, wallStart, pauses };
 }
 
 /** Re-renders every `ms` milliseconds. */

@@ -30,6 +30,7 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             &item("settings", "tray.settings")?,
             &item("practice", "tray.practice")?,
             &item("reset", "tray.resetPanel")?,
+            &item("log", "tray.log")?,
             &item("diagnostics", "tray.exportDiagnostics")?,
             &item("help", "tray.help")?,
             &PredefinedMenuItem::separator(app)?,
@@ -48,7 +49,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             match event.id.as_ref() {
                 "toggle" => {
                     tauri::async_runtime::spawn(async move {
-                        let _ = session::toggle(&app).await;
+                        let _ = session::reported(&app, session::toggle(&app).await);
                     });
                 }
                 "panel" => windows::cycle_mode(&app),
@@ -57,6 +58,9 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
                 }
                 "practice" => {
                     let _ = windows::open_view(&app, "practice", None);
+                }
+                "log" => {
+                    let _ = windows::open_view(&app, "settings", Some("log"));
                 }
                 "reset" => windows::reset_position(&app),
                 "diagnostics" => {

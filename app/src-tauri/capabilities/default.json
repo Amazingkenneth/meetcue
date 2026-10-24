@@ -37,6 +37,7 @@
     "allow-open-window",
     "allow-open-url",
     "allow-hotkey-status",
+    "allow-recent-logs",
     "allow-run-probe",
     "allow-probe-history",
     "allow-usage-summary",

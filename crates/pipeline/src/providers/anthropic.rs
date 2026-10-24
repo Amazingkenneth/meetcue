@@ -243,6 +243,7 @@ impl LlmProvider for Anthropic {
                     out.push(ModelInfo {
                         id: id.into(),
                         display_name: m["display_name"].as_str().unwrap_or(id).into(),
+                        price: None,
                     });
                 }
             }

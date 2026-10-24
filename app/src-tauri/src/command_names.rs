@@ -27,6 +27,7 @@ pub const COMMANDS: &[&str] = &[
     "open_window",
     "open_url",
     "hotkey_status",
+    "recent_logs",
     "run_probe",
     "probe_history",
     "usage_summary",

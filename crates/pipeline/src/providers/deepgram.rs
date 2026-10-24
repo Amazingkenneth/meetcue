@@ -314,6 +314,7 @@ impl AsrProvider for Deepgram {
                 out.push(ModelInfo {
                     display_name: m.name.unwrap_or_else(|| id.clone()),
                     id,
+                    price: None,
                 });
             }
         }

@@ -34,7 +34,7 @@
 
 1. **获取密钥**：登录 Claude Console，打开 **API keys** 并创建密钥。为组织充值或添加付款方式。
 2. **填写**：**设置 › 供应商与费用 › API 密钥 › Anthropic 密钥**，然后点 **保存并验证**。
-3. **验证**：验证时从接口加载模型列表。[价格参考](/zh/reference/pricing)中有的模型显示价格，其余链接到 Anthropic 官网价格页。
+3. **验证**：验证时从接口加载模型列表。价格直接读取自 Anthropic 官网价格页，因此每个当前模型都会显示价格和预计费用。
 
 常见错误：[MC-LLM-002](/zh/troubleshooting/error-codes#mc-llm-002)（密钥被拒绝）、[MC-LLM-003](/zh/troubleshooting/error-codes#mc-llm-003)（请求被限流）、[MC-LLM-004](/zh/troubleshooting/error-codes#mc-llm-004)（模型不可用）。
 
@@ -44,7 +44,7 @@
 
 1. **Base URL**：在 **设置 › 供应商与费用** 中填写以 `/v1` 结尾的地址，例如 `https://llm.example.com/v1`。
 2. **密钥**：在 **OpenAI-compatible 密钥** 处粘贴该服务的 API 密钥。不需要密钥的服务可以留空。
-3. **验证**：**保存并验证** 会加载 `/v1/models`。MeetCue 没有这些模型的价格，请点模型旁的 **填写价格** 补上，费用估算和预算才能生效。
+3. **验证**：**保存并验证** 会加载 `/v1/models`。如果接口在模型列表中附带价格（例如 OpenRouter），MeetCue 会直接显示；否则请点模型旁的 **填写价格** 补上，费用估算和预算才能生效。
 
 部分服务在流式输出时不返回 token 用量，此时其用量和费用显示为零。
 

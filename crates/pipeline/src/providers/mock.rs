@@ -328,6 +328,7 @@ impl LlmProvider for MockLlm {
         Ok(vec![ModelInfo {
             id: "mock-fast".into(),
             display_name: "Mock (fast)".into(),
+            price: None,
         }])
     }
 

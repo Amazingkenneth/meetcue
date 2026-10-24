@@ -286,13 +286,40 @@ fn build_without_asr(state: &AppState, s: &Settings) -> Result<SessionConfig, Me
     Ok(cfg)
 }
 
+/// Shows a failed start, pause or resume in every window and in the log, so
+/// a click is never silently ignored. Returns the result unchanged.
+pub fn reported(app: &AppHandle, result: Result<(), MeetCueError>) -> Result<(), MeetCueError> {
+    if let Err(e) = &result {
+        tracing::warn!(code = %e.code, "could not start or resume: {}", e.detail);
+        let _ = app.emit(
+            PIPELINE_EVENT,
+            MeetCueEvent::Error {
+                code: e.code.clone(),
+                detail: e.detail.clone(),
+            },
+        );
+    }
+    result
+}
+
 pub async fn start(app: &AppHandle) -> Result<(), MeetCueError> {
     let state = app.state::<AppState>();
     let cfg = build_config(&state)?;
+    tracing::info!(
+        asr = %format!("{}/{}", cfg.asr_model.provider, cfg.asr_model.model),
+        detect = %format!("{}/{}", cfg.engine.detect.provider, cfg.engine.detect.model),
+        hints = %format!("{}/{}", cfg.engine.hints.provider, cfg.engine.hints.model),
+        "starting session"
+    );
     state.backend.start(cfg).await?;
     if !state.demo {
-        start_audio(app)?;
+        if let Err(e) = start_audio(app) {
+            // Without audio the session would look started but hear nothing.
+            state.backend.stop().await;
+            return Err(e);
+        }
     }
+    tracing::info!("session started");
     Ok(())
 }
 
@@ -307,10 +334,12 @@ pub async fn toggle(app: &AppHandle) -> Result<(), MeetCueError> {
     match (running, state.session_state()) {
         (false, _) => start(app).await,
         (true, SessionState::Paused) => {
+            tracing::info!("resuming");
             state.backend.send(UserAction::Resume).await;
             Ok(())
         }
         (true, _) => {
+            tracing::info!("pausing");
             state.backend.send(UserAction::Pause).await;
             Ok(())
         }
@@ -342,12 +371,36 @@ pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
         }),
     )?;
     *state.audio.lock().unwrap() = Some(source);
+    tracing::info!("audio capture started");
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let backend = app.state::<AppState>().backend.clone();
-        while let Some(e) = rx.recv().await {
+        // Every 10 s, log whether sound arrives on each side, so the
+        // activity log shows when capture works but hears nothing.
+        let mut frames = [0u32; 2];
+        let mut peak = [-100f32; 2];
+        let mut tick = tokio::time::interval(std::time::Duration::from_secs(10));
+        tick.tick().await;
+        loop {
+            let e = tokio::select! {
+                e = rx.recv() => match e {
+                    Some(e) => e,
+                    None => break,
+                },
+                _ = tick.tick() => {
+                    log_audio(&frames, &peak);
+                    frames = [0; 2];
+                    peak = [-100.0; 2];
+                    continue;
+                }
+            };
             match e {
-                SourceEvent::Frame(f) => backend.push_audio(f.channel, f).await,
+                SourceEvent::Frame(f) => {
+                    let i = usize::from(f.channel == Channel::Remote);
+                    frames[i] += 1;
+                    peak[i] = peak[i].max(f.level_db);
+                    backend.push_audio(f.channel, f).await
+                }
                 SourceEvent::DeviceChanged(_) => {
                     let _ = app.emit(
                         APP_EVENT,
@@ -371,6 +424,58 @@ pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
         }
     });
     Ok(())
+}
+
+fn log_audio(frames: &[u32; 2], peak: &[f32; 2]) {
+    for (i, side) in ["microphone (me)", "system sound (others)"]
+        .iter()
+        .enumerate()
+    {
+        if frames[i] == 0 {
+            tracing::warn!("audio: no sound from the {side} in the last 10 s");
+        } else {
+            tracing::info!("audio: {side} {} frames, peak {:.0} dB", frames[i], peak[i]);
+        }
+    }
+}
+
+/// Logs what the pipeline does, without transcript text unless debug
+/// logging is on.
+fn log_event(event: &MeetCueEvent) {
+    match event {
+        MeetCueEvent::SessionState { state, .. } => tracing::info!("session {state:?}"),
+        MeetCueEvent::Transcript {
+            channel,
+            is_final: true,
+            text,
+            ..
+        } => {
+            tracing::info!(
+                "recognised a sentence from {} ({} characters)",
+                channel.as_str(),
+                text.chars().count()
+            );
+            tracing::debug!("{}: {text}", channel.as_str());
+        }
+        MeetCueEvent::QuestionNew { id, version, .. } => {
+            tracing::info!("question {id} detected (version {version})")
+        }
+        MeetCueEvent::AnswerDone { id, .. } => tracing::info!("hints for question {id} ready"),
+        MeetCueEvent::HintsFailed { id, code, .. } => {
+            tracing::warn!(code = %code, "hints for question {id} failed")
+        }
+        MeetCueEvent::LatencySample { id, total_ms, .. } => {
+            tracing::info!("question {id}: first hint {total_ms} ms after the question ended")
+        }
+        MeetCueEvent::Usage {
+            provider,
+            model,
+            cost_micros,
+            ..
+        } => tracing::debug!("usage {provider}/{model}: {cost_micros:?} micro-USD"),
+        MeetCueEvent::Error { code, detail } => tracing::warn!(code = %code, "{detail}"),
+        _ => {}
+    }
 }
 
 /// Starts or stops capture without recognition, for the level check.
@@ -438,6 +543,7 @@ pub fn spawn_forwarder(app: &AppHandle) {
                 Err(_) => break,
             };
             let state = app.state::<AppState>();
+            log_event(&event);
             match &event {
                 MeetCueEvent::SessionState { state: s, .. } => {
                     *state.session.lock().unwrap() = *s;

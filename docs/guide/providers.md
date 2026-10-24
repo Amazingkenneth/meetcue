@@ -34,7 +34,7 @@ Claude models for question detection and hints.
 
 1. **Get a key**: sign in to the Claude Console, open **API keys** and create a key. Add credit or a payment method to the organization.
 2. **Enter it**: **Settings › Providers & cost › API keys › Anthropic key**, then **Save and verify**.
-3. **Check**: verification loads the model list from the API. Models in the [price reference](/reference/pricing) show their prices; others link to Anthropic's official pricing page.
+3. **Check**: verification loads the model list from the API. Prices are read from Anthropic's official pricing page, so every current model shows its price and estimated cost.
 
 Common errors: [MC-LLM-002](/troubleshooting/error-codes#mc-llm-002) (key rejected), [MC-LLM-003](/troubleshooting/error-codes#mc-llm-003) (rate limited), [MC-LLM-004](/troubleshooting/error-codes#mc-llm-004) (model not available).
 
@@ -44,7 +44,7 @@ Any service that implements the OpenAI chat completions API with streaming, incl
 
 1. **Base URL**: in **Settings › Providers & cost**, enter the base URL ending in `/v1`, for example `https://llm.example.com/v1`.
 2. **Key**: paste the service's API key under **OpenAI-compatible key**. Leave it empty if the service doesn't need one.
-3. **Check**: **Save and verify** loads `/v1/models`. MeetCue has no prices for these models; click **Enter price** next to a model so cost estimates and budgets work.
+3. **Check**: **Save and verify** loads `/v1/models`. If the server includes prices in its model list (as OpenRouter does), MeetCue shows them. Otherwise click **Enter price** next to a model so cost estimates and budgets work.
 
 Some services don't report token usage while streaming. Usage and cost then show as zero for them.
 

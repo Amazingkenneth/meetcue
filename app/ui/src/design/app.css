@@ -201,6 +201,12 @@ input[type="number"] {
   flex: none;
   border-right: 1px solid var(--border);
   background: var(--surface);
+  /* The page scrolls; the tab list stays put beside it. */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .tabs-trigger {
@@ -245,6 +251,9 @@ input[type="number"] {
   .tabs-list {
     flex-direction: row;
     width: auto;
+    height: auto;
+    align-self: stretch;
+    z-index: 1;
     overflow-x: auto;
     border-right: 0;
     border-bottom: 1px solid var(--border);
@@ -558,6 +567,53 @@ input[type="number"] {
   .key-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Activity log */
+.log-view {
+  height: 280px;
+  overflow: auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.log-view > p {
+  margin: 4px 0;
+  font-family: var(--font-ui);
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 5.5em 3.5em minmax(0, 1fr);
+  gap: 8px;
+}
+
+.log-time {
+  color: var(--text-3);
+}
+
+.log-level {
+  color: var(--text-3);
+}
+
+.log-msg {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.log-line[data-level="WARN"] .log-level,
+.log-line[data-level="WARN"] .log-msg {
+  color: var(--warn);
+}
+
+.log-line[data-level="ERROR"] .log-level,
+.log-line[data-level="ERROR"] .log-msg {
+  color: var(--err);
 }
 
 /* Tables */

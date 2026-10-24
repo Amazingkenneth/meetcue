@@ -75,7 +75,8 @@
     "pendingCount_other": "{{count}} waiting"
   },
   "errors": {
-    "seeFix": "See the fix"
+    "seeFix": "See the fix",
+    "openLog": "Open log"
   },
   "settings": {
     "title": "Settings",
@@ -173,7 +174,7 @@
     "tokenPrice": "In {{input}} · Out {{output}} / 1M tokens",
     "officialPricing": "Official pricing",
     "enterPrice": "Enter price",
-    "priceSource": "Prices from each provider's official page, checked {{date}}. Estimates only; your bill is authoritative.",
+    "priceSource": "Prices read from each provider's official pricing page, {{date}}. Estimates only; your bill is authoritative.",
     "priceMissing": "The price list hasn't been downloaded yet. Use the links to see official prices.",
     "refreshPrices": "Update prices",
     "refreshing": "Updating…",
@@ -280,7 +281,15 @@
     "aboutTitle": "About",
     "version": "Version",
     "configDir": "Settings folder",
-    "portable": "Portable"
+    "portable": "Portable",
+    "logTitle": "Activity log",
+    "logLead": "What MeetCue is doing right now: starting and pausing, audio arriving, sentences recognised, questions and errors. Transcripts appear only with debug logging on.",
+    "logProblemsOnly": "Only warnings and errors",
+    "logCopy": "Copy",
+    "logCopied": "Copied",
+    "logLatest": "Jump to latest",
+    "logEmpty": "Nothing logged yet.",
+    "logNoProblems": "No warnings or errors."
   },
   "wizard": {
     "title": "Set up MeetCue",
@@ -445,6 +454,7 @@
     "resetPanel": "Reset panel position",
     "exportDiagnostics": "Export diagnostics…",
     "help": "Help",
-    "quit": "Quit MeetCue"
+    "quit": "Quit MeetCue",
+    "log": "Activity log…"
   }
 }

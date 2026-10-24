@@ -112,6 +112,17 @@ pub struct UsageSummary {
     pub total_micros: u64,
 }
 
+/// One line of the application log, for the activity log view.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct LogLine {
+    /// Increases with every line; pass the last one seen to get newer lines.
+    #[ts(type = "number")]
+    pub seq: u64,
+    pub line: String,
+}
+
 /// App-level notifications on the `meetcue://app` channel.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(

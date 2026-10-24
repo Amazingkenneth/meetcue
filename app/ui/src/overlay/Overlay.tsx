@@ -13,9 +13,10 @@ import {
   neighbours,
   nextPoint,
   type QuestionView,
+  type SessionErrorView,
   type SessionView,
 } from "../state/session";
-import { useAppEvents, useAppInfo, useNow, useSession, useSettings } from "../state/hooks";
+import { activeMs, useAppEvents, useAppInfo, useNow, useSession, useSettings, type PauseClock } from "../state/hooks";
 import { usePracticeProgress, type PracticeProgress } from "../state/practice";
 import { boldSegments, clock, seconds } from "../util/format";
 import { errorDocsUrl, errorFix, errorTitle } from "../util/errors";
@@ -33,7 +34,7 @@ const FULL: HintDisplay = { level: "full", delayS: 0 };
 
 export function Overlay() {
   const [settings] = useSettings();
-  const { view, wallStart } = useSession();
+  const { view, wallStart, pauses } = useSession();
   const info = useAppInfo();
   const [mode, setMode] = useState<PanelMode>("full");
   useEffect(() => {
@@ -53,6 +54,7 @@ export function Overlay() {
     <FullPanel
       view={view}
       wallStart={wallStart}
+      pauses={pauses}
       settings={settings}
       demo={!!info?.demo}
       docsUrl={docsUrl}
@@ -84,6 +86,7 @@ function PracticeBar({ p }: { p: PracticeProgress }) {
 function FullPanel({
   view,
   wallStart,
+  pauses,
   settings,
   demo,
   docsUrl,
@@ -92,6 +95,7 @@ function FullPanel({
 }: {
   view: SessionView;
   wallStart: number | null;
+  pauses: PauseClock;
   settings: Settings | null;
   demo: boolean;
   docsUrl: string;
@@ -101,7 +105,13 @@ function FullPanel({
   const { t } = useTranslation();
   const now = useNow(1000);
   const [pinned, setPinned] = useState(true);
-  const elapsed = wallStart ? clock(now - wallStart) : "00:00";
+  // Notices from the shell (hotkey taken, device changed, …) share the error toast.
+  const [notices, setNotices] = useState<SessionErrorView[]>([]);
+  useAppEvents((e) => {
+    if (e.type === "notice") setNotices((n) => [...n, { code: e.code, detail: e.detail, at: Date.now() }].slice(-5));
+  });
+  const problems = useMemo(() => [...view.errors, ...notices].sort((a, b) => a.at - b.at), [view.errors, notices]);
+  const elapsed = wallStart ? clock(activeMs(now, wallStart, pauses)) : "00:00";
   const running = view.state === "running";
   const stateText =
     view.state === "running"
@@ -171,7 +181,7 @@ function FullPanel({
         </div>
       )}
 
-      <ErrorToast view={view} docsUrl={docsUrl} />
+      <ErrorToast errors={problems} docsUrl={docsUrl} />
 
       <ChatList view={view} toggleKey={toggleKey} display={display} />
 
@@ -404,11 +414,11 @@ function ContextLine({ line, start }: { line: TranscriptLine; start: number | nu
   );
 }
 
-function ErrorToast({ view, docsUrl }: { view: SessionView; docsUrl: string }) {
+function ErrorToast({ errors, docsUrl }: { errors: SessionErrorView[]; docsUrl: string }) {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(0);
-  const last = view.errors[view.errors.length - 1];
-  if (!last || view.errors.length <= dismissed) return null;
+  const last = errors[errors.length - 1];
+  if (!last || last.at <= dismissed) return null;
   return (
     <div className="ov-toast" role="alert">
       <strong>{errorTitle(last.code)}</strong>
@@ -418,7 +428,10 @@ function ErrorToast({ view, docsUrl }: { view: SessionView; docsUrl: string }) {
         <button className="ov-link" onClick={() => void backend().invoke("open_url", { url: errorDocsUrl(docsUrl, last.code) })}>
           {t("errors.seeFix")}
         </button>
-        <button className="ov-link" onClick={() => setDismissed(view.errors.length)}>
+        <button className="ov-link" onClick={() => void backend().invoke("open_window", { view: "settings", section: "log" })}>
+          {t("errors.openLog")}
+        </button>
+        <button className="ov-link" onClick={() => setDismissed(last.at)}>
           {t("common.dismiss")}
         </button>
       </div>

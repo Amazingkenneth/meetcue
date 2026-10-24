@@ -2,6 +2,24 @@
 
 All notable changes to MeetCue. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.3 — 2026-10-24
+
+### Changed
+
+- Prices are read live from Anthropic's, Soniox's and Deepgram's official pricing pages, and from OpenAI-compatible servers that list prices with their models. Every current Claude model now shows its price and estimated cost; only a model with no price anywhere links to the pricing page.
+- Deepgram shows the rate billed today, including limited-time promotions, with the regular rate in the tooltip.
+
+### Added
+
+- **Settings › Diagnostics › Activity log** shows what MeetCue is doing as it happens: starting and pausing, whether audio arrives from each side, recognised sentences, questions and errors. Also in the tray menu, and from any error message.
+
+### Fixed
+
+- Clicking **Start** or **Resume** when something was missing (a key, a model, the audio device) did nothing; the reason is now shown, and a session whose audio fails to start is no longer left half running.
+- Notices such as a shortcut that's already taken were never shown.
+- The meeting clock kept counting while paused.
+- The settings tab list scrolled away on long pages.
+
 ## 0.1.2 — 2026-10-24
 
 ### Changed
