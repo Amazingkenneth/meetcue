@@ -173,7 +173,7 @@ pub enum EndpointChoice {
 #[serde(rename_all = "camelCase", default)]
 #[ts(export)]
 pub struct ModelChoice {
-    /// Provider id such as `soniox`, `deepgram`, `anthropic`, `bedrock`, `openai-compatible`.
+    /// Provider id such as `soniox`, `deepgram`, `anthropic`, `openai-compatible`.
     pub provider: Option<String>,
     pub model: Option<String>,
     pub endpoint: EndpointChoice,
@@ -222,8 +222,6 @@ pub struct ProviderSettings {
     pub hints: ModelChoice,
     /// Base URL for the OpenAI-compatible provider, e.g. `https://host/v1`.
     pub openai_base_url: Option<String>,
-    /// AWS region for Amazon Bedrock.
-    pub bedrock_region: Option<String>,
     /// Explicit HTTPS proxy; when empty the system proxy settings are used.
     pub proxy: Option<String>,
     pub pricing_overrides: Vec<PriceEntry>,

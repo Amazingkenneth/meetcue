@@ -256,20 +256,39 @@ input[type="number"] {
 }
 
 /* Switch (Radix) */
+/* The root is a <button>: drop the browser's padding so the thumb travels
+   exactly inside the track (38 - 2 border - 16 thumb - 2 * 2 gap = 16px). */
 .switch {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
   width: 38px;
   height: 22px;
+  margin: 0;
+  padding: 0 2px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  position: relative;
   cursor: pointer;
   flex: none;
+  transition:
+    background 120ms,
+    border-color 120ms;
 }
 
 .switch[data-state="checked"] {
   background: var(--brand);
   border-color: var(--brand);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .switch-thumb {
@@ -279,12 +298,11 @@ input[type="number"] {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  transform: translateX(2px);
   transition: transform 120ms;
 }
 
 .switch[data-state="checked"] .switch-thumb {
-  transform: translateX(18px);
+  transform: translateX(16px);
 }
 
 .check-row {
@@ -292,6 +310,15 @@ input[type="number"] {
   align-items: flex-start;
   gap: 10px;
   padding: 6px 0;
+}
+
+/* Line the switch up with the first line of its label. */
+.check-row > .switch {
+  margin-top: 1px;
+}
+
+.check-row .text {
+  cursor: pointer;
 }
 
 .check-row .text strong {

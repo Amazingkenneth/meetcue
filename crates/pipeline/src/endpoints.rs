@@ -20,8 +20,6 @@ pub struct ProviderEndpoints {
     #[serde(default)]
     pub api_hosts: BTreeMap<String, String>,
     #[serde(default)]
-    pub host_template: Option<String>,
-    #[serde(default)]
     pub user_defined: bool,
 }
 
@@ -52,14 +50,6 @@ impl EndpointCatalog {
             .map(String::as_str)
             .unwrap_or(host)
     }
-
-    pub fn host_for_region(&self, provider: &str, region: &str) -> Option<String> {
-        self.providers
-            .get(provider)?
-            .host_template
-            .as_ref()
-            .map(|t| t.replace("{region}", region))
-    }
 }
 
 #[cfg(test)]
@@ -75,9 +65,5 @@ mod tests {
         for h in c.hosts("soniox") {
             assert!(c.api_host("soniox", h).starts_with("api."), "{h}");
         }
-        assert_eq!(
-            c.host_for_region("bedrock", "example-1").as_deref(),
-            Some("bedrock-mantle.example-1.api.aws")
-        );
     }
 }

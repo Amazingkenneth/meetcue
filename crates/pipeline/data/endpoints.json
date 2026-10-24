@@ -30,11 +30,6 @@
         "api.anthropic.com"
       ]
     },
-    "bedrock": {
-      "kind": "llm",
-      "hostTemplate": "bedrock-mantle.{region}.api.aws",
-      "hosts": []
-    },
     "openai-compatible": {
       "kind": "llm",
       "userDefined": true,

@@ -38,15 +38,6 @@
 
 常见错误：[MC-LLM-002](/zh/troubleshooting/error-codes#mc-llm-002)（密钥被拒绝）、[MC-LLM-003](/zh/troubleshooting/error-codes#mc-llm-003)（请求被限流）、[MC-LLM-004](/zh/troubleshooting/error-codes#mc-llm-004)（模型不可用）。
 
-## Amazon Bedrock
-
-通过你的 AWS 账号使用 Claude 模型。
-
-1. **开通模型**：在 Amazon Bedrock 控制台中，切换到你要使用的 AWS 区域，为计划使用的 Anthropic 模型申请访问权限。
-2. **获取密钥**：在 Bedrock 控制台创建 Bedrock API 密钥。MeetCue 以 Bearer 令牌的方式发送它。
-3. **填写**：在 **设置 › 供应商与费用** 中填写开通模型的 **AWS 区域**，再在 **Bedrock 密钥** 处粘贴密钥并点 **保存并验证**。
-4. **验证**：这类密钥无法获取 Bedrock 的模型列表，MeetCue 会显示价格表中的 Claude 模型。如果账号里没有开通某个模型，使用时会报 [MC-LLM-004](/zh/troubleshooting/error-codes#mc-llm-004)。
-
 ## OpenAI 兼容接口 {#openai-compatible-apis}
 
 任何实现了 OpenAI Chat Completions 流式接口的服务，包括自建的模型服务。

@@ -38,15 +38,6 @@ Claude models for question detection and hints.
 
 Common errors: [MC-LLM-002](/troubleshooting/error-codes#mc-llm-002) (key rejected), [MC-LLM-003](/troubleshooting/error-codes#mc-llm-003) (rate limited), [MC-LLM-004](/troubleshooting/error-codes#mc-llm-004) (model not available).
 
-## Amazon Bedrock
-
-Claude models through your AWS account.
-
-1. **Enable models**: in the Amazon Bedrock console, in the AWS region you want to use, request access to the Anthropic models you plan to use.
-2. **Get a key**: in the Bedrock console, create a Bedrock API key. MeetCue sends it as a bearer token.
-3. **Enter it**: in **Settings › Providers & cost**, enter the **AWS region** where you enabled the models, then paste the key under **Bedrock key** and click **Save and verify**.
-4. **Check**: Bedrock has no model list for this kind of key, so MeetCue shows the Claude models from its price table. If a model isn't enabled in your account, using it fails with [MC-LLM-004](/troubleshooting/error-codes#mc-llm-004).
-
 ## OpenAI-compatible APIs
 
 Any service that implements the OpenAI chat completions API with streaming, including self-hosted model servers.

@@ -83,4 +83,6 @@ export interface Backend {
   ): Promise<Commands[K]["result"]>;
   onEvent(cb: (e: MeetCueEvent) => void): Promise<Unlisten>;
   onAppEvent(cb: (e: AppEvent) => void): Promise<Unlisten>;
+  /** Closes the window this view runs in. */
+  closeWindow(): Promise<void>;
 }

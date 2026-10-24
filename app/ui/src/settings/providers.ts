@@ -6,7 +6,7 @@ export interface ProviderMeta {
   kind: "asr" | "llm";
   name: string;
   /** Extra settings the provider needs besides its key. */
-  needs?: "region" | "baseUrl";
+  needs?: "baseUrl";
   keyOptional?: boolean;
   consoleUrl?: string;
   available: boolean;
@@ -17,7 +17,6 @@ export const PROVIDERS: ProviderMeta[] = [
   { id: "deepgram", kind: "asr", name: "Deepgram", consoleUrl: "https://console.deepgram.com/", available: true },
   { id: "azure-speech", kind: "asr", name: "Azure Speech", available: false },
   { id: "anthropic", kind: "llm", name: "Anthropic (Claude)", consoleUrl: "https://platform.claude.com/", available: true },
-  { id: "bedrock", kind: "llm", name: "Amazon Bedrock", needs: "region", consoleUrl: "https://console.aws.amazon.com/bedrock/", available: true },
   { id: "openai-compatible", kind: "llm", name: "OpenAI-compatible", needs: "baseUrl", keyOptional: true, available: true },
 ];
 

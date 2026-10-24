@@ -170,8 +170,6 @@
     "keyPlaceholder": "Paste API key",
     "keySaved": "Saved · paste a new key to replace it",
     "saveVerify": "Save and verify",
-    "awsRegion": "AWS region",
-    "awsRegionHint": "The region where you enabled model access in the Bedrock console.",
     "baseUrl": "Base URL",
     "baseUrlHint": "The OpenAI-compatible endpoint, ending in /v1.",
     "assumptionsTitle": "Cost estimate assumptions",

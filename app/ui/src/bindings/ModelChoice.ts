@@ -3,6 +3,6 @@ import type { EndpointChoice } from "./EndpointChoice";
 
 export type ModelChoice = { 
 /**
- * Provider id such as `soniox`, `deepgram`, `anthropic`, `bedrock`, `openai-compatible`.
+ * Provider id such as `soniox`, `deepgram`, `anthropic`, `openai-compatible`.
  */
 provider: string | null, model: string | null, endpoint: EndpointChoice, };

@@ -52,32 +52,6 @@
       "verified": "2026-10-22"
     },
     {
-      "provider": "bedrock",
-      "model": "anthropic.claude-haiku-5-5",
-      "label": "Claude Haiku 5.5 (Bedrock)",
-      "unit": "per_million_tokens",
-      "input": 0.10,
-      "output": 0.50,
-      "cacheRead": 0.01,
-      "cacheWrite": 0.125,
-      "note": "Bedrock bills through AWS; regional endpoints can cost more than global ones.",
-      "source": "https://aws.amazon.com/bedrock/pricing/",
-      "verified": "2026-10-22"
-    },
-    {
-      "provider": "bedrock",
-      "model": "anthropic.claude-sonnet-5-5",
-      "label": "Claude Sonnet 5.5 (Bedrock)",
-      "unit": "per_million_tokens",
-      "input": 2.0,
-      "output": 10.0,
-      "cacheRead": 0.10,
-      "cacheWrite": 2.50,
-      "note": "Bedrock bills through AWS; regional endpoints can cost more than global ones.",
-      "source": "https://aws.amazon.com/bedrock/pricing/",
-      "verified": "2026-10-22"
-    },
-    {
       "provider": "soniox",
       "model": "stt-rt-v5",
       "label": "Soniox stt-rt-v5",

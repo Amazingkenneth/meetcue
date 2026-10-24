@@ -19,7 +19,7 @@ pub trait CredentialStore: Send + Sync {
     }
 }
 
-/// Credential name for a provider secret, e.g. `soniox` or `bedrock.secret`.
+/// Credential name for a provider secret, e.g. `soniox` or `azure-speech.region`.
 pub fn key_for(provider: &str, field: &str) -> String {
     if field == "apiKey" {
         provider.to_string()
@@ -96,7 +96,7 @@ mod tests {
         assert!(s.has("soniox"));
         s.delete("soniox").unwrap();
         assert!(!s.has("soniox"));
-        assert_eq!(key_for("bedrock", "secretKey"), "bedrock.secretKey");
+        assert_eq!(key_for("azure-speech", "region"), "azure-speech.region");
         assert_eq!(key_for("anthropic", "apiKey"), "anthropic");
     }
 }

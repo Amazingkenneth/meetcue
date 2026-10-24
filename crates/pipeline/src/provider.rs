@@ -171,7 +171,7 @@ pub type LlmStream = BoxStream<'static, Result<LlmChunk, MeetCueError>>;
 
 #[async_trait]
 pub trait LlmProvider: Send + Sync {
-    /// Stable id: `anthropic`, `bedrock`, `openai-compatible`, `mock`.
+    /// Stable id: `anthropic`, `openai-compatible`, `mock`.
     fn id(&self) -> &'static str;
     async fn list_models(&self) -> Result<Vec<ModelInfo>, MeetCueError>;
     async fn stream(&self, req: LlmRequest) -> Result<LlmStream, MeetCueError>;

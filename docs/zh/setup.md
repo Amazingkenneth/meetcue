@@ -9,7 +9,7 @@
 | 任务 | 本版本支持的供应商 |
 | --- | --- |
 | 语音识别 | Soniox、Deepgram |
-| 问题检测与要点生成 | Anthropic、Amazon Bedrock、任意 OpenAI 兼容接口 |
+| 问题检测与要点生成 | Anthropic、任意 OpenAI 兼容接口 |
 
 问题检测和要点生成可以用不同的模型，甚至不同的供应商。检测只需判断“是不是问题”，通常选便宜的模型就够了。
 
@@ -47,7 +47,6 @@ MeetCue 同时听两路声音：
 - [Soniox](/zh/guide/providers#soniox)
 - [Deepgram](/zh/guide/providers#deepgram)
 - [Anthropic](/zh/guide/providers#anthropic)
-- [Amazon Bedrock](/zh/guide/providers#amazon-bedrock)
 - [OpenAI 兼容接口](/zh/guide/providers#openai-compatible-apis)
 
 验证失败时，提示里会带错误码，例如 [MC-ASR-001](/zh/troubleshooting/error-codes#mc-asr-001)。点击 **查看解决办法** 可直接打开对应说明。

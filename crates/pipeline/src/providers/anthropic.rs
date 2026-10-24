@@ -1,6 +1,4 @@
-//! Claude through the Messages API — directly (`api.anthropic.com`) or on
-//! Amazon Bedrock's Messages endpoint (`bedrock-mantle.<region>.api.aws`,
-//! bearer token in `x-api-key`, `anthropic.`-prefixed model ids).
+//! Claude through the Messages API (`api.anthropic.com`).
 //!
 //! Requests stream over SSE, put the stable system prompt first with a cache
 //! breakpoint, and keep thinking as low as each model allows: hints must
@@ -21,63 +19,32 @@ use crate::providers::sse::SseParser;
 const API_HOST: &str = "api.anthropic.com";
 /// Raw HTTP clients pin the API version they were written against.
 const API_VERSION: &str = "2026-10-21";
-/// Bedrock's examples use the original version; we send no fields it treats differently.
-const BEDROCK_API_VERSION: &str = "2023-06-01";
 const MAX_ATTEMPTS: u32 = 3;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Flavor {
-    Claude,
-    Bedrock,
-}
-
 pub struct Anthropic {
-    flavor: Flavor,
     key: String,
     host: String,
     proxy: Option<String>,
 }
 
 impl Anthropic {
-    pub fn claude(key: String, host: Option<String>, proxy: Option<String>) -> Self {
+    pub fn new(key: String, host: Option<String>, proxy: Option<String>) -> Self {
         Self {
-            flavor: Flavor::Claude,
             key,
             host: host.unwrap_or_else(|| API_HOST.into()),
             proxy,
         }
     }
 
-    /// `host` is `bedrock-mantle.<region>.api.aws`.
-    pub fn bedrock(key: String, host: String, proxy: Option<String>) -> Self {
-        Self {
-            flavor: Flavor::Bedrock,
-            key,
-            host,
-            proxy,
-        }
-    }
-
     fn base(&self) -> String {
-        match self.flavor {
-            Flavor::Claude => format!("https://{}/v1", self.host),
-            Flavor::Bedrock => format!("https://{}/anthropic/v1", self.host),
-        }
-    }
-
-    fn version(&self) -> &'static str {
-        match self.flavor {
-            Flavor::Claude => API_VERSION,
-            Flavor::Bedrock => BEDROCK_API_VERSION,
-        }
+        format!("https://{}/v1", self.host)
     }
 }
 
 /// How each model family turns thinking down for latency. Returns the
 /// `thinking` value (if any), the effort, and whether thinking stays on.
 pub fn latency_settings(model: &str) -> (Option<Value>, Option<&'static str>, bool) {
-    let m = model.trim_start_matches("anthropic.");
-    let has = |s: &str| m.contains(s);
+    let has = |s: &str| model.contains(s);
     if has("haiku-4-5") || has("haiku-3") {
         // No thinking unless asked for; effort is not accepted.
         (None, None, false)
@@ -100,7 +67,7 @@ pub fn latency_settings(model: &str) -> (Option<Value>, Option<&'static str>, bo
 
 /// Builds the request body. `minimal` drops model-specific fields (used to
 /// retry when a model rejects them).
-pub fn request_body(req: &LlmRequest, flavor: Flavor, minimal: bool) -> Value {
+pub fn request_body(req: &LlmRequest, minimal: bool) -> Value {
     let (thinking, effort, thinking_on) = if minimal {
         (None, None, true)
     } else {
@@ -137,7 +104,6 @@ pub fn request_body(req: &LlmRequest, flavor: Flavor, minimal: bool) -> Value {
         body["output_config"] = json!({ "effort": e });
     }
     // Sampling parameters are not sent: current models accept only the defaults.
-    let _ = flavor;
     body
 }
 
@@ -241,34 +207,10 @@ fn rejects_option(body: &str) -> bool {
 #[async_trait]
 impl LlmProvider for Anthropic {
     fn id(&self) -> &'static str {
-        match self.flavor {
-            Flavor::Claude => "anthropic",
-            Flavor::Bedrock => "bedrock",
-        }
+        "anthropic"
     }
 
     async fn list_models(&self) -> Result<Vec<ModelInfo>, MeetCueError> {
-        if self.flavor == Flavor::Bedrock {
-            // Bedrock's Messages endpoint has no model list; validate the key
-            // with a one-token request and offer the known models.
-            let req = LlmRequest::new(
-                "anthropic.claude-haiku-5-5",
-                meetcue_core::UsagePurpose::Probe,
-            )
-            .user("ping")
-            .max_tokens(1);
-            let mut s = self.stream(req).await?;
-            while let Some(c) = s.next().await {
-                c?;
-            }
-            return Ok(BEDROCK_MODELS
-                .iter()
-                .map(|(id, name)| ModelInfo {
-                    id: id.to_string(),
-                    display_name: name.to_string(),
-                })
-                .collect());
-        }
         let client = net::http_client(self.proxy.as_deref())?;
         let mut out = Vec::new();
         let mut after: Option<String> = None;
@@ -280,7 +222,7 @@ impl LlmProvider for Anthropic {
             let resp = client
                 .get(url)
                 .header("x-api-key", &self.key)
-                .header("anthropic-version", self.version())
+                .header("anthropic-version", API_VERSION)
                 .send()
                 .await
                 .map_err(|e| net::reqwest_error(&e))?;
@@ -318,11 +260,11 @@ impl LlmProvider for Anthropic {
         let mut minimal = false;
         let mut attempt = 0;
         let resp = loop {
-            let body = request_body(&req, self.flavor, minimal);
+            let body = request_body(&req, minimal);
             let sent = client
                 .post(&url)
                 .header("x-api-key", &self.key)
-                .header("anthropic-version", self.version())
+                .header("anthropic-version", API_VERSION)
                 .header("content-type", "application/json")
                 .json(&body)
                 .send()
@@ -404,14 +346,6 @@ impl LlmProvider for Anthropic {
     }
 }
 
-/// Models offered on Bedrock's Messages endpoint (it has no model list API).
-pub const BEDROCK_MODELS: &[(&str, &str)] = &[
-    ("anthropic.claude-haiku-5-5", "Claude Haiku 5.5"),
-    ("anthropic.claude-sonnet-5-5", "Claude Sonnet 5.5"),
-    ("anthropic.claude-opus-5-5", "Claude Opus 5.5"),
-    ("anthropic.claude-haiku-4-5", "Claude Haiku 4.5"),
-];
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -427,7 +361,7 @@ mod tests {
 
     #[test]
     fn body_has_cached_system_and_no_sampling() {
-        let b = request_body(&req("claude-haiku-5-5"), Flavor::Claude, false);
+        let b = request_body(&req("claude-haiku-5-5"), false);
         assert_eq!(b["system"][0]["cache_control"]["type"], "ephemeral");
         assert_eq!(b["stream"], true);
         assert_eq!(b["thinking"]["type"], "disabled");
@@ -442,21 +376,19 @@ mod tests {
 
     #[test]
     fn per_model_latency_settings() {
-        let b = request_body(&req("claude-sonnet-5-5"), Flavor::Claude, false);
+        let b = request_body(&req("claude-sonnet-5-5"), false);
         assert_eq!(b["thinking"]["type"], "between_tools");
-        let b = request_body(&req("claude-opus-5-5"), Flavor::Claude, false);
+        let b = request_body(&req("claude-opus-5-5"), false);
         assert!(b.get("thinking").is_none());
         assert_eq!(
             b["max_tokens"], 4000,
             "room for thinking that cannot be turned off"
         );
-        let b = request_body(&req("anthropic.claude-haiku-5-5"), Flavor::Bedrock, false);
-        assert_eq!(b["thinking"]["type"], "disabled");
-        let b = request_body(&req("claude-haiku-4-5"), Flavor::Claude, false);
+        let b = request_body(&req("claude-haiku-4-5"), false);
         assert!(b.get("thinking").is_none() && b.get("output_config").is_none());
-        let b = request_body(&req("claude-future-9"), Flavor::Claude, false);
+        let b = request_body(&req("claude-future-9"), false);
         assert!(b.get("thinking").is_none() && b.get("output_config").is_none());
-        let b = request_body(&req("claude-haiku-5-5"), Flavor::Claude, true);
+        let b = request_body(&req("claude-haiku-5-5"), true);
         assert!(b.get("thinking").is_none() && b.get("output_config").is_none());
     }
 

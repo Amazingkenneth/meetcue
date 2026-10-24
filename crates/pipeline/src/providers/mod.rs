@@ -21,8 +21,6 @@ pub struct ProviderConfig {
     /// Host chosen by the latency probe or the user; `None` for the default.
     pub host: Option<String>,
     pub key: Option<String>,
-    /// AWS region (Bedrock).
-    pub region: Option<String>,
     /// OpenAI-compatible base URL.
     pub base_url: Option<String>,
     /// Explicit HTTPS proxy.
@@ -44,6 +42,11 @@ pub fn asr(cfg: &ProviderConfig) -> Result<Arc<dyn AsrProvider>, MeetCueError> {
             cfg.host.clone(),
             cfg.proxy.clone(),
         ))),
+        "deepgram" => Ok(Arc::new(deepgram::Deepgram::new(
+            key(cfg, codes::ASR_NOT_CONFIGURED)?,
+            cfg.host.clone(),
+            cfg.proxy.clone(),
+        ))),
         other => Err(MeetCueError::new(
             codes::ASR_NOT_CONFIGURED,
             format!("unknown provider {other}"),
@@ -54,9 +57,76 @@ pub fn asr(cfg: &ProviderConfig) -> Result<Arc<dyn AsrProvider>, MeetCueError> {
 pub fn llm(cfg: &ProviderConfig) -> Result<Arc<dyn LlmProvider>, MeetCueError> {
     match cfg.provider.as_str() {
         "mock" => Ok(Arc::new(mock::MockLlm::sdn())),
+        "anthropic" => Ok(Arc::new(anthropic::Anthropic::new(
+            key(cfg, codes::LLM_AUTH)?,
+            cfg.host.clone(),
+            cfg.proxy.clone(),
+        ))),
+        "openai-compatible" => {
+            let base = cfg
+                .base_url
+                .as_deref()
+                .filter(|u| !u.trim().is_empty())
+                .ok_or_else(|| {
+                    MeetCueError::new(codes::LLM_REQUEST, "no base URL for openai-compatible")
+                })?;
+            Ok(Arc::new(openai::OpenAiCompatible::new(
+                base,
+                cfg.key.clone(),
+                cfg.proxy.clone(),
+            )))
+        }
         other => Err(MeetCueError::new(
             codes::LLM_REQUEST,
             format!("unknown provider {other}"),
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn cfg(provider: &str) -> ProviderConfig {
+        ProviderConfig {
+            provider: provider.into(),
+            key: Some("key".into()),
+            base_url: Some("https://host/v1".into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn builds_every_offered_provider() {
+        for p in ["soniox", "deepgram", "mock"] {
+            assert_eq!(asr(&cfg(p)).map(|a| a.id()).ok(), Some(p), "{p}");
+        }
+        for p in ["anthropic", "openai-compatible", "mock"] {
+            assert_eq!(llm(&cfg(p)).map(|l| l.id()).ok(), Some(p), "{p}");
+        }
+    }
+
+    #[test]
+    fn missing_key_or_url_is_reported() {
+        let no_key = |p: &str| ProviderConfig {
+            key: None,
+            ..cfg(p)
+        };
+        assert_eq!(
+            asr(&no_key("deepgram")).err().map(|e| e.code),
+            Some(codes::ASR_NOT_CONFIGURED.to_string())
+        );
+        assert_eq!(
+            llm(&no_key("anthropic")).err().map(|e| e.code),
+            Some(codes::LLM_AUTH.to_string())
+        );
+        // The key is optional for OpenAI-compatible servers; the URL is not.
+        assert!(llm(&no_key("openai-compatible")).is_ok());
+        let no_url = ProviderConfig {
+            base_url: None,
+            ..cfg("openai-compatible")
+        };
+        assert!(llm(&no_url).is_err());
+        assert!(llm(&cfg("bedrock")).is_err());
     }
 }

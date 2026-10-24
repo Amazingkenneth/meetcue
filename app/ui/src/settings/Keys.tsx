@@ -43,22 +43,6 @@ export function KeyField({
 
   return (
     <>
-      {provider.needs === "region" && (
-        <Field label={t("providers.awsRegion")} htmlFor={`region-${provider.id}`} hint={t("providers.awsRegionHint")}>
-          <input
-            id={`region-${provider.id}`}
-            type="text"
-            placeholder="region-name-1"
-            value={settings.providers.bedrockRegion ?? ""}
-            onChange={(e) =>
-              void update((s) => {
-                s.providers.bedrockRegion = e.target.value.trim() || null;
-                return s;
-              })
-            }
-          />
-        </Field>
-      )}
       {provider.needs === "baseUrl" && (
         <Field label={t("providers.baseUrl")} htmlFor={`url-${provider.id}`} hint={t("providers.baseUrlHint")}>
           <input

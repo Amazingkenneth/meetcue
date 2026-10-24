@@ -2,6 +2,18 @@
 
 All notable changes to MeetCue. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Deepgram, Anthropic and OpenAI-compatible keys failed verification and sessions using them would not start: only Soniox was wired up.
+- The setup window turned blank instead of closing when you clicked **Finish**.
+- Switches in Settings were drawn with the knob off-centre.
+
+### Removed
+
+- Amazon Bedrock. Use Anthropic or an OpenAI-compatible API for hints.
+
 ## 0.1.0 — 2026-10-23
 
 ### Added

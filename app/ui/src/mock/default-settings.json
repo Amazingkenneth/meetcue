@@ -41,7 +41,6 @@
       }
     },
     "openaiBaseUrl": null,
-    "bedrockRegion": null,
     "proxy": null,
     "pricingOverrides": [],
     "estimate": {

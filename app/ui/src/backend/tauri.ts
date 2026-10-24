@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { AppEvent } from "../bindings/AppEvent";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
 import type { Backend, CommandName, Commands } from "./types";
@@ -17,5 +18,10 @@ export const tauriBackend: Backend = {
   },
   async onAppEvent(cb) {
     return listen<AppEvent>(APP_EVENT, (e) => cb(e.payload));
+  },
+  // The DOM's window.close() tears down the page in WebView2 but leaves the
+  // native window open and blank, so close it through the shell.
+  closeWindow() {
+    return getCurrentWindow().close();
   },
 };

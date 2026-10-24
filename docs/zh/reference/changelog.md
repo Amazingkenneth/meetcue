@@ -2,6 +2,18 @@
 
 MeetCue 的重要变更记录。版本号遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## 未发布
+
+### 修复
+
+- Deepgram、Anthropic 和 OpenAI 兼容接口的密钥验证失败，使用它们的会话也无法开始：此前只接入了 Soniox。
+- 在设置向导中点 **完成** 后，窗口变成空白而不是关闭。
+- 设置中的开关滑块位置偏移。
+
+### 移除
+
+- Amazon Bedrock。要点生成请使用 Anthropic 或 OpenAI 兼容接口。
+
 ## 0.1.0 — 2026-10-23
 
 ### 新增

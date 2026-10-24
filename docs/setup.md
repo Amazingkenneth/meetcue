@@ -9,7 +9,7 @@ You need an account with one speech recognition provider and one language model 
 | Task | Providers in this release |
 | --- | --- |
 | Speech recognition | Soniox, Deepgram |
-| Question detection and hints | Anthropic, Amazon Bedrock, any OpenAI-compatible API |
+| Question detection and hints | Anthropic, any OpenAI-compatible API |
 
 Detection and hints can use different models, and even different providers. Detection is a simple yes/no task, so a cheaper model is usually enough.
 
@@ -47,7 +47,6 @@ How to get each key is described in [Providers and keys](/guide/providers):
 - [Soniox](/guide/providers#soniox)
 - [Deepgram](/guide/providers#deepgram)
 - [Anthropic](/guide/providers#anthropic)
-- [Amazon Bedrock](/guide/providers#amazon-bedrock)
 - [OpenAI-compatible APIs](/guide/providers#openai-compatible-apis)
 
 If verification fails, the message shows an error code such as [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001). Click **See the fix** to open the matching section.

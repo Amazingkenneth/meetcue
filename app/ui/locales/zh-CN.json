@@ -169,8 +169,6 @@
     "keyPlaceholder": "粘贴 API 密钥",
     "keySaved": "已保存 · 粘贴新密钥可替换",
     "saveVerify": "保存并验证",
-    "awsRegion": "AWS 区域",
-    "awsRegionHint": "你在 Bedrock 控制台开通模型访问的那个区域。",
     "baseUrl": "Base URL",
     "baseUrlHint": "OpenAI 兼容接口的地址，以 /v1 结尾。",
     "assumptionsTitle": "费用估算假设",

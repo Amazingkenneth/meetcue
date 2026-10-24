@@ -133,8 +133,8 @@
       "severity": "error",
       "title": { "en": "The selected model is not available", "zh-CN": "所选模型不可用" },
       "fix": {
-        "en": "Pick another model in Settings › Providers. On Amazon Bedrock, request access to the model in the AWS console first.",
-        "zh-CN": "在 设置 › 供应商与费用 中换一个模型。使用 Amazon Bedrock 时，需先在 AWS 控制台开通该模型的访问权限。"
+        "en": "Pick another model in Settings › Providers.",
+        "zh-CN": "在 设置 › 供应商与费用 中换一个模型。"
       }
     },
     {

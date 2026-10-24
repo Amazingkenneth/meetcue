@@ -31,13 +31,7 @@ fn io_err(e: impl std::fmt::Display) -> MeetCueError {
 }
 
 /// Provider ids whose credentials the interface may ask about.
-const PROVIDER_IDS: &[&str] = &[
-    "soniox",
-    "deepgram",
-    "anthropic",
-    "bedrock",
-    "openai-compatible",
-];
+const PROVIDER_IDS: &[&str] = &["soniox", "deepgram", "anthropic", "openai-compatible"];
 
 #[tauri::command]
 pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {

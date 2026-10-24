@@ -29,9 +29,8 @@ export function sortCombos(combos: ComboEstimate[], order: Order): ComboEstimate
 }
 
 /** Targets for the probe: every available provider, with the chosen model where set. */
-export function probeTargets(settings: Settings, credentials: Record<string, boolean>): ProbeTarget[] {
-  return PROVIDERS.filter((p) => p.available && p.id !== "openai-compatible" && p.id !== "bedrock")
-    .concat(PROVIDERS.filter((p) => (p.id === "openai-compatible" && settings.providers.openaiBaseUrl) || (p.id === "bedrock" && credentials.bedrock)))
+export function probeTargets(settings: Settings): ProbeTarget[] {
+  return PROVIDERS.filter((p) => p.available && (p.id !== "openai-compatible" || settings.providers.openaiBaseUrl))
     .map((p) => {
       const slot = p.kind === "asr" ? settings.providers.asr : settings.providers.hints;
       return {
@@ -87,7 +86,7 @@ export function ProbePanel({
     setError(null);
     try {
       const r = await backend().invoke("run_probe", {
-        request: { targets: probeTargets(settings, credentials), label: label.trim() || undefined, networkOnly: networkOnly || !anyKey },
+        request: { targets: probeTargets(settings), label: label.trim() || undefined, networkOnly: networkOnly || !anyKey },
       });
       setHistory((h) => [r, ...h]);
       onReport?.(r);

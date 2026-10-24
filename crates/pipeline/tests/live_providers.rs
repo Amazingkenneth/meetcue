@@ -16,11 +16,6 @@ fn cfg(provider: &str, env: &str, model: &str) -> Option<ProviderConfig> {
         provider: provider.into(),
         model: model.into(),
         key: Some(key),
-        region: std::env::var("MEETCUE_BEDROCK_REGION").ok(),
-        host: std::env::var("MEETCUE_BEDROCK_REGION")
-            .ok()
-            .filter(|_| provider == "bedrock")
-            .map(|r| format!("bedrock-mantle.{r}.api.aws")),
         ..Default::default()
     })
 }
@@ -49,18 +44,6 @@ async fn llm_roundtrip(c: ProviderConfig) {
 #[ignore]
 async fn anthropic_live() {
     if let Some(c) = cfg("anthropic", "MEETCUE_ANTHROPIC_KEY", "claude-haiku-5-5") {
-        llm_roundtrip(c).await;
-    }
-}
-
-#[tokio::test]
-#[ignore]
-async fn bedrock_live() {
-    if let Some(c) = cfg(
-        "bedrock",
-        "MEETCUE_BEDROCK_KEY",
-        "anthropic.claude-haiku-5-5",
-    ) {
         llm_roundtrip(c).await;
     }
 }

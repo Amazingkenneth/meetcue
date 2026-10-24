@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setBackend } from "../backend";
 import { setLanguage } from "../i18n";
 import { createMockBackend } from "../mock/mockBackend";
@@ -45,5 +45,33 @@ describe("Wizard", () => {
     await flush();
     expect(screen.getByLabelText("Soniox key")).toBeInTheDocument();
     expect(screen.getByLabelText("Anthropic (Claude) key")).toBeInTheDocument();
+  });
+
+  it("closes its window through the backend when finished", async () => {
+    const b = createMockBackend();
+    const close = vi.spyOn(b, "closeWindow").mockResolvedValue();
+    setBackend(b);
+    render(<Wizard />);
+    await flush();
+    const next = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await flush();
+    };
+    await next();
+    await next();
+    fireEvent.click(screen.getByRole("radio", { name: "Use Soniox stt-rt-v5" }));
+    await flush();
+    for (const r of screen.getAllByRole("radio", { name: "Use Claude Haiku 5.5" })) {
+      fireEvent.click(r);
+      await flush();
+    }
+    await next();
+    await next();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+    await flush();
+    expect(close).toHaveBeenCalledOnce();
+    expect((await b.invoke("get_settings")).general.wizardCompleted).toBe(true);
   });
 });

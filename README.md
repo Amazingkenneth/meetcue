@@ -26,7 +26,7 @@ MeetCue runs entirely on your computer. It calls the speech recognition and lang
 | Task | Providers |
 | --- | --- |
 | Speech recognition | Soniox, Deepgram |
-| Language models | Anthropic (Claude), Amazon Bedrock, any OpenAI-compatible API |
+| Language models | Anthropic (Claude), any OpenAI-compatible API |
 
 ## Building from source
 

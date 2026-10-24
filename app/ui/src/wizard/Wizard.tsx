@@ -36,7 +36,7 @@ export function Wizard() {
       return s;
     });
     await backend().invoke("set_panel_mode", { mode: "full" });
-    window.close();
+    await backend().closeWindow();
   };
 
   return (

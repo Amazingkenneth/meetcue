@@ -64,11 +64,6 @@ pub fn provider_config(
     let key = state.credentials.get(provider)?;
     let probes = state.probes.lock().unwrap().clone();
     let host = match provider {
-        "bedrock" => settings
-            .providers
-            .bedrock_region
-            .as_deref()
-            .and_then(|r| EndpointCatalog::builtin().host_for_region("bedrock", r)),
         "openai-compatible" => None,
         _ => choose_host(provider, choice, &probes),
     };
@@ -77,7 +72,6 @@ pub fn provider_config(
         model: model.into(),
         host,
         key,
-        region: settings.providers.bedrock_region.clone(),
         base_url: settings.providers.openai_base_url.clone(),
         proxy: settings.providers.proxy.clone(),
     })

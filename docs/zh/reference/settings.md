@@ -44,7 +44,6 @@
 | 语音识别 | `providers.asr` |
 | 问题检测模型 | `providers.detect` |
 | 要点模型 | `providers.hints` |
-| AWS 区域（Bedrock） | `providers.bedrockRegion` |
 | Base URL（OpenAI 兼容接口） | `providers.openaiBaseUrl` |
 | HTTPS 代理 | `providers.proxy`；留空表示使用系统代理 |
 | 手动填写的价格 | `providers.pricingOverrides` |

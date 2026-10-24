@@ -29,7 +29,6 @@ const HOSTS: Record<string, string[]> = {
   soniox: ["stt-rt.soniox.com", "stt-rt.eu.soniox.com", "stt-rt.jp.soniox.com", "stt-rt.in.soniox.com"],
   deepgram: ["api.deepgram.com", "api.eu.deepgram.com", "api.au.deepgram.com", "api.in.deepgram.com"],
   anthropic: ["api.anthropic.com"],
-  bedrock: [],
   "openai-compatible": [],
 };
 
@@ -385,6 +384,9 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     async onAppEvent(cb) {
       appEvents.add(cb);
       return () => appEvents.delete(cb);
+    },
+    async closeWindow() {
+      window.close();
     },
   };
 }

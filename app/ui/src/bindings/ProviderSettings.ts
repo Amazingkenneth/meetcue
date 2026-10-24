@@ -10,10 +10,6 @@ export type ProviderSettings = { asr: ModelChoice, detect: ModelChoice, hints: M
  */
 openaiBaseUrl: string | null, 
 /**
- * AWS region for Amazon Bedrock.
- */
-bedrockRegion: string | null, 
-/**
  * Explicit HTTPS proxy; when empty the system proxy settings are used.
  */
 proxy: string | null, pricingOverrides: Array<PriceEntry>, estimate: CostAssumptions, budget: BudgetSettings, };

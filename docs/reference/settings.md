@@ -44,7 +44,6 @@ The panel's last mode (`overlay.mode`: `full`, `mini`, `hidden`) and position (`
 | Speech recognition | `providers.asr` |
 | Question detection model | `providers.detect` |
 | Hint model | `providers.hints` |
-| AWS region (Bedrock) | `providers.bedrockRegion` |
 | Base URL (OpenAI-compatible) | `providers.openaiBaseUrl` |
 | HTTPS proxy | `providers.proxy`; empty uses the system proxy |
 | Prices you entered | `providers.pricingOverrides` |
