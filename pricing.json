@@ -1,0 +1,110 @@
+{
+  "updated": "2026-10-24",
+  "currency": "USD",
+  "entries": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "label": "Claude Haiku 5.5",
+      "unit": "per_million_tokens",
+      "input": 0.1,
+      "output": 0.5,
+      "cacheRead": 0.01,
+      "cacheWrite": 0.125,
+      "note": "Prompts up to 100,000 tokens; longer prompts cost $0.50 / $2.50.",
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "label": "Claude Sonnet 5.5",
+      "unit": "per_million_tokens",
+      "input": 2.0,
+      "output": 10.0,
+      "cacheRead": 0.1,
+      "cacheWrite": 2.5,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-5-5",
+      "label": "Claude Opus 5.5",
+      "unit": "per_million_tokens",
+      "input": 4.0,
+      "output": 20.0,
+      "cacheRead": 0.2,
+      "cacheWrite": 5.0,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5",
+      "label": "Claude Sonnet 5",
+      "unit": "per_million_tokens",
+      "input": 2.0,
+      "output": 10.0,
+      "cacheRead": 0.2,
+      "cacheWrite": 2.5,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-opus-5",
+      "label": "Claude Opus 5",
+      "unit": "per_million_tokens",
+      "input": 5.0,
+      "output": 25.0,
+      "cacheRead": 0.5,
+      "cacheWrite": 6.25,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-fable-5-1",
+      "label": "Claude Fable 5.1",
+      "unit": "per_million_tokens",
+      "input": 10.0,
+      "output": 50.0,
+      "cacheRead": 0.25,
+      "cacheWrite": 12.5,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "label": "Claude Haiku 4.5",
+      "unit": "per_million_tokens",
+      "input": 1.0,
+      "output": 5.0,
+      "cacheRead": 0.1,
+      "cacheWrite": 1.25,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "soniox",
+      "model": "stt-rt-v5",
+      "label": "Soniox stt-rt-v5",
+      "unit": "per_audio_hour",
+      "audio": 0.12,
+      "source": "https://soniox.com/pricing",
+      "verified": "2026-10-24"
+    },
+    {
+      "provider": "deepgram",
+      "model": "nova-3",
+      "label": "Deepgram Nova-3",
+      "unit": "per_audio_minute",
+      "audio": 0.0077,
+      "note": "Standard streaming rate for one language, which MeetCue uses for Chinese or English. Several non-Chinese languages use the multilingual rate, $0.0092 per minute. Limited-time promotional rates may be lower.",
+      "source": "https://deepgram.com/pricing",
+      "verified": "2026-10-24"
+    }
+  ]
+}
