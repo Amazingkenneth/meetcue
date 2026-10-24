@@ -2,7 +2,7 @@
 
 All notable changes to MeetCue. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.1.1 — 2026-10-24
 
 ### Fixed
 
