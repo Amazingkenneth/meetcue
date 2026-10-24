@@ -64,7 +64,7 @@ impl CostMeter {
         purpose: UsagePurpose,
         usage: UsageKind,
     ) -> (Vec<MeetCueEvent>, BudgetOutcome) {
-        let cost = PriceTable::builtin()
+        let cost = PriceTable::current()
             .find(&self.overrides, provider, model)
             .map(|p| p.cost(&usage));
         self.session += cost.unwrap_or(0);
@@ -128,6 +128,13 @@ impl CostMeter {
     }
 }
 
+/// Loads the price list published from this repository (tests).
+#[cfg(test)]
+pub(crate) fn load_published_prices() {
+    let json = include_str!("../../core/data/pricing.json");
+    PriceTable::set_current(PriceTable::parse(json).unwrap());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,6 +150,7 @@ mod tests {
 
     #[test]
     fn known_and_unknown_prices() {
+        load_published_prices();
         let mut m = CostMeter::new(vec![], BudgetSettings::default(), 0);
         let (ev, _) = m.record(
             "anthropic",
@@ -175,6 +183,7 @@ mod tests {
 
     #[test]
     fn budget_warns_once_then_applies_action() {
+        load_published_prices();
         let budget = BudgetSettings {
             session_limit_usd: Some(1.0),
             monthly_limit_usd: None,
@@ -221,6 +230,7 @@ mod tests {
 
     #[test]
     fn monthly_budget_counts_earlier_spending() {
+        load_published_prices();
         let budget = BudgetSettings {
             session_limit_usd: None,
             monthly_limit_usd: Some(10.0),

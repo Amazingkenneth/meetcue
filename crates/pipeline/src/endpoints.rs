@@ -21,6 +21,9 @@ pub struct ProviderEndpoints {
     pub api_hosts: BTreeMap<String, String>,
     #[serde(default)]
     pub user_defined: bool,
+    /// Model timed by the latency probe when none is chosen.
+    #[serde(default)]
+    pub probe_model: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -42,6 +45,10 @@ impl EndpointCatalog {
             .unwrap_or_default()
     }
 
+    pub fn probe_model(&self, provider: &str) -> Option<&str> {
+        self.providers.get(provider)?.probe_model.as_deref()
+    }
+
     /// The REST host paired with a streaming host (same host if none is listed).
     pub fn api_host<'a>(&'a self, provider: &str, host: &'a str) -> &'a str {
         self.providers
@@ -61,6 +68,7 @@ mod tests {
         let c = EndpointCatalog::builtin();
         for p in ["soniox", "deepgram", "anthropic"] {
             assert!(!c.hosts(p).is_empty(), "{p}");
+            assert!(c.probe_model(p).is_some(), "{p}");
         }
         for h in c.hosts("soniox") {
             assert!(c.api_host("soniox", h).starts_with("api."), "{h}");

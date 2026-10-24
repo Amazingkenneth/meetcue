@@ -15,7 +15,7 @@ import { useAppEvents, useAppInfo } from "../state/hooks";
 import { millis, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
 import { KeyField } from "./Keys";
-import { ModelPicker } from "./ModelPicker";
+import { ModelsPanel } from "./ModelPicker";
 import { ProbePanel } from "./Probe";
 import { PROVIDERS, providerName } from "./providers";
 import { useDraft } from "./useDraft";
@@ -358,11 +358,15 @@ export function useCredentials(): [Record<string, boolean>, () => void] {
   return [status, refresh];
 }
 
+/** The price list in use, updated when a newer one is downloaded. */
 export function usePricing(): PriceTable | null {
   const [table, setTable] = useState<PriceTable | null>(null);
   useEffect(() => {
     void backend().invoke("get_pricing").then(setTable);
   }, []);
+  useAppEvents((e) => {
+    if (e.type === "pricingChanged") setTable(e.pricing);
+  });
   return table;
 }
 
@@ -403,6 +407,37 @@ function EndpointField({ settings, update, probe }: { settings: Settings; update
   );
 }
 
+function Assumptions({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const a = settings.providers.estimate;
+  const setAssumption = (k: keyof typeof a, v: number) =>
+    update((s) => {
+      (s.providers.estimate[k] as number) = v;
+      return s;
+    });
+  return (
+    <>
+      <Field label={t("providers.speechRatio")} htmlFor="a-speech">
+        <input id="a-speech" type="number" min={0} max={1} step={0.05} value={a.speechRatio} onChange={(e) => void setAssumption("speechRatio", Number(e.target.value))} />
+      </Field>
+      <Field label={t("providers.questionsPerHour")} htmlFor="a-q">
+        <input id="a-q" type="number" min={0} step={1} value={a.questionsPerHour} onChange={(e) => void setAssumption("questionsPerHour", Number(e.target.value))} />
+      </Field>
+      <Field label={t("providers.tokensPerHint")} htmlFor="a-hin">
+        <input id="a-hin" type="number" min={0} step={50} value={a.hintInputTokens} onChange={(e) => void setAssumption("hintInputTokens", Number(e.target.value))} />
+        <input aria-label={t("providers.outputTokens")} type="number" min={0} step={50} value={a.hintOutputTokens} onChange={(e) => void setAssumption("hintOutputTokens", Number(e.target.value))} />
+      </Field>
+      <Field label={t("providers.tokensPerDetect")} htmlFor="a-din">
+        <input id="a-din" type="number" min={0} step={50} value={a.detectInputTokens} onChange={(e) => void setAssumption("detectInputTokens", Number(e.target.value))} />
+        <input aria-label={t("providers.outputTokens")} type="number" min={0} step={10} value={a.detectOutputTokens} onChange={(e) => void setAssumption("detectOutputTokens", Number(e.target.value))} />
+      </Field>
+      <p className="muted" style={{ fontSize: 13 }}>
+        {t("providers.estimateFormula")}
+      </p>
+    </>
+  );
+}
+
 function ProvidersTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   const [credentials, refresh] = useCredentials();
@@ -412,25 +447,26 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
   useEffect(() => {
     void backend().invoke("usage_summary", { month: null }).then(setUsage);
   }, []);
-  const a = settings.providers.estimate;
   const num = (v: string) => (v.trim() === "" ? null : Number(v));
-  const setAssumption = (k: keyof typeof a, v: number) =>
-    update((s) => {
-      (s.providers.estimate[k] as number) = v;
-      return s;
-    });
   return (
     <>
       <h2 className="page">{t("settings.tab.providers")}</h2>
-      <Section title={t("providers.asrTitle")} lead={t("providers.asrLead")}>
-        <ModelPicker slot="asr" settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
-        <EndpointField settings={settings} update={update} probe={probe} />
-      </Section>
-      <Section title={t("providers.detectTitle")} lead={t("providers.detectLead")}>
-        <ModelPicker slot="detect" settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
-      </Section>
-      <Section title={t("providers.hintsTitle")} lead={t("providers.hintsLead")}>
-        <ModelPicker slot="hints" settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
+      <Section title={t("providers.modelsTitle")}>
+        <ModelsPanel
+          settings={settings}
+          update={update}
+          table={table}
+          probe={probe}
+          credentials={credentials}
+          asrExtra={<EndpointField settings={settings} update={update} probe={probe} />}
+          footer={
+            <details className="assumptions">
+              <summary>{t("providers.assumptionsTitle")}</summary>
+              <p className="muted">{t("providers.assumptionsLead")}</p>
+              <Assumptions settings={settings} update={update} />
+            </details>
+          }
+        />
       </Section>
       <div id="keys" />
       <Section title={t("providers.keysTitle")} lead={t("providers.keysLead")}>
@@ -440,25 +476,6 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
       </Section>
       <Section title={t("probe.title")}>
         <ProbePanel settings={settings} credentials={credentials} update={update} onReport={setProbe} />
-      </Section>
-      <Section title={t("providers.assumptionsTitle")} lead={t("providers.assumptionsLead")}>
-        <Field label={t("providers.speechRatio")} htmlFor="a-speech">
-          <input id="a-speech" type="number" min={0} max={1} step={0.05} value={a.speechRatio} onChange={(e) => void setAssumption("speechRatio", Number(e.target.value))} />
-        </Field>
-        <Field label={t("providers.questionsPerHour")} htmlFor="a-q">
-          <input id="a-q" type="number" min={0} step={1} value={a.questionsPerHour} onChange={(e) => void setAssumption("questionsPerHour", Number(e.target.value))} />
-        </Field>
-        <Field label={t("providers.tokensPerHint")} htmlFor="a-hin">
-          <input id="a-hin" type="number" min={0} step={50} value={a.hintInputTokens} onChange={(e) => void setAssumption("hintInputTokens", Number(e.target.value))} />
-          <input aria-label={t("providers.outputTokens")} type="number" min={0} step={50} value={a.hintOutputTokens} onChange={(e) => void setAssumption("hintOutputTokens", Number(e.target.value))} />
-        </Field>
-        <Field label={t("providers.tokensPerDetect")} htmlFor="a-din">
-          <input id="a-din" type="number" min={0} step={50} value={a.detectInputTokens} onChange={(e) => void setAssumption("detectInputTokens", Number(e.target.value))} />
-          <input aria-label={t("providers.outputTokens")} type="number" min={0} step={10} value={a.detectOutputTokens} onChange={(e) => void setAssumption("detectOutputTokens", Number(e.target.value))} />
-        </Field>
-        <p className="muted" style={{ fontSize: 13 }}>
-          {t("providers.estimateFormula")}
-        </p>
       </Section>
       <div id="budget" />
       <Section title={t("budget.title")} lead={t("budget.lead")}>
@@ -532,7 +549,7 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
                   <td className="num">{r.calls}</td>
                   <td className="num">{r.inputTokens + r.outputTokens ? millis(r.inputTokens + r.outputTokens) : "—"}</td>
                   <td className="num">{r.audioMs ? t("usage.minutes", { value: millis(r.audioMs / 60000) }) : "—"}</td>
-                  <td className="num">{r.micros === null ? t("providers.priceUnknown") : usd(r.micros)}</td>
+                  <td className="num">{r.micros === null ? "—" : usd(r.micros)}</td>
                 </tr>
               ))}
               <tr>

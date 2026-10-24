@@ -52,4 +52,4 @@ Some recording methods and external capture hardware can still capture the panel
 
 ## Cost during a meeting
 
-Each call's usage is recorded with the price table. **Settings › Providers & cost** shows this month's usage by provider. You can set a per-meeting and a monthly budget; MeetCue warns at 80% and, at 100%, only notifies you, pauses hints or ends the session, as you choose.
+Each call's usage is recorded and converted with the downloaded price list; calls to models without a price are counted but not costed. **Settings › Providers & cost** shows this month's usage by provider. You can set a per-meeting and a monthly budget; MeetCue warns at 80% and, at 100%, only notifies you, pauses hints or ends the session, as you choose.

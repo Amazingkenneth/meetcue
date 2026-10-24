@@ -1785,6 +1785,7 @@ mod tests {
 
     #[test]
     fn budget_pause_stops_new_hints() {
+        crate::usage::load_published_prices();
         let budget = BudgetSettings {
             session_limit_usd: Some(0.01),
             monthly_limit_usd: None,
@@ -1819,6 +1820,7 @@ mod tests {
 
     #[test]
     fn budget_end_session() {
+        crate::usage::load_published_prices();
         let budget = BudgetSettings {
             session_limit_usd: Some(0.01),
             monthly_limit_usd: None,

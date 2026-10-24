@@ -282,7 +282,7 @@ input[type="number"] {
 }
 
 .switch:focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -329,6 +329,235 @@ input[type="number"] {
 .check-row .text span {
   color: var(--text-3);
   font-size: 13px;
+}
+
+/* Model choice: one compact line per model. The same grid is used by the
+   header and the rows so the columns line up in every language. */
+.models {
+  padding-bottom: 8px;
+}
+
+.model-slot {
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.model-slot:first-child {
+  padding-top: 4px;
+}
+
+.model-slot > h3 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.model-slot > p.muted {
+  margin: 2px 0 8px;
+  font-size: 13px;
+}
+
+.model-list {
+  --model-cols: 20px minmax(0, 1fr) minmax(0, max-content) 6.5em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.model-list[data-timed="true"] {
+  --model-cols: 20px minmax(0, 1fr) minmax(0, max-content) 6.5em 5.5em;
+}
+
+.model-head,
+.model-row {
+  display: grid;
+  grid-template-columns: var(--model-cols);
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 12px;
+}
+
+.model-head {
+  min-height: 28px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.model-row {
+  min-height: 38px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.model-head + .model-row {
+  border-top: 0;
+}
+
+.model-row:hover {
+  background: var(--surface-2);
+}
+
+.model-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--brand) 9%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.model-row input[type="radio"] {
+  margin: 0;
+  accent-color: var(--brand);
+}
+
+.model-name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.model-label {
+  font-weight: 500;
+}
+
+.model-name .muted {
+  font-size: 12px;
+}
+
+.model-price {
+  color: var(--text-2);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.model-est {
+  font-weight: 600;
+}
+
+.model-head .num,
+.model-row .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tag {
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--ok);
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.model-empty {
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.model-more {
+  display: block;
+  width: 100%;
+  padding: 6px 12px;
+  text-align: left;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.price-note {
+  margin: 10px 0 4px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.price-note .btn-link {
+  font-size: 12px;
+}
+
+.price-failed {
+  color: var(--err);
+}
+
+.assumptions {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.assumptions > summary {
+  cursor: pointer;
+  color: var(--text-2);
+  padding: 4px 0;
+}
+
+.assumptions > p.muted {
+  margin: 4px 0;
+}
+
+/* On narrow windows the price moves under the model name. */
+@media (max-width: 760px) {
+  .model-list,
+  .model-list[data-timed="true"] {
+    --model-cols: 20px minmax(0, 1fr) 6em;
+  }
+  .model-head > :nth-child(3),
+  .model-head > :nth-child(5),
+  .model-row > :nth-child(5) {
+    display: none;
+  }
+  .model-row {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .model-price {
+    grid-column: 2;
+    grid-row: 2;
+    white-space: normal;
+  }
+  .model-est {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* API keys: one row per provider. */
+.key-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.key-row:last-child {
+  border-bottom: 0;
+}
+
+.key-name {
+  font-weight: 500;
+}
+
+.key-inputs {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.key-inputs input {
+  flex: 1;
+  min-width: 0;
+}
+
+.key-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .key-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Tables */

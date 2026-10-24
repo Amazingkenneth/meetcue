@@ -45,6 +45,10 @@ pub async fn run_sdn() -> (
 
 #[tokio::test(start_paused = true)]
 async fn sdn_interview_end_to_end() {
+    // Prices are downloaded at run time; use the list published from this repository.
+    meetcue_core::PriceTable::set_current(
+        meetcue_core::PriceTable::parse(include_str!("../../core/data/pricing.json")).unwrap(),
+    );
     let (events, history, summary) = run_sdn().await;
 
     // Three questions, in order, with the expected titles.

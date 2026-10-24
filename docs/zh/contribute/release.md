@@ -5,7 +5,7 @@
 ## 准备
 
 1. 确认默认分支上的 CI 全部通过。
-2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，并更新 `verified` 日期和 `updated`。
+2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，并更新 `verified` 日期和 `updated`。程序从文档站下载这个文件，所以修正价格只需推送到默认分支，无需发布新版本。
 3. 在 Windows 电脑上用默认分支的构建运行[实机测试清单](/zh/test-checklist)。
 4. 把两种语言[更新日志](/zh/reference/changelog)中 **未发布** 下的条目移到新版本标题下。
 

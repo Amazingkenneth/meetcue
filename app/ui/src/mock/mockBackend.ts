@@ -255,11 +255,15 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       credentials.has(provider) || provider === "openai-compatible"
         ? { ok: true, code: null, detail: null }
         : { ok: false, code: provider === "soniox" || provider === "deepgram" ? "MC-ASR-001" : "MC-LLM-002", detail: "no key" },
-    list_models: ({ provider }) =>
-      (pricing.entries as PriceEntry[])
+    list_models: ({ provider }) => [
+      ...(pricing.entries as PriceEntry[])
         .filter((e) => e.provider === provider)
         .map((e) => ({ id: e.model, displayName: e.label || e.model })),
+      // Providers also list models the price list doesn't cover.
+      ...(provider === "anthropic" ? [{ id: "claude-opus-4-8", displayName: "Claude Opus 4.8" }] : []),
+    ],
     get_pricing: () => pricing as PriceTable,
+    refresh_pricing: () => pricing as PriceTable,
     estimate_cost: ({ asr, detect, hints, assumptions }) => estimate(asr, detect, hints, assumptions),
     provider_hosts: ({ provider }) => HOSTS[provider] ?? [],
     audio_preview: ({ on }) => {

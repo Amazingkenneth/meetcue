@@ -411,7 +411,7 @@ async fn time_llm(cfg: &ProviderConfig, env: &ProbeEnv) -> Result<(f64, f64), Me
 
 fn price(env: &ProbeEnv, provider: &str, model: Option<&str>) -> Option<PriceEntry> {
     let model = model?;
-    PriceTable::builtin()
+    PriceTable::current()
         .find(&env.overrides, provider, model)
         .cloned()
 }

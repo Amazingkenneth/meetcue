@@ -13,6 +13,7 @@ pub const COMMANDS: &[&str] = &[
     "verify_provider",
     "list_models",
     "get_pricing",
+    "refresh_pricing",
     "estimate_cost",
     "provider_hosts",
     "audio_preview",

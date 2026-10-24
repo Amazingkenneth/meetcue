@@ -48,6 +48,15 @@ export function date(iso: string): string {
   return new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
+/** A calendar date such as an ISO `2026-10-24`, without a time. */
+export function day(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  // Plain dates are read as local dates so they don't shift by time zone.
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium" }).format(d);
+}
+
 /** Splits `**bold**` markup into plain and bold segments. */
 export function boldSegments(text: string): { text: string; bold: boolean }[] {
   const out: { text: string; bold: boolean }[] = [];

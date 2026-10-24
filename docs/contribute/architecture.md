@@ -18,7 +18,7 @@ MeetCue is a Tauri 2 desktop app. All real-time work runs in Rust; the React int
 
 | Path | Contents |
 | --- | --- |
-| `crates/core` | Shared types: settings, events, error codes (`data/errors.json`), price table (`data/pricing.json`) |
+| `crates/core` | Shared types: settings, events, error codes (`data/errors.json`), the published price list (`data/pricing.json`, downloaded at run time, not compiled in) |
 | `crates/pipeline` | The hint engine, provider clients, latency probe, practice logic, prompts (`prompts/*.txt`) |
 | `crates/audio` | Audio capture (WASAPI on Windows), format conversion, voice activity detection |
 | `crates/platform` | Credential store, settings paths, speech synthesis, window styles |

@@ -23,6 +23,7 @@
     "allow-verify-provider",
     "allow-list-models",
     "allow-get-pricing",
+    "allow-refresh-pricing",
     "allow-estimate-cost",
     "allow-provider-hosts",
     "allow-audio-preview",

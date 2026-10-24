@@ -5,7 +5,7 @@ This page describes how a MeetCue release is made: from bumping the version to t
 ## Prepare
 
 1. Make sure CI is green on the default branch.
-2. Check prices in `crates/core/data/pricing.json` against the providers' pricing pages and update the `verified` dates and `updated`.
+2. Check prices in `crates/core/data/pricing.json` against the providers' pricing pages and update the `verified` dates and `updated`. The app downloads this file from the documentation site, so a price fix only needs a push to the default branch, not a release.
 3. Run the [hardware test checklist](/test-checklist) on a Windows computer with a build from the default branch.
 4. Move the **Unreleased** entries in both [changelogs](/reference/changelog) under the new version heading.
 

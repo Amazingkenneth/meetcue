@@ -32,11 +32,9 @@ With speakers, your microphone also picks up the other participants. MeetCue fil
 
 ## Step 3: Models and prices
 
-For each of the three tasks, pick a model from the table. The columns show the price per audio hour or per million tokens, an estimated cost per hour of meeting, and the measured latency once you have run the latency probe.
+For each of the three tasks, pick a model from the list. Each line shows the model's price (per audio hour, or per million input and output tokens), an estimated cost per hour of meeting, and the measured latency once you have run the latency probe. The list is sorted by estimated cost; **Cheapest** and **Fastest** mark the best figures. You choose each model yourself, and you can't continue until all three are chosen.
 
-The **Cheapest**, **Fastest** and **Balanced** buttons only highlight a suggestion. You confirm each choice yourself, and you can't continue until all three are chosen.
-
-Models that the provider lists but that aren't in MeetCue's price table show **Price unknown**. Click **Set a price** to enter one, for example a discounted rate from your contract.
+Prices are not built into MeetCue. It downloads the [price reference](/reference/pricing), which is checked against each provider's official pricing page, and keeps the last copy for offline use; **Update prices** fetches it again. A model the list doesn't cover links to the provider's official pricing page instead of showing a figure.
 
 ## Step 4: API keys
 

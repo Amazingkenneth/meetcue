@@ -11,6 +11,7 @@ mod i18n;
 mod ipc;
 mod logging;
 mod practice;
+mod prices;
 mod selftest;
 mod session;
 mod state;
@@ -98,6 +99,7 @@ pub fn run(opts: cli::Options) -> i32 {
         hotkeys: Mutex::new(Vec::new()),
         practice: Mutex::new(None),
     };
+    prices::load_cached(&state);
 
     let exit_code = Arc::new(Mutex::new(0));
     let exit_for_setup = exit_code.clone();
@@ -123,6 +125,14 @@ pub fn run(opts: cli::Options) -> i32 {
             hotkeys::register_all(&handle);
             tray::create(&handle)?;
             windows::create_overlay(&handle)?;
+            if !opts.self_test {
+                let h = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = prices::refresh(&h).await {
+                        tracing::warn!("could not update the price list: {e}");
+                    }
+                });
+            }
             if wizard_needed {
                 windows::open_view(&handle, "wizard", None)?;
             }

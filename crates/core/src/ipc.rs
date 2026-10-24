@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::pricing::PriceTable;
 use crate::settings::{PanelMode, Settings};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -148,5 +149,9 @@ pub enum AppEvent {
     },
     PracticeFinished {
         report_id: String,
+    },
+    /// A newer price list was loaded.
+    PricingChanged {
+        pricing: Box<PriceTable>,
     },
 }

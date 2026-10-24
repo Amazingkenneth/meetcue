@@ -40,6 +40,7 @@ export interface Commands {
   verify_provider: { args: { provider: string }; result: VerifyResult };
   list_models: { args: { provider: string }; result: ModelInfo[] };
   get_pricing: { args: undefined; result: PriceTable };
+  refresh_pricing: { args: undefined; result: PriceTable };
   estimate_cost: {
     args: { asr: PriceEntry | null; detect: PriceEntry | null; hints: PriceEntry | null; assumptions: CostAssumptions };
     result: HourlyEstimate;

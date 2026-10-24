@@ -2666,7 +2666,7 @@ dependencies = [
 
 [[package]]
 name = "meetcue-app"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2696,7 +2696,7 @@ dependencies = [
 
 [[package]]
 name = "meetcue-audio"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "meetcue-core",
  "ringbuf",
@@ -2707,7 +2707,7 @@ dependencies = [
 
 [[package]]
 name = "meetcue-core"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "serde",
@@ -2718,7 +2718,7 @@ dependencies = [
 
 [[package]]
 name = "meetcue-pipeline"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2748,7 +2748,7 @@ dependencies = [
 
 [[package]]
 name = "meetcue-platform"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "directories",
  "keyring",

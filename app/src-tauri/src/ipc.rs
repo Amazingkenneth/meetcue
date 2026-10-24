@@ -22,7 +22,7 @@ use meetcue_pipeline::{materials, providers, HintBackend};
 
 use crate::state::{AppState, DOCS_URL};
 use crate::usage::{self, LedgerLine};
-use crate::{config, diagnostics, hotkeys, practice, session, tray, windows, APP_EVENT};
+use crate::{config, diagnostics, hotkeys, practice, prices, session, tray, windows, APP_EVENT};
 
 type Res<T> = Result<T, MeetCueError>;
 
@@ -190,7 +190,12 @@ pub async fn list_models(state: State<'_, AppState>, provider: String) -> Res<Ve
 
 #[tauri::command]
 pub fn get_pricing() -> PriceTable {
-    PriceTable::builtin().clone()
+    (*PriceTable::current()).clone()
+}
+
+#[tauri::command]
+pub async fn refresh_pricing(app: AppHandle) -> Res<PriceTable> {
+    prices::refresh(&app).await
 }
 
 #[tauri::command]
@@ -298,19 +303,11 @@ pub async fn run_probe(app: AppHandle, request: ProbeRequest) -> Res<ProbeReport
                 cfg.model = m.clone();
             }
             if cfg.model.is_empty() {
-                // Use the cheapest priced model of the provider for timing.
-                cfg.model = PriceTable::builtin()
-                    .entries
-                    .iter()
-                    .filter(|e| e.provider == target.provider)
-                    .min_by(|a, b| {
-                        a.input
-                            .or(a.audio)
-                            .partial_cmp(&b.input.or(b.audio))
-                            .unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .map(|e| e.model.clone())
-                    .unwrap_or_default();
+                // Time the provider's lightest model when none is chosen.
+                cfg.model = EndpointCatalog::builtin()
+                    .probe_model(&target.provider)
+                    .unwrap_or_default()
+                    .to_string();
             }
             if let Some(h) = host {
                 if target.provider != "openai-compatible" {
@@ -332,7 +329,7 @@ pub async fn run_probe(app: AppHandle, request: ProbeRequest) -> Res<ProbeReport
         on_usage: std::sync::Arc::new(move |provider, model, purpose: UsagePurpose, usage| {
             let state = usage_app.state::<AppState>();
             let s = state.settings();
-            let micros = PriceTable::builtin()
+            let micros = PriceTable::current()
                 .find(&s.providers.pricing_overrides, provider, model)
                 .map(|p| p.cost(&usage));
             let _ = usage::append(
@@ -499,6 +496,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         verify_provider,
         list_models,
         get_pricing,
+        refresh_pricing,
         estimate_cost,
         provider_hosts,
         audio_preview,

@@ -6,7 +6,12 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const docs = join(dirname(fileURLToPath(import.meta.url)), "..");
-const table = JSON.parse(readFileSync(join(docs, "..", "crates/core/data/pricing.json"), "utf8"));
+const source = readFileSync(join(docs, "..", "crates/core/data/pricing.json"), "utf8");
+const table = JSON.parse(source);
+
+// The app downloads this copy (see PRICING_URLS in crates/core/src/pricing.rs).
+mkdirSync(join(docs, "public"), { recursive: true });
+writeFileSync(join(docs, "public", "pricing.json"), source);
 
 const perHour = (e) => {
   const k = { per_audio_hour: 1, per_audio_minute: 60, per_audio_second: 3600 }[e.unit];
@@ -19,7 +24,7 @@ const pages = {
   en: {
     path: "reference/pricing.md",
     title: "Price reference",
-    lead: `Prices MeetCue uses for its estimates, checked against the providers' pages on ${table.updated}. Prices change: the provider's website and your bill are authoritative. You can override any price in **Settings › Providers & cost**.`,
+    lead: `Prices MeetCue uses for its estimates, checked against each provider's official pricing page on ${table.updated}. MeetCue downloads this list from [pricing.json](/pricing.json) instead of building prices in, so corrections reach you without an update. Prices change: the provider's website and your bill are authoritative.`,
     speech: "Speech recognition",
     models: "Language models",
     cols: ["Provider", "Model", "Per audio hour", "Source"],
@@ -32,7 +37,7 @@ const pages = {
   zh: {
     path: "zh/reference/pricing.md",
     title: "价格参考",
-    lead: `MeetCue 估算费用时使用的价格，于 ${table.updated} 对照供应商官网核对。价格会变化，请以供应商官网和账单为准。你可以在 **设置 › 供应商与费用** 中覆盖任意价格。`,
+    lead: `MeetCue 估算费用时使用的价格，于 ${table.updated} 对照各供应商官网价格页核对。MeetCue 不内置价格，而是下载这份列表（[pricing.json](/pricing.json)），因此价格更正无需更新程序即可生效。价格会变化，请以供应商官网和账单为准。`,
     speech: "语音识别",
     models: "大模型",
     cols: ["供应商", "模型", "每音频小时", "来源"],

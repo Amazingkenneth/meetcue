@@ -2,6 +2,22 @@
 
 All notable changes to MeetCue. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 0.1.2 — 2026-10-24
+
+### Changed
+
+- Prices are no longer built into the app. MeetCue downloads the [price reference](/reference/pricing), checked against each provider's official pricing page, keeps the last copy for offline use, and can update it from **Settings › Providers & cost**.
+- A more compact **Models & prices** layout: one line per model with its price and estimated cost per hour, sorted by cost, with **Cheapest** and **Fastest** marked. API keys take one row per provider.
+- A model without a published price links to the provider's official pricing page instead of showing **Price unknown**.
+
+### Fixed
+
+- Deepgram Nova-3 used the multilingual rate. MeetCue requests one language for Chinese or English, which costs $0.0077 per minute.
+
+### Added
+
+- Prices for Claude Sonnet 5, Claude Opus 5 and Claude Fable 5.1.
+
 ## 0.1.1 — 2026-10-24
 
 ### Fixed

@@ -5,7 +5,7 @@ import type { ModelSlot } from "../backend/types";
 import type { ProbeReport } from "../bindings/ProbeReport";
 import { Section } from "../design/components";
 import { KeyField } from "../settings/Keys";
-import { ModelPicker } from "../settings/ModelPicker";
+import { ModelsPanel } from "../settings/ModelPicker";
 import { ProbePanel } from "../settings/Probe";
 import { AudioFields, LanguageField, useCredentials, usePricing } from "../settings/Settings";
 import { PROVIDERS, providerName } from "../settings/providers";
@@ -64,15 +64,10 @@ export function Wizard() {
         </Section>
       )}
       {step === "models" && (
-        <>
-          <p className="note">{t("wizard.modelsLead")}</p>
-          {SLOTS.map((slot) => (
-            <Section key={slot} title={t(`providers.${slot}Title`)} lead={t(`providers.${slot}Lead`)}>
-              <ModelPicker slot={slot} settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
-            </Section>
-          ))}
+        <Section title={t("wizard.step.models")} lead={t("wizard.modelsLead")}>
+          <ModelsPanel settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
           {!chosen && <p className="note note-warn">{t("wizard.chooseAll")}</p>}
-        </>
+        </Section>
       )}
       {step === "keys" && (
         <Section title={t("wizard.step.keys")} lead={t("wizard.keysLead")}>

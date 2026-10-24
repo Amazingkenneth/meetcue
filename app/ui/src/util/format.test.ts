@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { boldSegments, clock, usd } from "./format";
+import { boldSegments, clock, day, usd } from "./format";
+import { setLanguage } from "../i18n";
 
 describe("format", () => {
   it("formats clocks", () => {
@@ -24,5 +25,14 @@ describe("format", () => {
     expect(usd(1_500_000)).toContain("1.50");
     expect(usd(12_300)).toContain("0.0123");
     expect(usd(null)).toBe("—");
+  });
+
+  it("formats a plain date without a time or a time-zone shift", () => {
+    setLanguage("en");
+    expect(day("2026-10-24")).toBe("Oct 24, 2026");
+    setLanguage("zh-CN");
+    expect(day("2026-10-24")).toBe("2026年10月24日");
+    expect(day("not a date")).toBe("not a date");
+    setLanguage("en");
   });
 });

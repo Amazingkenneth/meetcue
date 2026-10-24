@@ -168,7 +168,7 @@ fn record_usage(app: &AppHandle, model: &ModelRef, purpose: UsagePurpose, usage:
         return;
     }
     let overrides = state.settings().providers.pricing_overrides;
-    let micros = PriceTable::builtin()
+    let micros = PriceTable::current()
         .find(&overrides, &model.provider, &model.model)
         .map(|p| p.cost(&usage));
     let line = LedgerLine {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { ModelSlot } from "../backend/types";
@@ -7,9 +7,10 @@ import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
 import type { ProbeReport } from "../bindings/ProbeReport";
 import type { Settings } from "../bindings/Settings";
-import { Badge } from "../design/components";
-import { date, millis, price, usd } from "../util/format";
-import { audioPerHour, providerName, providersFor, tokensPerMillion } from "./providers";
+import { day, millis, price, usd } from "../util/format";
+import { audioPerHour, PROVIDERS, providerName, providersFor, tokensPerMillion, type ProviderMeta } from "./providers";
+
+type Update = (f: (s: Settings) => Settings) => Promise<void>;
 
 export interface Row {
   provider: string;
@@ -20,8 +21,7 @@ export interface Row {
   latencyMs: number | null;
 }
 
-type Sort = "price" | "latency";
-type Highlight = "cheapest" | "fastest" | "balanced" | null;
+const SLOTS: ModelSlot[] = ["asr", "detect", "hints"];
 
 export function findPrice(table: PriceTable | null, settings: Settings, provider: string, model: string): PriceEntry | null {
   const o = settings.providers.pricingOverrides.find((e) => e.provider === provider && e.model === model);
@@ -38,22 +38,79 @@ export function latencyFor(probe: ProbeReport | null, slot: ModelSlot, provider:
   return values.length ? Math.min(...values) : null;
 }
 
-/** Index of the suggested row for a highlight mode. */
-export function suggest(rows: Row[], mode: Highlight): number {
-  if (!mode || !rows.length) return -1;
-  const priced = rows.map((r, i) => ({ r, i })).filter((x) => x.r.hourly !== null);
-  const timed = rows.map((r, i) => ({ r, i })).filter((x) => x.r.latencyMs !== null);
-  if (mode === "cheapest") {
-    return priced.length ? priced.reduce((a, b) => (b.r.hourly! < a.r.hourly! ? b : a)).i : -1;
-  }
-  if (mode === "fastest") {
-    return timed.length ? timed.reduce((a, b) => (b.r.latencyMs! < a.r.latencyMs! ? b : a)).i : -1;
-  }
-  const both = rows.map((r, i) => ({ r, i })).filter((x) => x.r.hourly !== null && x.r.latencyMs !== null);
-  if (!both.length) return priced.length ? suggest(rows, "cheapest") : -1;
-  const minH = Math.max(1, Math.min(...both.map((x) => x.r.hourly!)));
-  const minL = Math.max(1, Math.min(...both.map((x) => x.r.latencyMs!)));
-  return both.reduce((a, b) => (b.r.hourly! / minH + b.r.latencyMs! / minL < a.r.hourly! / minH + a.r.latencyMs! / minL ? b : a)).i;
+/** Index of the row with the lowest value of `key`, if at least two rows have one. */
+export function best(rows: Row[], key: "hourly" | "latencyMs"): number {
+  const known = rows.map((r, i) => ({ v: r[key], i })).filter((x): x is { v: number; i: number } => x.v !== null);
+  if (known.length < 2) return -1;
+  return known.reduce((a, b) => (b.v < a.v ? b : a)).i;
+}
+
+/** Rows shown before "Show all": the cheapest few priced models plus the current choice. */
+export function featured(rows: Row[], isSelected: (r: Row) => boolean, limit = 4): Row[] {
+  const priced = rows.filter((r) => r.entry).slice(0, limit);
+  const pool = priced.length ? priced : rows.slice(0, limit);
+  return rows.filter((r) => pool.includes(r) || isSelected(r));
+}
+
+/** Whether a model's name already says who makes it ("Claude Haiku 5.5" for Anthropic (Claude)). */
+export function namesProvider(label: string, providerName: string): boolean {
+  const l = label.toLowerCase();
+  return providerName
+    .split(/[\s()]+/)
+    .filter((w) => w.length > 2)
+    .some((w) => l.includes(w.toLowerCase()));
+}
+
+/** Models for every task, with one note on where the prices come from. */
+export function ModelsPanel({
+  settings,
+  update,
+  table,
+  probe,
+  credentials,
+  asrExtra,
+  footer,
+}: {
+  settings: Settings;
+  update: Update;
+  table: PriceTable | null;
+  probe: ProbeReport | null;
+  credentials: Record<string, boolean>;
+  asrExtra?: ReactNode;
+  footer?: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const [refreshing, setRefreshing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const loaded = !!table?.entries.length;
+  const refresh = () => {
+    setRefreshing(true);
+    setFailed(false);
+    void backend()
+      .invoke("refresh_pricing")
+      .catch(() => setFailed(true))
+      .finally(() => setRefreshing(false));
+  };
+  return (
+    <div className="models">
+      {SLOTS.map((slot) => (
+        <div key={slot} className="model-slot">
+          <h3>{t(`providers.${slot}Title`)}</h3>
+          <p className="muted">{t(`providers.${slot}Lead`)}</p>
+          <ModelPicker slot={slot} settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
+          {slot === "asr" && asrExtra}
+        </div>
+      ))}
+      <p className="price-note">
+        {loaded ? t("providers.priceSource", { date: day(table!.updated) }) : t("providers.priceMissing")}{" "}
+        <button className="btn-link" disabled={refreshing} onClick={refresh}>
+          {refreshing ? t("providers.refreshing") : t("providers.refreshPrices")}
+        </button>
+        {failed && <span className="price-failed"> · {t("providers.refreshFailed")}</span>}
+      </p>
+      {footer}
+    </div>
+  );
 }
 
 export function ModelPicker({
@@ -66,7 +123,7 @@ export function ModelPicker({
 }: {
   slot: ModelSlot;
   settings: Settings;
-  update: (f: (s: Settings) => Settings) => Promise<void>;
+  update: Update;
   table: PriceTable | null;
   probe: ProbeReport | null;
   credentials: Record<string, boolean>;
@@ -74,8 +131,7 @@ export function ModelPicker({
   const { t } = useTranslation();
   const [listed, setListed] = useState<Record<string, { id: string; displayName: string }[]>>({});
   const [estimates, setEstimates] = useState<Record<string, number | null>>({});
-  const [sort, setSort] = useState<Sort>("price");
-  const [highlight, setHighlight] = useState<Highlight>(null);
+  const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const providers = useMemo(() => providersFor(slot).filter((p) => p.available), [slot]);
   const choice = settings.providers[slot];
@@ -85,6 +141,7 @@ export function ModelPicker({
     let alive = true;
     for (const p of providers) {
       if (!credentials[p.id] && !p.keyOptional) continue;
+      if (p.needs === "baseUrl" && !settings.providers.openaiBaseUrl) continue;
       void backend()
         .invoke("list_models", { provider: p.id })
         .then((models) => alive && setListed((m) => ({ ...m, [p.id]: models })))
@@ -94,7 +151,7 @@ export function ModelPicker({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, JSON.stringify(credentials)]);
+  }, [slot, JSON.stringify(credentials), settings.providers.openaiBaseUrl]);
 
   const baseRows = useMemo(() => {
     const out: Omit<Row, "hourly" | "latencyMs">[] = [];
@@ -102,7 +159,8 @@ export function ModelPicker({
     for (const p of providers) {
       const fromTable = (table?.entries ?? []).filter((e) => e.provider === p.id);
       const fromApi = listed[p.id] ?? [];
-      for (const m of [...fromTable.map((e) => ({ id: e.model, displayName: e.label })), ...fromApi]) {
+      const current = choice.provider === p.id && choice.model ? [{ id: choice.model, displayName: choice.model }] : [];
+      for (const m of [...fromTable.map((e) => ({ id: e.model, displayName: e.label })), ...fromApi, ...current]) {
         const key = `${p.id}/${m.id}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -110,7 +168,7 @@ export function ModelPicker({
       }
     }
     return out;
-  }, [providers, table, listed, settings]);
+  }, [providers, table, listed, settings, choice.provider, choice.model]);
 
   useEffect(() => {
     let alive = true;
@@ -132,17 +190,19 @@ export function ModelPicker({
     };
   }, [baseRows, settings.providers.estimate, slot]);
 
+  const isSelected = (r: Row) => choice.provider === r.provider && choice.model === r.model;
   const rows: Row[] = baseRows
     .map((r) => ({
       ...r,
       hourly: estimates[`${r.provider}/${r.model}`] ?? null,
       latencyMs: latencyFor(probe, slot, r.provider, r.model),
     }))
-    .sort((a, b) => {
-      const key = sort === "price" ? "hourly" : "latencyMs";
-      return (a[key] ?? Number.POSITIVE_INFINITY) - (b[key] ?? Number.POSITIVE_INFINITY);
-    });
-  const suggested = suggest(rows, highlight);
+    .sort((a, b) => (a.hourly ?? Number.POSITIVE_INFINITY) - (b.hourly ?? Number.POSITIVE_INFINITY));
+  const cheapest = rows[best(rows, "hourly")];
+  const fastest = rows[best(rows, "latencyMs")];
+  const visible = showAll ? rows : featured(rows, isSelected);
+  const hidden = rows.length - visible.length;
+  const timed = rows.some((r) => r.latencyMs !== null);
 
   const select = (r: Row) =>
     update((s) => {
@@ -151,107 +211,48 @@ export function ModelPicker({
     });
 
   return (
-    <div>
-      <div className="row" style={{ margin: "4px 0 8px" }}>
-        <span className="muted">{t("providers.highlight")}</span>
-        <span className="btn-group" role="group" aria-label={t("providers.highlight")}>
-          {(["cheapest", "fastest", "balanced"] as const).map((h) => (
-            <button
-              key={h}
-              className="btn btn-small"
-              aria-pressed={highlight === h}
-              onClick={() => setHighlight(highlight === h ? null : h)}
-            >
-              {t(`providers.${h}`)}
-            </button>
-          ))}
-        </span>
-        <span className="spacer" />
-        <span className="muted">{t("providers.sortBy")}</span>
-        <span className="btn-group" role="group" aria-label={t("providers.sortBy")}>
-          <button className="btn btn-small" aria-pressed={sort === "price"} onClick={() => setSort("price")}>
-            {t("providers.sortPrice")}
-          </button>
-          <button className="btn btn-small" aria-pressed={sort === "latency"} onClick={() => setSort("latency")}>
-            {t("providers.sortLatency")}
-          </button>
-        </span>
-      </div>
-      <div className="table-wrap">
-        <table className="data">
-          <thead>
-            <tr>
-              <th>{t("providers.colModel")}</th>
-              {slot === "asr" ? (
-                <th className="num">{t("providers.colPerHour")}</th>
-              ) : (
-                <>
-                  <th className="num">{t("providers.colInput")}</th>
-                  <th className="num">{t("providers.colOutput")}</th>
-                </>
-              )}
-              <th className="num">{t("providers.colEstimate")}</th>
-              <th className="num">{t("providers.colLatency")}</th>
-              <th>{t("providers.colChoose")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => {
-              const selected = choice.provider === r.provider && choice.model === r.model;
-              const key = `${r.provider}/${r.model}`;
-              return (
-                <tr key={key} data-selected={selected} data-suggested={i === suggested}>
-                  <td>
-                    <div>{r.label}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      {providerName(r.provider)}
-                      {i === suggested && (
-                        <>
-                          {" "}
-                          <Badge tone="warn">{t("providers.suggested")}</Badge>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  {slot === "asr" ? (
-                    <td className="num">{r.entry ? price(audioPerHour(r.entry)) : <UnknownPrice onEdit={() => setEditing(key)} />}</td>
-                  ) : (
-                    <>
-                      <td className="num">
-                        {r.entry ? price(tokensPerMillion(r.entry.input, r.entry.unit)) : <UnknownPrice onEdit={() => setEditing(key)} />}
-                      </td>
-                      <td className="num">{r.entry ? price(tokensPerMillion(r.entry.output, r.entry.unit)) : ""}</td>
-                    </>
-                  )}
-                  <td className="num" title={t("providers.estimateFormula")}>
-                    {r.hourly !== null ? usd(r.hourly) : "—"}
-                  </td>
-                  <td className="num">{r.latencyMs !== null ? `${millis(r.latencyMs)} ms` : <span className="muted">{t("providers.notMeasured")}</span>}</td>
-                  <td>
-                    <label className="row">
-                      <input
-                        type="radio"
-                        name={`model-${slot}`}
-                        checked={selected}
-                        onChange={() => void select(r)}
-                        aria-label={t("providers.chooseModel", { model: r.label })}
-                      />
-                      {selected ? t("providers.selected") : ""}
-                    </label>
-                  </td>
-                </tr>
-              );
-            })}
-            {!rows.length && (
-              <tr>
-                <td colSpan={6} className="muted">
-                  {t("providers.noModels")}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <div className="model-list" data-timed={timed} role="radiogroup" aria-label={t(`providers.${slot}Title`)}>
+      {rows.length > 0 && (
+        <div className="model-head" aria-hidden>
+          <span />
+          <span>{t("providers.colModel")}</span>
+          <span>{t("providers.colPrice")}</span>
+          <span className="num">{t("providers.colEstimate")}</span>
+          {timed && <span className="num">{t("providers.colLatency")}</span>}
+        </div>
+      )}
+      {visible.map((r) => {
+        const key = `${r.provider}/${r.model}`;
+        const meta = PROVIDERS.find((p) => p.id === r.provider);
+        return (
+          <label key={key} className="model-row" data-selected={isSelected(r)}>
+            <input
+              type="radio"
+              name={`model-${slot}`}
+              checked={isSelected(r)}
+              onChange={() => void select(r)}
+              aria-label={t("providers.chooseModel", { model: r.label })}
+            />
+            <span className="model-name">
+              <span className="model-label">{r.label}</span>
+              {!namesProvider(r.label, providerName(r.provider)) && <span className="muted">{providerName(r.provider)}</span>}
+              {r === cheapest && <span className="tag">{t("providers.cheapest")}</span>}
+              {r === fastest && <span className="tag">{t("providers.fastest")}</span>}
+            </span>
+            <span className="model-price" title={r.entry?.note ?? undefined}>
+              {r.entry ? <UnitPrice entry={r.entry} /> : <NoPrice meta={meta} onEdit={() => setEditing(key)} />}
+            </span>
+            <span className="num model-est">{r.hourly !== null ? usd(r.hourly) : "—"}</span>
+            {timed && <span className="num muted">{r.latencyMs !== null ? `${millis(r.latencyMs)} ms` : "—"}</span>}
+          </label>
+        );
+      })}
+      {!rows.length && <p className="muted model-empty">{t("providers.noModels")}</p>}
+      {(hidden > 0 || showAll) && (
+        <button className="btn-link model-more" onClick={() => setShowAll(!showAll)}>
+          {showAll ? t("providers.showFewer") : t("providers.showAll", { count: hidden })}
+        </button>
+      )}
       {editing && (
         <PriceEditor
           slot={slot}
@@ -269,18 +270,52 @@ export function ModelPicker({
           }
         />
       )}
-      <p className="muted" style={{ fontSize: 12 }}>
-        {t("providers.priceNote", { date: table ? date(table.updated) : "—" })}
-      </p>
     </div>
   );
 }
 
-function UnknownPrice({ onEdit }: { onEdit: () => void }) {
+/** "$0.12 / audio hour" or "In $0.10 · Out $0.50 / 1M tokens". */
+function UnitPrice({ entry }: { entry: PriceEntry }) {
   const { t } = useTranslation();
+  if (entry.audio !== undefined) {
+    return <>{t("providers.audioPrice", { price: price(audioPerHour(entry)) })}</>;
+  }
   return (
-    <button className="btn-link" onClick={onEdit}>
-      {t("providers.priceUnknown")}
+    <>
+      {t("providers.tokenPrice", {
+        input: price(tokensPerMillion(entry.input, entry.unit)),
+        output: price(tokensPerMillion(entry.output, entry.unit)),
+      })}
+    </>
+  );
+}
+
+/** No published figure: point to the provider's own price page, or let the user enter one. */
+function NoPrice({ meta, onEdit }: { meta: ProviderMeta | undefined; onEdit: () => void }) {
+  const { t } = useTranslation();
+  if (meta?.pricingUrl) {
+    const url = meta.pricingUrl;
+    return (
+      <button
+        className="btn-link"
+        onClick={(e) => {
+          e.preventDefault();
+          void backend().invoke("open_url", { url });
+        }}
+      >
+        {t("providers.officialPricing")} ↗
+      </button>
+    );
+  }
+  return (
+    <button
+      className="btn-link"
+      onClick={(e) => {
+        e.preventDefault();
+        onEdit();
+      }}
+    >
+      {t("providers.enterPrice")}
     </button>
   );
 }
@@ -305,7 +340,7 @@ export function PriceEditor({
   const [b, setB] = useState(String(initial?.output ?? ""));
   const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
   return (
-    <div className="note" role="group" aria-label={t("providers.setPrice")}>
+    <div className="note" role="group" aria-label={t("providers.setPriceFor", { model })}>
       <div className="row">
         <strong>{t("providers.setPriceFor", { model })}</strong>
       </div>

@@ -1,10 +1,15 @@
-//! Price table (`data/pricing.json`), cost conversion and hourly estimates.
+//! Price table, cost conversion and hourly estimates.
+//!
+//! Prices are not built into the app. The list is kept in `data/pricing.json`
+//! in the repository, published with the documentation, and downloaded at
+//! run time (see [`PRICING_URLS`]); until a list is loaded the table is empty
+//! and costs are unknown.
 //!
 //! Money is stored and summed as integer micro-dollars ([`Usd`]) to avoid
 //! floating-point drift over long sessions; it is converted to a decimal
 //! amount only for display.
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock, RwLock};
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -138,15 +143,68 @@ pub struct PriceTable {
     pub entries: Vec<PriceEntry>,
 }
 
-pub const PRICING_JSON: &str = include_str!("../data/pricing.json");
+/// Where the published price list is downloaded from, in order.
+pub const PRICING_URLS: &[&str] = &[
+    "https://amazingkenneth.github.io/meetcue/pricing.json",
+    "https://raw.githubusercontent.com/Amazingkenneth/meetcue/main/crates/core/data/pricing.json",
+];
+
+fn current_slot() -> &'static RwLock<Arc<PriceTable>> {
+    static CURRENT: OnceLock<RwLock<Arc<PriceTable>>> = OnceLock::new();
+    CURRENT.get_or_init(|| RwLock::new(Arc::new(PriceTable::empty())))
+}
 
 impl PriceTable {
-    pub fn builtin() -> &'static PriceTable {
-        static TABLE: OnceLock<PriceTable> = OnceLock::new();
-        TABLE.get_or_init(|| serde_json::from_str(PRICING_JSON).expect("pricing.json is valid"))
+    /// A table with no prices: every cost is unknown.
+    pub fn empty() -> PriceTable {
+        PriceTable {
+            updated: String::new(),
+            currency: "USD".into(),
+            entries: Vec::new(),
+        }
     }
 
-    /// Looks up a price, letting user overrides win over the built-in table.
+    /// The price list in use (empty until one is loaded).
+    pub fn current() -> Arc<PriceTable> {
+        current_slot().read().unwrap().clone()
+    }
+
+    pub fn set_current(table: PriceTable) {
+        *current_slot().write().unwrap() = Arc::new(table);
+    }
+
+    /// Parses a published price list, rejecting anything that could produce
+    /// wrong figures: other currencies, entries without a source or check
+    /// date, missing or negative prices.
+    pub fn parse(json: &str) -> Result<PriceTable, String> {
+        let t: PriceTable = serde_json::from_str(json).map_err(|e| e.to_string())?;
+        if t.currency != "USD" {
+            return Err(format!("unsupported currency {}", t.currency));
+        }
+        if t.updated.is_empty() || t.entries.is_empty() {
+            return Err("empty price list".into());
+        }
+        for e in &t.entries {
+            let name = format!("{}/{}", e.provider, e.model);
+            if e.source.is_empty() || e.verified.is_empty() {
+                return Err(format!("{name}: no source or check date"));
+            }
+            let prices = if e.unit.is_audio() {
+                vec![e.audio]
+            } else {
+                vec![e.input, e.output]
+            };
+            if prices
+                .iter()
+                .any(|p| !p.is_some_and(|v| v.is_finite() && v >= 0.0))
+            {
+                return Err(format!("{name}: missing or invalid price"));
+            }
+        }
+        Ok(t)
+    }
+
+    /// Looks up a price, letting user overrides win over the published list.
     pub fn find<'a>(
         &'a self,
         overrides: &'a [PriceEntry],
@@ -263,24 +321,44 @@ mod tests {
         }
     }
 
+    /// The list published from this repository.
+    const PUBLISHED: &str = include_str!("../data/pricing.json");
+
     #[test]
-    fn builtin_table_is_well_formed() {
-        let t = PriceTable::builtin();
-        assert_eq!(t.currency, "USD");
-        assert!(!t.entries.is_empty());
+    fn published_list_is_valid() {
+        let t = PriceTable::parse(PUBLISHED).unwrap();
+        let mut seen = std::collections::HashSet::new();
         for e in &t.entries {
-            assert!(!e.source.is_empty(), "{} has no source", e.model);
-            assert!(!e.verified.is_empty(), "{} has no check date", e.model);
-            if e.unit.is_audio() {
-                assert!(e.audio.is_some(), "{} audio price", e.model);
-            } else {
-                assert!(
-                    e.input.is_some() && e.output.is_some(),
-                    "{} token price",
-                    e.model
-                );
-            }
+            assert!(
+                seen.insert((&e.provider, &e.model)),
+                "duplicate {}",
+                e.model
+            );
+            assert!(e.source.starts_with("https://"), "{}", e.model);
         }
+    }
+
+    #[test]
+    fn rejects_unreliable_lists() {
+        let ok = PriceTable::parse(PUBLISHED).unwrap();
+        let bad = |f: &dyn Fn(&mut PriceTable)| {
+            let mut t = ok.clone();
+            f(&mut t);
+            PriceTable::parse(&serde_json::to_string(&t).unwrap()).is_err()
+        };
+        assert!(bad(&|t| t.currency = "EUR".into()));
+        assert!(bad(&|t| t.entries.clear()));
+        assert!(bad(&|t| t.entries[0].source.clear()));
+        assert!(bad(&|t| t.entries[0].input = None));
+        assert!(bad(&|t| t.entries[0].input = Some(-1.0)));
+        assert!(PriceTable::parse("not json").is_err());
+    }
+
+    #[test]
+    fn starts_empty_until_loaded() {
+        // Other tests may have loaded a table already; only check the empty table.
+        let e = PriceTable::empty();
+        assert!(e.find(&[], "anthropic", "claude-haiku-5-5").is_none());
     }
 
     #[test]
@@ -332,7 +410,7 @@ mod tests {
 
     #[test]
     fn overrides_win() {
-        let t = PriceTable::builtin();
+        let t = PriceTable::parse(PUBLISHED).unwrap();
         let mut o = t.entries[0].clone();
         o.input = Some(0.0);
         let overrides = vec![o.clone()];

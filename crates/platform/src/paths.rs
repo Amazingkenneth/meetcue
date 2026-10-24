@@ -35,6 +35,11 @@ impl AppPaths {
         self.config_dir.join("latency-history.json")
     }
 
+    /// The last price list downloaded, used until a newer one arrives.
+    pub fn pricing_cache(&self) -> PathBuf {
+        self.config_dir.join("pricing.json")
+    }
+
     pub fn usage_ledger(&self) -> PathBuf {
         self.config_dir.join("usage.jsonl")
     }

@@ -13,7 +13,8 @@
         "stt-rt.eu.soniox.com": "api.eu.soniox.com",
         "stt-rt.jp.soniox.com": "api.jp.soniox.com",
         "stt-rt.in.soniox.com": "api.in.soniox.com"
-      }
+      },
+      "probeModel": "stt-rt-v5"
     },
     "deepgram": {
       "kind": "asr",
@@ -22,13 +23,15 @@
         "api.eu.deepgram.com",
         "api.au.deepgram.com",
         "api.in.deepgram.com"
-      ]
+      ],
+      "probeModel": "nova-3"
     },
     "anthropic": {
       "kind": "llm",
       "hosts": [
         "api.anthropic.com"
-      ]
+      ],
+      "probeModel": "claude-haiku-5-5"
     },
     "openai-compatible": {
       "kind": "llm",

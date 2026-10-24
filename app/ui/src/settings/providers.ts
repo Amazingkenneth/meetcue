@@ -9,14 +9,37 @@ export interface ProviderMeta {
   needs?: "baseUrl";
   keyOptional?: boolean;
   consoleUrl?: string;
+  /** The provider's own price page, shown when MeetCue has no figure for a model. */
+  pricingUrl?: string;
   available: boolean;
 }
 
 export const PROVIDERS: ProviderMeta[] = [
-  { id: "soniox", kind: "asr", name: "Soniox", consoleUrl: "https://console.soniox.com/", available: true },
-  { id: "deepgram", kind: "asr", name: "Deepgram", consoleUrl: "https://console.deepgram.com/", available: true },
+  {
+    id: "soniox",
+    kind: "asr",
+    name: "Soniox",
+    consoleUrl: "https://console.soniox.com/",
+    pricingUrl: "https://soniox.com/pricing",
+    available: true,
+  },
+  {
+    id: "deepgram",
+    kind: "asr",
+    name: "Deepgram",
+    consoleUrl: "https://console.deepgram.com/",
+    pricingUrl: "https://deepgram.com/pricing",
+    available: true,
+  },
   { id: "azure-speech", kind: "asr", name: "Azure Speech", available: false },
-  { id: "anthropic", kind: "llm", name: "Anthropic (Claude)", consoleUrl: "https://platform.claude.com/", available: true },
+  {
+    id: "anthropic",
+    kind: "llm",
+    name: "Anthropic (Claude)",
+    consoleUrl: "https://platform.claude.com/",
+    pricingUrl: "https://platform.claude.com/docs/en/about-claude/pricing",
+    available: true,
+  },
   { id: "openai-compatible", kind: "llm", name: "OpenAI-compatible", needs: "baseUrl", keyOptional: true, available: true },
 ];
 
