@@ -1,15 +1,19 @@
-import type { PriceEntry } from "../bindings/PriceEntry";
 import type { ModelSlot } from "../backend/types";
+import type { Settings } from "../bindings/Settings";
 
 export interface ProviderMeta {
   id: string;
   kind: "asr" | "llm";
   name: string;
-  /** Extra settings the provider needs besides its key. */
-  needs?: "baseUrl";
+  /** Whether the user can point the provider at an address of their own. */
+  baseUrl?: "required" | "optional";
+  /** The address used when no base URL is set; shown as the placeholder. */
+  defaultBaseUrl?: string;
   keyOptional?: boolean;
+  /** One model name shown as an example in the empty model field. */
+  modelExample?: string;
   consoleUrl?: string;
-  /** The provider's own price page, shown when MeetCue has no figure for a model. */
+  /** The provider's own price page. MeetCue does not list prices itself. */
   pricingUrl?: string;
   available: boolean;
 }
@@ -19,6 +23,7 @@ export const PROVIDERS: ProviderMeta[] = [
     id: "soniox",
     kind: "asr",
     name: "Soniox",
+    modelExample: "stt-rt-v5",
     consoleUrl: "https://console.soniox.com/",
     pricingUrl: "https://soniox.com/pricing",
     available: true,
@@ -27,6 +32,7 @@ export const PROVIDERS: ProviderMeta[] = [
     id: "deepgram",
     kind: "asr",
     name: "Deepgram",
+    modelExample: "nova-3",
     consoleUrl: "https://console.deepgram.com/",
     pricingUrl: "https://deepgram.com/pricing",
     available: true,
@@ -36,37 +42,47 @@ export const PROVIDERS: ProviderMeta[] = [
     id: "anthropic",
     kind: "llm",
     name: "Anthropic (Claude)",
+    baseUrl: "optional",
+    defaultBaseUrl: "https://api.anthropic.com",
+    modelExample: "claude-haiku-5-5",
     consoleUrl: "https://platform.claude.com/",
     pricingUrl: "https://platform.claude.com/docs/en/about-claude/pricing",
     available: true,
   },
-  { id: "openai-compatible", kind: "llm", name: "OpenAI-compatible", needs: "baseUrl", keyOptional: true, available: true },
+  {
+    id: "openai-compatible",
+    kind: "llm",
+    name: "OpenAI-compatible",
+    baseUrl: "required",
+    keyOptional: true,
+    available: true,
+  },
 ];
 
 export function providersFor(slot: ModelSlot): ProviderMeta[] {
   return PROVIDERS.filter((p) => p.kind === (slot === "asr" ? "asr" : "llm"));
 }
 
+export function providerMeta(id: string | null | undefined): ProviderMeta | undefined {
+  return PROVIDERS.find((p) => p.id === id);
+}
+
 export function providerName(id: string | null | undefined): string {
-  return PROVIDERS.find((p) => p.id === id)?.name ?? id ?? "—";
+  return providerMeta(id)?.name ?? id ?? "—";
 }
 
-/** Price shown in the comparison: per hour for audio, per million tokens otherwise. */
-export function audioPerHour(p: PriceEntry): number | null {
-  if (p.audio === undefined) return null;
-  switch (p.unit) {
-    case "per_audio_hour":
-      return p.audio;
-    case "per_audio_minute":
-      return p.audio * 60;
-    case "per_audio_second":
-      return p.audio * 3600;
-    default:
-      return null;
-  }
+/** The user's base URL for a provider, if they set one. */
+export function baseUrlOf(settings: Settings, id: string): string | null {
+  return settings.providers.baseUrls[id]?.trim() || null;
 }
 
-export function tokensPerMillion(value: number | undefined, unit: PriceEntry["unit"]): number | null {
-  if (value === undefined) return null;
-  return unit === "per_thousand_tokens" ? value * 1000 : value;
+/** Whether a provider has everything but its key: a base URL where one is required. */
+export function reachable(settings: Settings, p: ProviderMeta): boolean {
+  return p.baseUrl !== "required" || !!baseUrlOf(settings, p.id);
+}
+
+/** Providers chosen for at least one task, in the order the tasks are listed. */
+export function providersInUse(settings: Settings): ProviderMeta[] {
+  const ids = (["asr", "detect", "hints"] as const).map((s) => settings.providers[s].provider);
+  return PROVIDERS.filter((p) => ids.includes(p.id));
 }

@@ -4,6 +4,12 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Providers and models are entered freely, the same way in setup and in **Settings › Providers & cost**: choose a provider and type any model name for each task. The names a provider reports appear as suggestions; MeetCue no longer lists models or prices, and links to each provider's official pricing page instead.
+- Anthropic can be reached through a gateway or proxy: enter its base URL next to the key. Base URLs are now stored per provider in `providers.baseUrls`; an existing OpenAI-compatible base URL is kept.
+- Prices for budget tracking are entered under **Settings › Providers & cost › Budget › Your own prices**.
+
 ### Fixed
 
 - Opening **Run setup again**, the activity log or any other window from a button froze MeetCue on Windows: no window could be moved and the app couldn't be quit.

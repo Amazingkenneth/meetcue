@@ -13,6 +13,29 @@ async function flush() {
   }
 }
 
+/** Any provider and any model name: nothing comes from a built-in list. */
+async function chooseAll() {
+  const pick = async (label: string, value: string) => {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    await flush();
+  };
+  const [asrProvider, detectProvider, hintsProvider] = screen.getAllByLabelText("Provider");
+  const models = () => screen.getAllByLabelText("Model");
+  fireEvent.change(asrProvider, { target: { value: "soniox" } });
+  await flush();
+  fireEvent.change(models()[0], { target: { value: "stt-rt-v5" } });
+  await flush();
+  fireEvent.change(detectProvider, { target: { value: "openai-compatible" } });
+  await flush();
+  fireEvent.change(models()[1], { target: { value: "my-local-model" } });
+  await flush();
+  fireEvent.change(hintsProvider, { target: { value: "openai-compatible" } });
+  await flush();
+  fireEvent.change(models()[2], { target: { value: "another-model" } });
+  await flush();
+  await pick("OpenAI-compatible base URL", "http://localhost:11434/v1");
+}
+
 describe("Wizard", () => {
   beforeEach(() => {
     setLanguage("en");
@@ -30,21 +53,12 @@ describe("Wizard", () => {
     expect(screen.getByText("Choose a model for each of the three tasks to continue.")).toBeInTheDocument();
     const next = screen.getByRole("button", { name: "Next" });
     expect(next).toBeDisabled();
-    for (const name of ["Use Soniox stt-rt-v5"]) {
-      fireEvent.click(screen.getByRole("radio", { name }));
-      await flush();
-    }
-    const haiku = screen.getAllByRole("radio", { name: "Use Claude Haiku 5.5" });
-    expect(haiku).toHaveLength(2);
-    for (const r of haiku) {
-      fireEvent.click(r);
-      await flush();
-    }
+    await chooseAll();
     expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    await flush();
     expect(screen.getByLabelText("Soniox key")).toBeInTheDocument();
-    expect(screen.getByLabelText("Anthropic (Claude) key")).toBeInTheDocument();
+    expect(screen.getByLabelText("OpenAI-compatible key")).toBeInTheDocument();
+    expect(screen.getByLabelText("OpenAI-compatible base URL")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Anthropic (Claude) key")).not.toBeInTheDocument();
   });
 
   it("closes its window through the backend when finished", async () => {
@@ -59,13 +73,7 @@ describe("Wizard", () => {
     };
     await next();
     await next();
-    fireEvent.click(screen.getByRole("radio", { name: "Use Soniox stt-rt-v5" }));
-    await flush();
-    for (const r of screen.getAllByRole("radio", { name: "Use Claude Haiku 5.5" })) {
-      fireEvent.click(r);
-      await flush();
-    }
-    await next();
+    await chooseAll();
     await next();
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     await flush();

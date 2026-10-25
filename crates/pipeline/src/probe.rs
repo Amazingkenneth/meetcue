@@ -178,23 +178,24 @@ fn hosts_for(t: &ProbeTarget, env: &ProbeEnv) -> Vec<String> {
     if !t.hosts.is_empty() {
         return t.hosts.clone();
     }
+    let cfg = (env.resolve)(t, None).ok();
+    // A base URL of the user's own is the only host they talk to.
+    let own = cfg.as_ref().and_then(|c| {
+        c.base_url
+            .as_deref()
+            .and_then(|u| u.split("://").nth(1))
+            .and_then(|r| r.split(['/', ':']).next())
+            .filter(|h| !h.is_empty())
+            .map(String::from)
+    });
+    if let Some(h) = own {
+        return vec![h];
+    }
     let known = EndpointCatalog::builtin().hosts(&t.provider);
     if !known.is_empty() {
         return known.to_vec();
     }
-    let Ok(cfg) = (env.resolve)(t, None) else {
-        return Vec::new();
-    };
-    cfg.host
-        .or_else(|| {
-            cfg.base_url
-                .as_deref()
-                .and_then(|u| u.split("://").nth(1))
-                .and_then(|r| r.split(['/', ':']).next())
-                .map(String::from)
-        })
-        .into_iter()
-        .collect()
+    cfg.and_then(|c| c.host).into_iter().collect()
 }
 
 async fn time_network(

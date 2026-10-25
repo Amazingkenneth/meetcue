@@ -6,7 +6,6 @@ import type { DeviceList } from "../bindings/DeviceList";
 import type { HotkeyState } from "../bindings/HotkeyState";
 import type { Hotkeys } from "../bindings/Hotkeys";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
-import type { PriceTable } from "../bindings/PriceTable";
 import type { ProbeReport } from "../bindings/ProbeReport";
 import type { Settings } from "../bindings/Settings";
 import type { UsageSummary } from "../bindings/UsageSummary";
@@ -14,11 +13,11 @@ import { Badge, Field, Section, Switch } from "../design/components";
 import { useAppEvents, useAppInfo } from "../state/hooks";
 import { millis, seconds, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
-import { KeyField } from "./Keys";
+import type { ModelSlot } from "../backend/types";
 import { LogView } from "./LogView";
-import { ModelsPanel } from "./ModelPicker";
+import { ModelsPanel, PriceEditor, SLOTS } from "./ModelPicker";
 import { ProbePanel } from "./Probe";
-import { PROVIDERS, providerName } from "./providers";
+import { providerName } from "./providers";
 import { useDraft } from "./useDraft";
 
 type Update = (f: (s: Settings) => Settings) => Promise<void>;
@@ -420,18 +419,6 @@ export function useCredentials(): [Record<string, boolean>, () => void] {
   return [status, refresh];
 }
 
-/** The price list in use, updated when a newer one is downloaded. */
-export function usePricing(): PriceTable | null {
-  const [table, setTable] = useState<PriceTable | null>(null);
-  useEffect(() => {
-    void backend().invoke("get_pricing").then(setTable);
-  }, []);
-  useAppEvents((e) => {
-    if (e.type === "pricingChanged") setTable(e.pricing);
-  });
-  return table;
-}
-
 function EndpointField({ settings, update, probe }: { settings: Settings; update: Update; probe: ProbeReport | null }) {
   const { t } = useTranslation();
   const provider = settings.providers.asr.provider;
@@ -515,13 +502,27 @@ function Assumptions({ settings, update }: { settings: Settings; update: Update 
   );
 }
 
-/** Prices the user entered; they win over the providers' own, so they can be removed here. */
+/**
+ * Prices the user entered for budget tracking; they win over any price MeetCue
+ * knows. The model list never shows prices, so this is where they are added.
+ */
 function OwnPrices({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
+  const [editing, setEditing] = useState<ModelSlot | null>(null);
   const own = settings.providers.pricingOverrides;
-  if (!own.length) return null;
+  const has = (provider: string, model: string) => own.some((e) => e.provider === provider && e.model === model);
+  const seen = new Set<string>();
+  const missing = SLOTS.filter((slot) => {
+    const { provider, model } = settings.providers[slot];
+    const key = `${provider}/${model}`;
+    if (!provider || !model || has(provider, model) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const editingChoice = editing ? settings.providers[editing] : null;
+  if (!own.length && !missing.length) return null;
   return (
-    <details className="assumptions">
+    <details className="assumptions" open={editing !== null || undefined}>
       <summary>{t("providers.ownPrices", { count: own.length })}</summary>
       <p className="muted">{t("providers.ownPricesLead")}</p>
       <ul className="own-prices">
@@ -547,7 +548,35 @@ function OwnPrices({ settings, update }: { settings: Settings; update: Update })
             </button>
           </li>
         ))}
+        {missing.map((slot) => (
+          <li key={slot} className="row">
+            <span>
+              {providerName(settings.providers[slot].provider)} <span className="mono">{settings.providers[slot].model}</span>
+            </span>
+            <span className="spacer" />
+            <button className="btn-link" onClick={() => setEditing(slot)}>
+              {t("providers.enterPrice")}
+            </button>
+          </li>
+        ))}
       </ul>
+      {editing && editingChoice?.provider && editingChoice.model && (
+        <PriceEditor
+          slot={editing}
+          provider={editingChoice.provider}
+          model={editingChoice.model}
+          onCancel={() => setEditing(null)}
+          onSave={(entry) =>
+            void update((s) => {
+              s.providers.pricingOverrides = [
+                ...s.providers.pricingOverrides.filter((e) => !(e.provider === entry.provider && e.model === entry.model)),
+                entry,
+              ];
+              return s;
+            }).then(() => setEditing(null))
+          }
+        />
+      )}
     </details>
   );
 }
@@ -555,7 +584,6 @@ function OwnPrices({ settings, update }: { settings: Settings; update: Update })
 function ProvidersTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   const [credentials, refresh] = useCredentials();
-  const table = usePricing();
   const [probe, setProbe] = useState<ProbeReport | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   useEffect(() => {
@@ -565,31 +593,14 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
   return (
     <>
       <h2 className="page">{t("settings.tab.providers")}</h2>
-      <Section title={t("providers.modelsTitle")}>
+      <Section title={t("providers.modelsTitle")} lead={t("providers.modelsLead")}>
         <ModelsPanel
           settings={settings}
           update={update}
-          table={table}
-          probe={probe}
           credentials={credentials}
+          onCredentialsChanged={refresh}
           asrExtra={<EndpointField settings={settings} update={update} probe={probe} />}
-          footer={
-            <>
-              <details className="assumptions">
-                <summary>{t("providers.assumptionsTitle")}</summary>
-                <p className="muted">{t("providers.assumptionsLead")}</p>
-                <Assumptions settings={settings} update={update} />
-              </details>
-              <OwnPrices settings={settings} update={update} />
-            </>
-          }
         />
-      </Section>
-      <div id="keys" />
-      <Section title={t("providers.keysTitle")} lead={t("providers.keysLead")}>
-        {PROVIDERS.filter((p) => p.available).map((p) => (
-          <KeyField key={p.id} provider={p} configured={!!credentials[p.id]} settings={settings} update={update} onChanged={refresh} />
-        ))}
       </Section>
       <Section title={t("probe.title")}>
         <ProbePanel settings={settings} credentials={credentials} update={update} onReport={setProbe} />
@@ -644,6 +655,12 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
             <option value="endSession">{t("budget.endSession")}</option>
           </select>
         </Field>
+        <OwnPrices settings={settings} update={update} />
+        <details className="assumptions">
+          <summary>{t("providers.assumptionsTitle")}</summary>
+          <p className="muted">{t("providers.assumptionsLead")}</p>
+          <Assumptions settings={settings} update={update} />
+        </details>
       </Section>
       <Section title={t("usage.title", { month: usage?.month ?? "" })} lead={t("usage.lead")}>
         <div className="table-wrap">

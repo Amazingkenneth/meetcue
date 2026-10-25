@@ -17,7 +17,7 @@ This page explains what MeetCue sends to which provider, what it keeps on your c
 
 ## Price lookups
 
-To show current prices, MeetCue reads the public pricing pages of Anthropic, Soniox and Deepgram and the [price reference](/reference/pricing) on this site, at start-up and when you open the model list. These are ordinary page downloads: no key, account or meeting content is sent.
+To estimate costs for your usage and budget, MeetCue reads the public pricing pages of Anthropic, Soniox and Deepgram and the [price reference](/reference/pricing) on this site, at start-up. These are ordinary page downloads: no key, account or meeting content is sent.
 
 Each provider's own privacy policy and data retention terms apply to what you send them. Check them before using MeetCue in confidential meetings.
 

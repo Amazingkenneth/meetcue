@@ -1,320 +1,180 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { ModelSlot } from "../backend/types";
 import type { ModelInfo } from "../bindings/ModelInfo";
 import type { PriceEntry } from "../bindings/PriceEntry";
-import type { PriceTable } from "../bindings/PriceTable";
-import type { ProbeReport } from "../bindings/ProbeReport";
 import type { Settings } from "../bindings/Settings";
-import { estimateTask } from "../util/cost";
-import { day, millis, price, usd } from "../util/format";
-import { audioPerHour, PROVIDERS, providerName, providersFor, tokensPerMillion, type ProviderMeta } from "./providers";
+import { Field } from "../design/components";
+import { KeyField } from "./Keys";
+import { baseUrlOf, providerMeta, providersFor, providersInUse, reachable, type ProviderMeta } from "./providers";
 
 type Update = (f: (s: Settings) => Settings) => Promise<void>;
 
-export interface Row {
-  provider: string;
-  model: string;
-  label: string;
-  entry: PriceEntry | null;
-  hourly: number | null;
-  latencyMs: number | null;
+export const SLOTS: ModelSlot[] = ["asr", "detect", "hints"];
+
+/** Whether every task has a provider and a model name. */
+export function allChosen(settings: Settings): boolean {
+  return SLOTS.every((s) => settings.providers[s].provider && settings.providers[s].model);
 }
 
-const SLOTS: ModelSlot[] = ["asr", "detect", "hints"];
-
-/** `claude-opus-4-5-20251101` → `claude-opus-4-5` (a dated snapshot of an alias). */
-export function snapshotAlias(model: string): string | null {
-  const m = /^(.+)-\d{8}$/.exec(model);
-  return m ? m[1] : null;
+/** Choosing another provider clears the model, since model names don't carry over. */
+export function chooseProvider(s: Settings, slot: ModelSlot, provider: string | null): Settings {
+  const prev = s.providers[slot];
+  if (prev.provider === provider) return s;
+  s.providers[slot] = { ...prev, provider, model: null, endpoint: { mode: "auto" } };
+  return s;
 }
 
-/** The price for a model: the user's own figure, else the price list (live or published). */
-export function findPrice(table: PriceTable | null, settings: Settings, provider: string, model: string): PriceEntry | null {
-  const all = [...settings.providers.pricingOverrides, ...(table?.entries ?? [])];
-  const exact = all.find((e) => e.provider === provider && e.model === model);
-  if (exact) return exact;
-  const alias = snapshotAlias(model);
-  return (alias && all.find((e) => e.provider === provider && e.model === alias)) || null;
-}
-
-export function latencyFor(probe: ProbeReport | null, slot: ModelSlot, provider: string, model: string): number | null {
-  if (!probe) return null;
-  const matches = probe.results.filter((r) => r.provider === provider && (r.model === model || r.model === null) && !r.error);
-  const values = matches
-    .map((r) => (slot === "asr" ? r.finalResult?.medianMs : (r.firstPoint ?? r.firstToken)?.medianMs))
-    .filter((v): v is number => typeof v === "number");
-  return values.length ? Math.min(...values) : null;
-}
-
-/** Index of the row with the lowest value of `key`, if at least two rows have one. */
-export function best(rows: Row[], key: "hourly" | "latencyMs"): number {
-  const known = rows.map((r, i) => ({ v: r[key], i })).filter((x): x is { v: number; i: number } => x.v !== null);
-  if (known.length < 2) return -1;
-  return known.reduce((a, b) => (b.v < a.v ? b : a)).i;
-}
-
-/** Rows shown before "Show all": the cheapest few priced models plus the current choice. */
-export function featured(rows: Row[], isSelected: (r: Row) => boolean, limit = 4): Row[] {
-  const priced = rows.filter((r) => r.entry).slice(0, limit);
-  const pool = priced.length ? priced : rows.slice(0, limit);
-  return rows.filter((r) => pool.includes(r) || isSelected(r));
-}
-
-/** Whether a model's name already says who makes it ("Claude Haiku 5.5" for Anthropic (Claude)). */
-export function namesProvider(label: string, providerName: string): boolean {
-  const l = label.toLowerCase();
-  return providerName
-    .split(/[\s()]+/)
-    .filter((w) => w.length > 2)
-    .some((w) => l.includes(w.toLowerCase()));
-}
-
-/** Models for every task, with one note on where the prices come from. */
+/**
+ * The same form in setup and in Settings: a provider and a model name for each
+ * task, then the address and key of every provider in use.
+ */
 export function ModelsPanel({
   settings,
   update,
-  table,
-  probe,
   credentials,
+  onCredentialsChanged,
   asrExtra,
-  footer,
 }: {
   settings: Settings;
   update: Update;
-  table: PriceTable | null;
-  probe: ProbeReport | null;
   credentials: Record<string, boolean>;
+  onCredentialsChanged: () => void;
   asrExtra?: ReactNode;
-  footer?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const [refreshing, setRefreshing] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const loaded = !!table?.entries.length;
-  const refresh = (force: boolean) => {
-    setRefreshing(true);
-    setFailed(false);
-    void backend()
-      .invoke("refresh_pricing", { force })
-      .catch(() => setFailed(true))
-      .finally(() => setRefreshing(false));
-  };
-  // Read the providers' current prices whenever the model list is shown.
-  useEffect(() => refresh(false), []);
+  const inUse = providersInUse(settings);
   return (
     <div className="models">
       {SLOTS.map((slot) => (
         <div key={slot} className="model-slot">
           <h3>{t(`providers.${slot}Title`)}</h3>
           <p className="muted">{t(`providers.${slot}Lead`)}</p>
-          <ModelPicker slot={slot} settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
+          <ModelPicker slot={slot} settings={settings} update={update} credentials={credentials} />
           {slot === "asr" && asrExtra}
         </div>
       ))}
-      <p className="price-note">
-        {loaded ? t("providers.priceSource", { date: day(table!.updated) }) : t("providers.priceMissing")}{" "}
-        <button className="btn-link" disabled={refreshing} onClick={() => refresh(true)}>
-          {refreshing ? t("providers.refreshing") : t("providers.refreshPrices")}
-        </button>
-        {failed && <span className="price-failed"> · {t("providers.refreshFailed")}</span>}
-      </p>
-      {footer}
+      <div id="keys" />
+      <div className="model-slot">
+        <h3>{t("providers.keysTitle")}</h3>
+        <p className="muted">{t("providers.keysLead")}</p>
+        {inUse.map((p) => (
+          <KeyField
+            key={p.id}
+            provider={p}
+            configured={!!credentials[p.id]}
+            settings={settings}
+            update={update}
+            onChanged={onCredentialsChanged}
+          />
+        ))}
+        {!inUse.length && <p className="muted">{t("providers.keysNone")}</p>}
+      </div>
     </div>
   );
 }
 
+/** Provider and model for one task. The model is typed freely; the provider's own list only suggests. */
 export function ModelPicker({
   slot,
   settings,
   update,
-  table,
-  probe,
   credentials,
 }: {
   slot: ModelSlot;
   settings: Settings;
   update: Update;
-  table: PriceTable | null;
-  probe: ProbeReport | null;
   credentials: Record<string, boolean>;
 }) {
   const { t } = useTranslation();
-  const [listed, setListed] = useState<Record<string, ModelInfo[]>>({});
-  const [showAll, setShowAll] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
-  const providers = useMemo(() => providersFor(slot).filter((p) => p.available), [slot]);
   const choice = settings.providers[slot];
-
-  // Fetch model lists from providers whose key is configured.
-  useEffect(() => {
-    let alive = true;
-    for (const p of providers) {
-      if (!credentials[p.id] && !p.keyOptional) continue;
-      if (p.needs === "baseUrl" && !settings.providers.openaiBaseUrl) continue;
-      void backend()
-        .invoke("list_models", { provider: p.id })
-        .then((models) => alive && setListed((m) => ({ ...m, [p.id]: models })))
-        .catch(() => undefined);
-    }
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot, JSON.stringify(credentials), settings.providers.openaiBaseUrl]);
-
-  const baseRows = useMemo(() => {
-    const out: Omit<Row, "hourly" | "latencyMs">[] = [];
-    const seen = new Set<string>();
-    for (const p of providers) {
-      const fromTable = (table?.entries ?? []).filter((e) => e.provider === p.id);
-      const fromApi = listed[p.id] ?? [];
-      const current = choice.provider === p.id && choice.model ? [{ id: choice.model, displayName: choice.model }] : [];
-      const models: ModelInfo[] = [...fromTable.map((e) => ({ id: e.model, displayName: e.label })), ...fromApi, ...current];
-      for (const m of models) {
-        const key = `${p.id}/${m.id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        // A price listed with the model (OpenAI-compatible servers) is the provider's own.
-        const listedPrice = m.price ?? null;
-        out.push({
-          provider: p.id,
-          model: m.id,
-          label: m.displayName || m.id,
-          entry: findPrice(table, settings, p.id, m.id) ?? listedPrice,
-        });
-      }
-    }
-    return out;
-  }, [providers, table, listed, settings, choice.provider, choice.model]);
-
-  const isSelected = (r: Row) => choice.provider === r.provider && choice.model === r.model;
-  const rows: Row[] = baseRows
-    .map((r) => ({
-      ...r,
-      hourly: r.entry ? estimateTask(r.entry, slot, settings.providers.estimate) : null,
-      latencyMs: latencyFor(probe, slot, r.provider, r.model),
-    }))
-    .sort((a, b) => (a.hourly ?? Number.POSITIVE_INFINITY) - (b.hourly ?? Number.POSITIVE_INFINITY));
-  const cheapest = rows[best(rows, "hourly")];
-  const fastest = rows[best(rows, "latencyMs")];
-  const visible = showAll ? rows : featured(rows, isSelected);
-  const hidden = rows.length - visible.length;
-  const timed = rows.some((r) => r.latencyMs !== null);
-
-  const select = (r: Row) =>
-    update((s) => {
-      s.providers[slot] = { ...s.providers[slot], provider: r.provider, model: r.model };
-      return s;
-    });
+  const meta = providerMeta(choice.provider);
+  const suggestions = useModelList(meta, settings, credentials);
+  const providerId = `provider-${slot}`;
+  const modelId = `model-${slot}`;
+  const listId = `models-${slot}`;
 
   return (
-    <div className="model-list" data-timed={timed} role="radiogroup" aria-label={t(`providers.${slot}Title`)}>
-      {rows.length > 0 && (
-        <div className="model-head" aria-hidden>
-          <span />
-          <span>{t("providers.colModel")}</span>
-          <span>{t("providers.colPrice")}</span>
-          <span className="num">{t("providers.colEstimate")}</span>
-          {timed && <span className="num">{t("providers.colLatency")}</span>}
-        </div>
-      )}
-      {visible.map((r) => {
-        const key = `${r.provider}/${r.model}`;
-        const meta = PROVIDERS.find((p) => p.id === r.provider);
-        return (
-          <label key={key} className="model-row" data-selected={isSelected(r)}>
-            <input
-              type="radio"
-              name={`model-${slot}`}
-              checked={isSelected(r)}
-              onChange={() => void select(r)}
-              aria-label={t("providers.chooseModel", { model: r.label })}
-            />
-            <span className="model-name">
-              <span className="model-label">{r.label}</span>
-              {!namesProvider(r.label, providerName(r.provider)) && <span className="muted">{providerName(r.provider)}</span>}
-              {r === cheapest && <span className="tag">{t("providers.cheapest")}</span>}
-              {r === fastest && <span className="tag">{t("providers.fastest")}</span>}
-            </span>
-            <span className="model-price" title={r.entry?.note ?? undefined}>
-              {r.entry ? <UnitPrice entry={r.entry} /> : <NoPrice meta={meta} onEdit={() => setEditing(key)} />}
-            </span>
-            <span className="num model-est">{r.hourly !== null ? usd(r.hourly) : "—"}</span>
-            {timed && <span className="num muted">{r.latencyMs !== null ? `${millis(r.latencyMs)} ms` : "—"}</span>}
-          </label>
-        );
-      })}
-      {!rows.length && <p className="muted model-empty">{t("providers.noModels")}</p>}
-      {(hidden > 0 || showAll) && (
-        <button className="btn-link model-more" onClick={() => setShowAll(!showAll)}>
-          {showAll ? t("providers.showFewer") : t("providers.showAll", { count: hidden })}
-        </button>
-      )}
-      {editing && (
-        <PriceEditor
-          slot={slot}
-          provider={editing.split("/")[0]}
-          model={editing.slice(editing.indexOf("/") + 1)}
-          onCancel={() => setEditing(null)}
-          onSave={(entry) =>
+    <div className="model-fields">
+      <Field label={t("providers.provider")} htmlFor={providerId}>
+        <select
+          id={providerId}
+          value={choice.provider ?? ""}
+          onChange={(e) => void update((s) => chooseProvider(s, slot, e.target.value || null))}
+        >
+          <option value="">{t("providers.chooseProvider")}</option>
+          {providersFor(slot)
+            .filter((p) => p.available || p.id === choice.provider)
+            .map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+        </select>
+        {meta && <PricingLink meta={meta} />}
+      </Field>
+      <Field label={t("providers.model")} htmlFor={modelId}>
+        <input
+          id={modelId}
+          className="input-wide"
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={!meta}
+          list={suggestions.length ? listId : undefined}
+          placeholder={meta?.modelExample ? t("providers.modelExample", { model: meta.modelExample }) : t("providers.modelPlaceholder")}
+          value={choice.model ?? ""}
+          onChange={(e) =>
             void update((s) => {
-              s.providers.pricingOverrides = [
-                ...s.providers.pricingOverrides.filter((e) => !(e.provider === entry.provider && e.model === entry.model)),
-                entry,
-              ];
+              s.providers[slot] = { ...s.providers[slot], model: e.target.value.trim() || null };
               return s;
-            }).then(() => setEditing(null))
+            })
           }
         />
-      )}
+        {suggestions.length > 0 && (
+          <datalist id={listId}>
+            {suggestions.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.displayName && m.displayName !== m.id ? m.displayName : undefined}
+              </option>
+            ))}
+          </datalist>
+        )}
+      </Field>
     </div>
   );
 }
 
-/** "$0.12 / audio hour" or "In $0.10 · Out $0.50 / 1M tokens". */
-function UnitPrice({ entry }: { entry: PriceEntry }) {
-  const { t } = useTranslation();
-  if (entry.audio !== undefined) {
-    return <>{t("providers.audioPrice", { price: price(audioPerHour(entry)) })}</>;
-  }
-  return (
-    <>
-      {t("providers.tokenPrice", {
-        input: price(tokensPerMillion(entry.input, entry.unit)),
-        output: price(tokensPerMillion(entry.output, entry.unit)),
-      })}
-    </>
-  );
+/** Models the provider itself reports, once it can be reached. Nothing is built in. */
+function useModelList(meta: ProviderMeta | undefined, settings: Settings, credentials: Record<string, boolean>): ModelInfo[] {
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const id = meta?.id;
+  const ready = !!meta && reachable(settings, meta) && (!!credentials[meta.id] || !!meta.keyOptional);
+  const url = id ? baseUrlOf(settings, id) : null;
+  useEffect(() => {
+    setModels([]);
+    if (!id || !ready) return;
+    let alive = true;
+    void backend()
+      .invoke("list_models", { provider: id })
+      .then((m) => alive && setModels(m))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [id, ready, url]);
+  return models;
 }
 
-/** No published figure: point to the provider's own price page, or let the user enter one. */
-function NoPrice({ meta, onEdit }: { meta: ProviderMeta | undefined; onEdit: () => void }) {
+/** A link to the provider's own price page; MeetCue never lists prices. */
+export function PricingLink({ meta }: { meta: ProviderMeta }) {
   const { t } = useTranslation();
-  if (meta?.pricingUrl) {
-    const url = meta.pricingUrl;
-    return (
-      <button
-        className="btn-link"
-        onClick={(e) => {
-          e.preventDefault();
-          void backend().invoke("open_url", { url });
-        }}
-      >
-        {t("providers.officialPricing")} ↗
-      </button>
-    );
-  }
+  if (!meta.pricingUrl) return <span className="muted">{t("providers.pricingElsewhere")}</span>;
+  const url = meta.pricingUrl;
   return (
-    <button
-      className="btn-link"
-      onClick={(e) => {
-        e.preventDefault();
-        onEdit();
-      }}
-    >
-      {t("providers.enterPrice")}
+    <button className="btn-link" onClick={() => void backend().invoke("open_url", { url })}>
+      {t("providers.officialPricing")} ↗
     </button>
   );
 }

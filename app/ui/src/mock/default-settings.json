@@ -40,7 +40,7 @@
         "mode": "auto"
       }
     },
-    "openaiBaseUrl": null,
+    "baseUrls": {},
     "proxy": null,
     "pricingOverrides": [],
     "estimate": {

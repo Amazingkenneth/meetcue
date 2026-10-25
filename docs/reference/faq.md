@@ -4,11 +4,11 @@ Short answers to common questions. For problems, start at [Troubleshooting](/tro
 
 ## Does MeetCue need a subscription?
 
-No. MeetCue is free and open source under the MIT license. You pay the speech and model providers directly, with your own keys, at their usual prices. The settings show an estimated cost per hour before you choose, and the actual usage afterwards.
+No. MeetCue is free and open source under the MIT license. You pay the speech and model providers directly, with your own keys, at their usual prices. Each provider's **Official pricing** link shows its current prices, and the settings show the actual usage afterwards.
 
 ## How much does an hour of meetings cost?
 
-It depends on the models you choose, and the difference can be dozens of times. A typical setup with a small model costs a few tens of US cents per hour, mostly for speech recognition. The setup window and **Settings › Providers & cost** show an estimate for your choices; see also the [price reference](/reference/pricing).
+It depends on the models you choose, and the difference can be dozens of times. A typical setup with a small model costs a few tens of US cents per hour, mostly for speech recognition. Check each provider's official pricing page, linked next to it in **Settings › Providers & cost**; the latency probe also estimates the hourly cost of each combination. See also the [price reference](/reference/pricing).
 
 ## Can the other participants see MeetCue?
 

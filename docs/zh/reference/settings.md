@@ -47,7 +47,7 @@
 | 语音识别 | `providers.asr` |
 | 问题检测模型 | `providers.detect` |
 | 要点模型 | `providers.hints` |
-| Base URL（OpenAI 兼容接口） | `providers.openaiBaseUrl` |
+| 各供应商的接口地址（OpenAI 兼容接口必填，Anthropic 可选） | `providers.baseUrls`，例如 `{"openai-compatible": "https://host/v1"}`。旧文件中的 `providers.openaiBaseUrl` 会在加载时移到这里 |
 | HTTPS 代理 | `providers.proxy`；留空表示使用系统代理 |
 | 手动填写的价格（列在 **你填写的价格** 中，可在那里删除） | `providers.pricingOverrides` |
 | 费用估算假设（**费用如何估算**） | `providers.estimate`：`speechRatio`、`questionsPerHour`、`hintInputTokens`、`hintOutputTokens`、`detectInputTokens`、`detectOutputTokens`、`systemTokens`、`cancelOverhead` |

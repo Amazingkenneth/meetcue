@@ -6,9 +6,10 @@ import type { PriceEntry } from "./PriceEntry";
 
 export type ProviderSettings = { asr: ModelChoice, detect: ModelChoice, hints: ModelChoice, 
 /**
- * Base URL for the OpenAI-compatible provider, e.g. `https://host/v1`.
+ * Base URL per provider id, e.g. `https://host/v1` for `openai-compatible`.
+ * A provider without an entry uses its own default address.
  */
-openaiBaseUrl: string | null, 
+baseUrls: { [key in string]: string }, 
 /**
  * Explicit HTTPS proxy; when empty the system proxy settings are used.
  */

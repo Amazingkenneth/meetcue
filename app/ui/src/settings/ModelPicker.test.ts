@@ -1,53 +1,40 @@
 import { describe, expect, it } from "vitest";
-import type { PriceEntry } from "../bindings/PriceEntry";
-import type { PriceTable } from "../bindings/PriceTable";
 import type { Settings } from "../bindings/Settings";
 import defaults from "../mock/default-settings.json";
-import { best, featured, findPrice, namesProvider, snapshotAlias, type Row } from "./ModelPicker";
+import { allChosen, chooseProvider } from "./ModelPicker";
+import { baseUrlOf, providerMeta, providersInUse, reachable } from "./providers";
 
-const entry = { provider: "p", model: "m", label: "", unit: "per_million_tokens", source: "", verified: "" } as PriceEntry;
-const row = (model: string, hourly: number | null, latencyMs: number | null = null): Row => ({
-  provider: "p",
-  model,
-  label: model,
-  entry: hourly === null ? null : entry,
-  hourly,
-  latencyMs,
-});
+const fresh = () => structuredClone(defaults) as unknown as Settings;
 
-describe("model list", () => {
-  it("shows the cheapest priced models and keeps the current choice visible", () => {
-    const rows = [row("a", 1), row("b", 2), row("c", 3), row("d", 4), row("e", 5), row("x", null)];
-    expect(featured(rows, () => false).map((r) => r.model)).toEqual(["a", "b", "c", "d"]);
-    expect(featured(rows, (r) => r.model === "x").map((r) => r.model)).toEqual(["a", "b", "c", "d", "x"]);
-    // Without any prices, the first few models are shown.
-    const unpriced = [row("u", null), row("v", null)];
-    expect(featured(unpriced, () => false)).toHaveLength(2);
+describe("provider choice", () => {
+  it("needs a provider and a model name for every task", () => {
+    const s = fresh();
+    expect(allChosen(s)).toBe(false);
+    s.providers.asr = { ...s.providers.asr, provider: "soniox", model: "any-model-name" };
+    s.providers.detect = { ...s.providers.detect, provider: "openai-compatible", model: "my-local-model" };
+    expect(allChosen(s)).toBe(false);
+    s.providers.hints = { ...s.providers.hints, provider: "anthropic", model: "claude-next" };
+    expect(allChosen(s)).toBe(true);
   });
 
-  it("tags the best row only when there is something to compare", () => {
-    expect(best([row("a", 2), row("b", 1)], "hourly")).toBe(1);
-    expect(best([row("a", 2), row("b", null)], "hourly")).toBe(-1);
-    expect(best([row("a", 1, 300), row("b", 2, 200)], "latencyMs")).toBe(1);
+  it("clears the model when the provider changes, and keeps it otherwise", () => {
+    const s = fresh();
+    s.providers.hints = { ...s.providers.hints, provider: "anthropic", model: "claude-haiku-5-5" };
+    expect(chooseProvider(s, "hints", "anthropic").providers.hints.model).toBe("claude-haiku-5-5");
+    const changed = chooseProvider(s, "hints", "openai-compatible").providers.hints;
+    expect(changed).toMatchObject({ provider: "openai-compatible", model: null });
   });
 
-  it("omits the provider when the model name already says it", () => {
-    expect(namesProvider("Claude Haiku 5.5", "Anthropic (Claude)")).toBe(true);
-    expect(namesProvider("Deepgram Nova-3", "Deepgram")).toBe(true);
-    expect(namesProvider("claude-opus-4-1", "Anthropic (Claude)")).toBe(true);
-    expect(namesProvider("qwen-max", "OpenAI-compatible")).toBe(false);
-  });
-
-  it("prices a dated snapshot like its alias, and lets the user's own price win", () => {
-    const settings = structuredClone(defaults) as unknown as Settings;
-    const haiku = { ...entry, provider: "anthropic", model: "claude-haiku-4-5", input: 1, output: 5 };
-    const table: PriceTable = { updated: "2026-10-24", currency: "USD", entries: [haiku] };
-    expect(snapshotAlias("claude-haiku-4-5-20251001")).toBe("claude-haiku-4-5");
-    expect(snapshotAlias("nova-3")).toBeNull();
-    expect(findPrice(table, settings, "anthropic", "claude-haiku-4-5-20251001")).toBe(haiku);
-    expect(findPrice(table, settings, "anthropic", "claude-opus-4-8")).toBeNull();
-    const mine = { ...haiku, input: 0.5, source: "user" };
-    settings.providers.pricingOverrides = [mine];
-    expect(findPrice(table, settings, "anthropic", "claude-haiku-4-5")).toBe(mine);
+  it("lists each provider in use once and needs a base URL only where one is required", () => {
+    const s = fresh();
+    s.providers.detect = { ...s.providers.detect, provider: "openai-compatible", model: "m" };
+    s.providers.hints = { ...s.providers.hints, provider: "openai-compatible", model: "m" };
+    expect(providersInUse(s).map((p) => p.id)).toEqual(["openai-compatible"]);
+    const compat = providerMeta("openai-compatible")!;
+    expect(reachable(s, compat)).toBe(false);
+    s.providers.baseUrls["openai-compatible"] = " https://host/v1 ";
+    expect(reachable(s, compat)).toBe(true);
+    expect(baseUrlOf(s, "openai-compatible")).toBe("https://host/v1");
+    expect(reachable(s, providerMeta("anthropic")!)).toBe(true);
   });
 });

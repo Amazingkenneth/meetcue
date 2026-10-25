@@ -7,7 +7,8 @@ import { Badge } from "../design/components";
 import { errorTitle } from "../util/errors";
 import { type ProviderMeta } from "./providers";
 
-/** One compact row per provider. The key itself never comes back from the backend. */
+/** One compact row per provider: its base URL where it takes one, and its key.
+ * The key itself never comes back from the backend. */
 export function KeyField({
   provider,
   configured,
@@ -26,6 +27,7 @@ export function KeyField({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<VerifyResult | null>(null);
   const inputId = `key-${provider.id}`;
+  const urlId = `url-${provider.id}`;
 
   const saveAndVerify = async () => {
     setBusy(true);
@@ -55,20 +57,27 @@ export function KeyField({
 
   return (
     <div className="key-row">
-      <label className="key-name" htmlFor={provider.needs === "baseUrl" ? `url-${provider.id}` : inputId}>
+      <label className="key-name" htmlFor={provider.baseUrl ? urlId : inputId}>
         {provider.name}
       </label>
       <div className="key-inputs">
-        {provider.needs === "baseUrl" && (
+        {provider.baseUrl && (
           <input
-            id={`url-${provider.id}`}
+            id={urlId}
             type="url"
-            aria-label={t("providers.baseUrl")}
-            placeholder={t("providers.baseUrlPlaceholder")}
-            value={settings.providers.openaiBaseUrl ?? ""}
+            spellCheck={false}
+            aria-label={t("providers.baseUrlFor", { provider: provider.name })}
+            placeholder={
+              provider.defaultBaseUrl
+                ? t("providers.baseUrlDefault", { url: provider.defaultBaseUrl })
+                : t("providers.baseUrlPlaceholder")
+            }
+            value={settings.providers.baseUrls[provider.id] ?? ""}
             onChange={(e) =>
               void update((s) => {
-                s.providers.openaiBaseUrl = e.target.value.trim() || null;
+                const url = e.target.value.trim();
+                if (url) s.providers.baseUrls[provider.id] = url;
+                else delete s.providers.baseUrls[provider.id];
                 return s;
               })
             }

@@ -3,6 +3,8 @@
 //! API keys are never part of this struct; they live in the system
 //! credential store. Every field has a default so older files keep loading.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -46,6 +48,13 @@ impl Settings {
     pub fn from_json(json: &str) -> serde_json::Result<Self> {
         let mut s: Settings = serde_json::from_str(json)?;
         s.version = SETTINGS_VERSION;
+        // Older files kept one base URL, for the OpenAI-compatible provider only.
+        if let Some(url) = s.providers.openai_base_url.take() {
+            s.providers
+                .base_urls
+                .entry("openai-compatible".into())
+                .or_insert(url);
+        }
         Ok(s)
     }
 
@@ -220,13 +229,28 @@ pub struct ProviderSettings {
     pub asr: ModelChoice,
     pub detect: ModelChoice,
     pub hints: ModelChoice,
-    /// Base URL for the OpenAI-compatible provider, e.g. `https://host/v1`.
+    /// Base URL per provider id, e.g. `https://host/v1` for `openai-compatible`.
+    /// A provider without an entry uses its own default address.
+    pub base_urls: BTreeMap<String, String>,
+    /// Read from older files and moved into `base_urls`; never written.
+    #[serde(skip_serializing)]
+    #[ts(skip)]
     pub openai_base_url: Option<String>,
     /// Explicit HTTPS proxy; when empty the system proxy settings are used.
     pub proxy: Option<String>,
     pub pricing_overrides: Vec<PriceEntry>,
     pub estimate: CostAssumptions,
     pub budget: BudgetSettings,
+}
+
+impl ProviderSettings {
+    /// The user's base URL for a provider, if they set one.
+    pub fn base_url(&self, provider: &str) -> Option<String> {
+        self.base_urls
+            .get(provider)
+            .map(|u| u.trim().to_string())
+            .filter(|u| !u.is_empty())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -412,6 +436,21 @@ mod tests {
                 std::fs::write(path, Settings::default().to_json() + "\n").unwrap();
             }
         }
+    }
+
+    #[test]
+    fn old_base_url_moves_to_its_provider() {
+        let old = r#"{"providers":{"openaiBaseUrl":"https://host/v1"}}"#;
+        let s = Settings::from_json(old).unwrap();
+        assert_eq!(
+            s.providers
+                .base_urls
+                .get("openai-compatible")
+                .map(String::as_str),
+            Some("https://host/v1")
+        );
+        assert_eq!(s.providers.openai_base_url, None);
+        assert!(!s.to_json().contains("openaiBaseUrl"));
     }
 
     #[test]
