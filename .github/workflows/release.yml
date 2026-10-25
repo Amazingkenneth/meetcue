@@ -28,7 +28,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check the tag and the commit identity
+      - name: Take the version from the tag
         env:
           GIT_NAME: ${{ vars.GIT_NAME }}
           GIT_EMAIL: ${{ vars.GIT_EMAIL }}
@@ -36,10 +36,12 @@ jobs:
           if (-not $env:GIT_NAME -or -not $env:GIT_EMAIL) {
             throw "Set the repository variables GIT_NAME and GIT_EMAIL (Settings > Secrets and variables > Actions > Variables)."
           }
+          $version = $env:TAG -replace '^v', ''
+          # The tag decides the version; the manifests are stamped for this
+          # build only, so the version needn't be bumped in a commit first.
           $cargo = Get-Content Cargo.toml -Raw
-          if ($cargo -notmatch '(?s)\[workspace\.package\].*?version\s*=\s*"([^"]+)"') { throw "no workspace version" }
-          $version = $Matches[1]
-          if ("v$version" -ne $env:TAG) { throw "Tag $env:TAG does not match the version $version in Cargo.toml" }
+          $cargo = $cargo -replace '(?s)(\[workspace\.package\].*?version\s*=\s*)"[^"]+"', "`${1}`"$version`""
+          Set-Content -Path Cargo.toml -Value $cargo -Encoding utf8NoBOM -NoNewline
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - uses: dtolnay/rust-toolchain@stable
@@ -51,6 +53,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Stamp the version into the interface and docs manifests
+        run: |
+          foreach ($p in "package.json", "app/ui/package.json", "docs/package.json") {
+            $text = Get-Content $p -Raw
+            $text = $text -replace '(?m)^(\s*"version":\s*)"[^"]*"', "`${1}`"$env:VERSION`""
+            Set-Content -Path $p -Value $text -Encoding utf8NoBOM -NoNewline
+          }
       - run: node scripts/check-versions.mjs
 
       - name: Build MeetCue.exe
