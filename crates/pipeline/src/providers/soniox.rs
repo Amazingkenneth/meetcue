@@ -89,6 +89,9 @@ impl Soniox {
 
 pub fn asr_status_code(status: u16) -> &'static str {
     match status {
+        // A parameter the service doesn't accept (model, language, option):
+        // retrying or checking the network won't help.
+        400 => codes::ASR_PROTOCOL,
         401 | 403 => codes::ASR_AUTH,
         402 | 429 => codes::ASR_RATE_LIMIT,
         _ => codes::ASR_CONNECT,
@@ -278,6 +281,14 @@ struct SonioxStream {
     sent_ms: u64,
 }
 
+// A stream dropped without `close` (an abandoned connection attempt, a
+// session that was cut short) must not leave its socket open.
+impl Drop for SonioxStream {
+    fn drop(&mut self) {
+        self.reader.abort();
+    }
+}
+
 fn send_err(e: impl std::fmt::Display) -> MeetCueError {
     MeetCueError::new(codes::ASR_CONNECT, e.to_string())
 }
@@ -414,6 +425,20 @@ mod tests {
             other => panic!("{other:?}"),
         }
         assert!(matches!(parse_message("not json")[0], AsrResult::Error(_)));
+        // An idle stream ends with a timeout: a connection problem. A bad
+        // parameter isn't one.
+        match &parse_message(r#"{"tokens":[],"error_code":408,"error_message":"Request timeout."}"#)
+            [0]
+        {
+            AsrResult::Error(e) => assert_eq!(e.code, codes::ASR_CONNECT),
+            other => panic!("{other:?}"),
+        }
+        match &parse_message(r#"{"tokens":[],"error_code":400,"error_message":"Invalid model."}"#)
+            [0]
+        {
+            AsrResult::Error(e) => assert_eq!(e.code, codes::ASR_PROTOCOL),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

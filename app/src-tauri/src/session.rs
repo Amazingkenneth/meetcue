@@ -416,6 +416,11 @@ pub async fn start(app: &AppHandle) -> Result<(), MeetCueError> {
         "starting session"
     );
     state.backend.start(cfg).await?;
+    // The session's capture replaces the level check; it shows the same levels.
+    let preview = state.preview.lock().unwrap().take();
+    if let Some(mut p) = preview {
+        p.stop();
+    }
     if !state.demo {
         if let Err(e) = start_audio(app) {
             // Without audio the session would look started but hear nothing.
@@ -452,10 +457,17 @@ pub async fn toggle(app: &AppHandle) -> Result<(), MeetCueError> {
 
 pub async fn stop(app: &AppHandle) {
     let state = app.state::<AppState>();
-    if let Some(mut audio) = state.audio.lock().unwrap().take() {
+    stop_capture(&state);
+    state.backend.stop().await;
+}
+
+/// Stops session capture. The lock is released before the capture threads
+/// are joined.
+fn stop_capture(state: &AppState) {
+    let audio = state.audio.lock().unwrap().take();
+    if let Some(mut audio) = audio {
         audio.stop();
     }
-    state.backend.stop().await;
 }
 
 pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
@@ -483,6 +495,7 @@ pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
         // activity log shows when capture works but hears nothing.
         let mut frames = [0u32; 2];
         let mut peak = [-100f32; 2];
+        let mut warned_silent_mic = false;
         let mut tick = tokio::time::interval(std::time::Duration::from_secs(10));
         tick.tick().await;
         loop {
@@ -493,6 +506,20 @@ pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
                 },
                 _ = tick.tick() => {
                     log_audio(&frames, &peak);
+                    // A working microphone always has some noise. Frames of
+                    // exact zeros mean Windows blocks access for desktop
+                    // apps (capture still opens) or the microphone is muted.
+                    if frames[0] > 0 && peak[0] <= -100.0 && !warned_silent_mic {
+                        warned_silent_mic = true;
+                        tracing::warn!("audio: the microphone delivers only digital silence");
+                        let _ = app.emit(
+                            APP_EVENT,
+                            AppEvent::Notice {
+                                code: codes::AUD_MIC_DENIED.into(),
+                                detail: "the microphone delivers only digital silence".into(),
+                            },
+                        );
+                    }
                     frames = [0; 2];
                     peak = [-100.0; 2];
                     continue;
@@ -583,9 +610,11 @@ fn log_event(event: &MeetCueEvent) {
 }
 
 /// Starts or stops capture without recognition, for the level check.
+/// Joins and starts capture threads, so it must not run on the main thread.
 pub fn audio_preview(app: &AppHandle, on: bool) -> Result<(), MeetCueError> {
     let state = app.state::<AppState>();
-    if let Some(mut p) = state.preview.lock().unwrap().take() {
+    let old = state.preview.lock().unwrap().take();
+    if let Some(mut p) = old {
         p.stop();
     }
     if !on || state.backend.is_running() {
@@ -652,10 +681,11 @@ pub fn spawn_forwarder(app: &AppHandle) {
                 MeetCueEvent::SessionState { state: s, .. } => {
                     *state.session.lock().unwrap() = *s;
                     tray::refresh(&app);
-                    if *s == SessionState::Stopped {
-                        if let Some(mut audio) = state.audio.lock().unwrap().take() {
-                            audio.stop();
-                        }
+                    // The session ended on its own (budget reached). A
+                    // `Stopped` that arrives after a new session started
+                    // belongs to the old one and must not stop its capture.
+                    if *s == SessionState::Stopped && !state.backend.is_running() {
+                        stop_capture(&state);
                     }
                 }
                 MeetCueEvent::Usage {

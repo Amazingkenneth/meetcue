@@ -43,6 +43,7 @@
     "expand": "Expand",
     "sourceMe": "Microphone · Me",
     "sourceRemote": "System sound · Others",
+    "reconnecting": "reconnecting",
     "queue": "Question queue",
     "prev": "Previous",
     "current": "Current",

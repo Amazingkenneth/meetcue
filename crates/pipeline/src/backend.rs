@@ -346,8 +346,13 @@ impl LocalHintBackend {
 async fn shutdown(r: Running) -> SessionSummary {
     // Close recognition first so its final usage reaches the engine.
     r.asr_cancel.cancel();
-    for t in r.asr_tasks {
-        let _ = t.await;
+    for mut t in r.asr_tasks {
+        // Every network step of a channel is bounded; this only guards
+        // against a provider that ignores those bounds.
+        if timeout(Duration::from_secs(8), &mut t).await.is_err() {
+            tracing::warn!("a recognition channel did not stop in time");
+            t.abort();
+        }
     }
     r.loop_cancel.cancel();
     r.loop_task.await.unwrap_or_default()
@@ -472,12 +477,14 @@ async fn run_loop(
     for (_, t) in tasks.drain() {
         t.cancel();
     }
+    // Not running any more before `Stopped` goes out, so a listener that
+    // stops capture on it can tell it from a session started since.
+    ctx.active.store(false, Ordering::SeqCst);
     if engine.state() != meetcue_core::SessionState::Stopped {
         let outputs = engine.stop(now_ms());
         execute(&ctx, start, outputs, &mut tasks, &mut end);
     }
     ctx.asr_cancel.cancel();
-    ctx.active.store(false, Ordering::SeqCst);
     SessionSummary {
         duration_ms: now_ms() - start,
         total_micros: engine.meter().session_total(),
@@ -493,6 +500,11 @@ fn execute(
     end: &mut bool,
 ) {
     tasks.retain(|_, t| !t.is_cancelled());
+    // The session ends with these outputs (budget reached): not running any
+    // more before their `Stopped` goes out, as at the end of `run_loop`.
+    if outputs.iter().any(|o| matches!(o, Output::EndSession)) {
+        ctx.active.store(false, Ordering::SeqCst);
+    }
     for o in outputs {
         match o {
             Output::Emit(ev) => ctx.emit(start, ev),
@@ -749,24 +761,58 @@ struct OpenStream {
     reader: JoinHandle<()>,
 }
 
-async fn open_stream(ctx: &AsrChannelCtx, setup: &AsrSetup) -> Result<OpenStream, MeetCueError> {
+/// Longest wait for a stream to open: connection, TLS, WebSocket handshake
+/// and the provider's start message.
+const OPEN_TIMEOUT: Duration = Duration::from_secs(25);
+/// Longest wait for one write, keep-alive or finalize. A send that takes
+/// longer means the connection stalled, and it is treated as lost.
+const SEND_TIMEOUT: Duration = Duration::from_secs(5);
+/// Longest wait for a stream to close when it is replaced or the session ends.
+const CLOSE_TIMEOUT: Duration = Duration::from_secs(2);
+/// A keep-alive goes out when nothing was sent for this long, whether or not
+/// frames arrive: system sound capture delivers none while nothing plays,
+/// and providers end idle streams (Deepgram after 10 s, Soniox after 20 s).
+const IDLE_KEEPALIVE: Duration = Duration::from_secs(3);
+/// How often a channel checks its stream, independent of audio.
+const HEALTH_EVERY: Duration = Duration::from_secs(1);
+/// A stream that ends sooner than this after opening counts towards the
+/// reconnect backoff.
+const STABLE_AFTER: Duration = Duration::from_secs(10);
+
+fn timed_out(what: &str) -> MeetCueError {
+    MeetCueError::new(codes::ASR_CONNECT, format!("{what} timed out"))
+}
+
+/// Runs one send to the provider with [`SEND_TIMEOUT`].
+async fn bounded(
+    what: &str,
+    send: impl std::future::Future<Output = Result<(), MeetCueError>>,
+) -> Result<(), MeetCueError> {
+    timeout(SEND_TIMEOUT, send)
+        .await
+        .unwrap_or_else(|_| Err(timed_out(what)))
+}
+
+async fn open_stream(
+    channel: Channel,
+    input: mpsc::UnboundedSender<Input>,
+    setup: AsrSetup,
+) -> Result<OpenStream, MeetCueError> {
     let mut options = setup.options.clone();
-    options.channel = Some(ctx.channel);
+    options.channel = Some(channel);
     let mut last = None;
     for attempt in 0..2 {
         if attempt > 0 {
             sleep(Duration::from_millis(500)).await;
         }
-        match setup.provider.open(options.clone()).await {
+        let opened = timeout(OPEN_TIMEOUT, setup.provider.open(options.clone()))
+            .await
+            .unwrap_or_else(|_| Err(timed_out("opening the recognition stream")));
+        match opened {
             Ok(mut stream) => {
                 let map = Arc::new(Mutex::new(TimeMap::new(now_ms())));
                 let results = stream.results();
-                let reader = tokio::spawn(read_results(
-                    results,
-                    ctx.channel,
-                    map.clone(),
-                    ctx.input.clone(),
-                ));
+                let reader = tokio::spawn(read_results(results, channel, map.clone(), input));
                 return Ok(OpenStream {
                     stream,
                     map,
@@ -832,74 +878,313 @@ const PREROLL_MS: i64 = 300;
 /// Waits between attempts to reopen a lost recognition stream.
 const RECONNECT_BACKOFF_MS: [u64; 5] = [1_000, 2_000, 5_000, 10_000, 30_000];
 
-/// When the next attempt to reopen a lost stream is due.
+/// A lost stream being reopened.
 struct Outage {
+    /// Failed attempts so far.
     attempts: usize,
+    /// When the next attempt is due.
     next: Instant,
+    /// The failure was already shown; later attempts are only logged.
+    reported: bool,
 }
 
 impl Outage {
-    fn after(attempts: usize) -> Self {
-        let wait = RECONNECT_BACKOFF_MS[attempts.min(RECONNECT_BACKOFF_MS.len() - 1)];
+    fn now() -> Self {
         Self {
-            attempts,
+            attempts: 0,
+            next: Instant::now(),
+            reported: false,
+        }
+    }
+
+    /// The outage after one more failed attempt.
+    fn failed(self) -> Self {
+        let wait = RECONNECT_BACKOFF_MS[self.attempts.min(RECONNECT_BACKOFF_MS.len() - 1)];
+        Self {
+            attempts: self.attempts + 1,
             next: Instant::now() + Duration::from_millis(wait),
+            reported: true,
         }
     }
 }
 
-async fn close_stream(open: OpenStream) {
-    let _ = open.stream.close().await;
-    // Give the reader a moment to deliver the last results.
-    let _ = timeout(Duration::from_millis(500), open.reader).await;
+/// Closes a replaced or lost stream in the background, so the channel goes
+/// on at once while the stream's last results still reach the engine.
+/// `flush` asks the provider to finalize pending text first.
+fn retire(open: OpenStream, flush: bool) {
+    tokio::spawn(async move {
+        let OpenStream {
+            mut stream, reader, ..
+        } = open;
+        if flush {
+            let _ = bounded("finalize", stream.finalize()).await;
+        }
+        let _ = timeout(CLOSE_TIMEOUT, stream.close()).await;
+        let _ = timeout(Duration::from_millis(500), reader).await;
+    });
+}
+
+type Opening = JoinHandle<Result<OpenStream, MeetCueError>>;
+
+/// Resolves when the stream being opened is ready; never without one.
+async fn opened(
+    opening: &mut Option<Opening>,
+) -> Result<Result<OpenStream, MeetCueError>, tokio::task::JoinError> {
+    match opening {
+        Some(task) => task.await,
+        None => std::future::pending().await,
+    }
+}
+
+/// The connection of one channel. Opening runs in the background, so audio,
+/// settings changes and stopping are handled while a slow or unreachable
+/// provider is retried.
+struct Link {
+    channel: Channel,
+    input: mpsc::UnboundedSender<Input>,
+    current: Option<OpenStream>,
+    opening: Option<Opening>,
+    outage: Option<Outage>,
+    /// Last successful send of audio, keep-alive or finalize.
+    last_sent: Instant,
+    /// Last status told to the engine.
+    connected: Option<bool>,
+    /// Nothing was written to the current stream yet: the audio kept while
+    /// it opened leads the first write.
+    fresh: bool,
+    /// When the current stream opened.
+    opened_at: Instant,
+    /// Streams in a row that ended soon after opening.
+    short_lived: usize,
+}
+
+impl Link {
+    fn new(channel: Channel, input: mpsc::UnboundedSender<Input>) -> Self {
+        Self {
+            channel,
+            input,
+            current: None,
+            opening: None,
+            outage: None,
+            last_sent: Instant::now(),
+            connected: None,
+            fresh: false,
+            opened_at: Instant::now(),
+            short_lived: 0,
+        }
+    }
+
+    fn report(&self, e: MeetCueError) {
+        let _ = self.input.send(Input::Asr {
+            channel: self.channel,
+            result: AsrResult::Error(e),
+        });
+    }
+
+    fn set_connected(&mut self, connected: bool) {
+        if self.connected != Some(connected) {
+            self.connected = Some(connected);
+            let _ = self.input.send(Input::AsrStatus {
+                channel: self.channel,
+                connected,
+            });
+        }
+    }
+
+    /// Starts opening a stream, replacing an attempt in progress.
+    fn open(&mut self, setup: &AsrSetup) {
+        if let Some(task) = self.opening.take() {
+            task.abort();
+        }
+        self.opening = Some(tokio::spawn(open_stream(
+            self.channel,
+            self.input.clone(),
+            setup.clone(),
+        )));
+    }
+
+    /// Switches to a new setup: the old stream is flushed and closed in the
+    /// background while the new one opens.
+    fn switch(&mut self, setup: &AsrSetup) {
+        if let Some(old) = self.current.take() {
+            retire(old, true);
+        }
+        // New settings may be what fixes a rejected stream: start afresh.
+        self.outage = None;
+        self.short_lived = 0;
+        self.open(setup);
+    }
+
+    fn on_opened(
+        &mut self,
+        result: Result<Result<OpenStream, MeetCueError>, tokio::task::JoinError>,
+    ) {
+        self.opening = None;
+        let result = match result {
+            Ok(r) => r,
+            // Replaced by a newer attempt.
+            Err(e) if e.is_cancelled() => return,
+            Err(e) => Err(MeetCueError::new(codes::ASR_CONNECT, e.to_string())),
+        };
+        let ch = self.channel.as_str();
+        match result {
+            Ok(open) => {
+                if self.outage.take().is_some_and(|o| o.attempts > 0) {
+                    tracing::info!(channel = ch, "recognition reconnected");
+                }
+                self.current = Some(open);
+                self.last_sent = Instant::now();
+                self.opened_at = Instant::now();
+                self.fresh = true;
+                self.set_connected(true);
+            }
+            Err(e) => {
+                let outage = self.outage.take().unwrap_or_else(Outage::now);
+                // One message per outage, not one per attempt.
+                if outage.reported {
+                    tracing::warn!(
+                        channel = ch,
+                        "reconnect attempt {} failed: {e}",
+                        outage.attempts + 1
+                    );
+                } else {
+                    tracing::warn!(channel = ch, "could not open recognition: {e}");
+                    self.report(e);
+                }
+                self.outage = Some(outage.failed());
+                self.set_connected(false);
+            }
+        }
+    }
+
+    /// The stream failed or the provider ended it: close it and reopen.
+    /// A stream that ran for a while is reopened at once. When streams keep
+    /// ending soon after opening (the provider rejects a setting, or every
+    /// connection is cut), the wait grows, so the provider isn't hammered
+    /// and its error isn't repeated many times a second.
+    fn lost(&mut self, setup: &AsrSetup) {
+        if let Some(old) = self.current.take() {
+            retire(old, false);
+        }
+        self.set_connected(false);
+        if self.opened_at.elapsed() >= STABLE_AFTER {
+            self.short_lived = 0;
+        } else {
+            self.short_lived += 1;
+        }
+        if self.short_lived <= 1 {
+            self.outage = Some(Outage::now());
+            self.open(setup);
+        } else {
+            let wait =
+                RECONNECT_BACKOFF_MS[(self.short_lived - 2).min(RECONNECT_BACKOFF_MS.len() - 1)];
+            tracing::warn!(
+                channel = self.channel.as_str(),
+                "recognition stream ended right after opening again; retrying in {} s",
+                wait / 1000
+            );
+            self.outage = Some(Outage {
+                attempts: self.short_lived - 1,
+                next: Instant::now() + Duration::from_millis(wait),
+                reported: false,
+            });
+        }
+    }
+
+    /// Records the outcome of a send; a failed send reconnects.
+    fn sent(&mut self, result: Result<(), MeetCueError>, setup: &AsrSetup) {
+        match result {
+            Ok(()) => self.last_sent = Instant::now(),
+            Err(e) => {
+                tracing::warn!(channel = self.channel.as_str(), error = %e, "recognition stream failed; reconnecting");
+                self.lost(setup);
+            }
+        }
+    }
+
+    /// Reopens the stream if the provider ended it (idle close, session
+    /// limit, error). True if it did.
+    fn reopen_if_ended(&mut self, setup: &AsrSetup) -> bool {
+        if !self
+            .current
+            .as_ref()
+            .is_some_and(|o| o.reader.is_finished())
+        {
+            return false;
+        }
+        tracing::warn!(
+            channel = self.channel.as_str(),
+            "recognition stream ended by the provider; reconnecting"
+        );
+        self.lost(setup);
+        true
+    }
+
+    /// Runs every [`HEALTH_EVERY`]: notices a stream the provider ended,
+    /// keeps an idle stream alive and retries a lost one when due.
+    async fn check(&mut self, setup: &AsrSetup) {
+        if self.reopen_if_ended(setup) {
+            return;
+        }
+        if let Some(open) = self.current.as_mut() {
+            if self.last_sent.elapsed() >= IDLE_KEEPALIVE {
+                let r = bounded("keep-alive", open.stream.keepalive()).await;
+                self.sent(r, setup);
+            }
+            return;
+        }
+        let due = self
+            .outage
+            .as_ref()
+            .is_some_and(|o| Instant::now() >= o.next);
+        if self.opening.is_none() && due {
+            self.open(setup);
+        }
+    }
+
+    /// Ends the connection; returns the provider's count of audio sent.
+    async fn close(mut self) -> Option<u64> {
+        if let Some(task) = self.opening.take() {
+            task.abort();
+        }
+        let open = self.current.take()?;
+        let closed = timeout(CLOSE_TIMEOUT, open.stream.close()).await;
+        let _ = timeout(Duration::from_millis(500), open.reader).await;
+        match closed {
+            Ok(Ok(u)) => Some(u.audio_ms),
+            _ => None,
+        }
+    }
 }
 
 /// One recognition channel: gates frames and writes them; keeps the
-/// connection alive while paused; reconnects whenever the stream is lost
-/// (network, provider session limits) and when the recognition settings
-/// change during the session.
+/// connection alive while paused or silent; reconnects whenever the stream
+/// is lost (network, provider session limits) and when the recognition
+/// settings change during the session.
 async fn asr_channel(mut ctx: AsrChannelCtx) {
-    let report = |ctx: &AsrChannelCtx, e: MeetCueError| {
-        let _ = ctx.input.send(Input::Asr {
-            channel: ctx.channel,
-            result: AsrResult::Error(e),
-        });
-    };
     let mut setup = ctx.setup.borrow_and_update().clone();
-    let mut current = None;
-    let mut outage = None;
-    match open_stream(&ctx, &setup).await {
-        Ok(s) => current = Some(s),
-        Err(e) => {
-            report(&ctx, e);
-            outage = Some(Outage::after(0));
-        }
-    }
+    let mut link = Link::new(ctx.channel, ctx.input.clone());
+    link.open(&setup);
     let mut gate = SendGate::new(setup.hangover_ms);
     let mut preroll: VecDeque<AudioFrame> = VecDeque::new();
     let mut billed_ms: u64 = 0;
     let mut sent_total: u64 = 0;
     let mut usage_tick = interval(Duration::from_secs(60));
     usage_tick.tick().await;
+    let mut health = interval(HEALTH_EVERY);
+    health.set_missed_tick_behavior(MissedTickBehavior::Delay);
+    health.tick().await;
 
     loop {
         tokio::select! {
             _ = ctx.cancel.cancelled() => break,
+            r = opened(&mut link.opening) => link.on_opened(r),
             Ok(()) = ctx.setup.changed() => {
                 let next = ctx.setup.borrow_and_update().clone();
                 // Bill what the old model recognised before switching.
                 if sent_total > billed_ms {
                     let _ = ctx.input.send(audio_usage(&setup.model, sent_total - billed_ms));
                     billed_ms = sent_total;
-                }
-                if let Some(mut old) = current.take() {
-                    // Flush and close the old stream in the background: its
-                    // last words still reach the engine while the new stream
-                    // opens right away.
-                    tokio::spawn(async move {
-                        let _ = old.stream.finalize().await;
-                        close_stream(old).await;
-                    });
                 }
                 if next.hangover_ms != setup.hangover_ms {
                     gate = SendGate::new(next.hangover_ms);
@@ -911,17 +1196,9 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                     setup.model.provider,
                     setup.model.model
                 );
-                match open_stream(&ctx, &setup).await {
-                    Ok(s) => {
-                        current = Some(s);
-                        outage = None;
-                    }
-                    Err(e) => {
-                        report(&ctx, e);
-                        outage = Some(Outage::after(0));
-                    }
-                }
+                link.switch(&setup);
             }
+            _ = health.tick() => link.check(&setup).await,
             _ = usage_tick.tick() => {
                 if sent_total > billed_ms {
                     let _ = ctx.input.send(audio_usage(&setup.model, sent_total - billed_ms));
@@ -932,38 +1209,7 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                 let Some(frame) = frame else { break };
                 let dur = frame.duration_ms();
                 let paused = ctx.paused.load(Ordering::Relaxed);
-
-                // The provider ended the stream (idle close, session limit,
-                // error): reopen it rather than waiting for a write to fail.
-                if current.as_ref().is_some_and(|o| o.reader.is_finished()) {
-                    tracing::warn!(channel = ctx.channel.as_str(), "recognition stream closed by the provider; reconnecting");
-                    if let Some(old) = current.take() {
-                        close_stream(old).await;
-                    }
-                    outage = Some(Outage { attempts: 0, next: Instant::now() });
-                }
-                if current.is_none() {
-                    if let Some(o) = outage.as_ref().filter(|o| Instant::now() >= o.next) {
-                        let attempts = o.attempts + 1;
-                        match open_stream(&ctx, &setup).await {
-                            Ok(s) => {
-                                tracing::info!(channel = ctx.channel.as_str(), "recognition reconnected");
-                                current = Some(s);
-                                outage = None;
-                            }
-                            Err(e) => {
-                                // One message per outage, not one per attempt.
-                                if attempts == 1 {
-                                    report(&ctx, e);
-                                } else {
-                                    tracing::warn!(channel = ctx.channel.as_str(), "reconnect attempt {attempts} failed: {e}");
-                                }
-                                outage = Some(Outage::after(attempts));
-                            }
-                        }
-                    }
-                }
-
+                link.reopen_if_ended(&setup);
                 let decision = if paused {
                     // Audio from before the pause must not lead the next sentence.
                     preroll.clear();
@@ -971,7 +1217,7 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                 } else {
                     gate.decide(frame.voiced, dur)
                 };
-                let Some(open) = current.as_mut() else {
+                let Some(open) = link.current.as_mut() else {
                     if !paused {
                         push_preroll(&mut preroll, frame);
                     }
@@ -983,13 +1229,13 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                             push_preroll(&mut preroll, frame);
                         }
                         if decision == GateDecision::KeepAlive {
-                            open.stream.keepalive().await
+                            Some(bounded("keep-alive", open.stream.keepalive()).await)
                         } else {
-                            Ok(())
+                            None
                         }
                     }
                     d @ (GateDecision::Send | GateDecision::SendAndFinalize) => {
-                        let lead: Vec<AudioFrame> = if gate.opened() {
+                        let lead: Vec<AudioFrame> = if gate.opened() || link.fresh {
                             preroll.drain(..).collect()
                         } else {
                             preroll.clear();
@@ -1000,44 +1246,28 @@ async fn asr_channel(mut ctx: AsrChannelCtx) {
                             let fd = f.duration_ms();
                             open.map.lock().unwrap().record(f.capture_ts_ms, fd);
                             sent_total += fd as u64;
-                            r = open.stream.write(&f.samples, f.capture_ts_ms).await;
+                            r = bounded("sending audio", open.stream.write(&f.samples, f.capture_ts_ms)).await;
                             if r.is_err() {
                                 break;
                             }
                         }
                         if r.is_ok() && d == GateDecision::SendAndFinalize {
-                            open.stream.finalize().await
-                        } else {
-                            r
+                            r = bounded("finalize", open.stream.finalize()).await;
                         }
+                        Some(r)
                     }
                 };
-                if let Err(e) = result {
-                    tracing::warn!(channel = ctx.channel.as_str(), error = %e, "recognition stream failed; reconnecting");
-                    if let Some(old) = current.take() {
-                        old.reader.abort();
-                        let _ = old.stream.close().await;
+                if let Some(r) = result {
+                    if r.is_ok() && matches!(decision, GateDecision::Send | GateDecision::SendAndFinalize) {
+                        link.fresh = false;
                     }
-                    match open_stream(&ctx, &setup).await {
-                        Ok(s) => {
-                            tracing::info!(channel = ctx.channel.as_str(), "recognition reconnected");
-                            current = Some(s);
-                        }
-                        Err(e) => {
-                            report(&ctx, e);
-                            outage = Some(Outage::after(1));
-                        }
-                    }
+                    link.sent(r, &setup);
                 }
             }
         }
     }
-    if let Some(open) = current.take() {
-        let closed = open.stream.close().await;
-        let _ = timeout(Duration::from_millis(500), open.reader).await;
-        if let Ok(u) = closed {
-            sent_total = sent_total.max(u.audio_ms);
-        }
+    if let Some(ms) = link.close().await {
+        sent_total = sent_total.max(ms);
     }
     if sent_total > billed_ms {
         let _ = ctx

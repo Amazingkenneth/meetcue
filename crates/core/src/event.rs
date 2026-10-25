@@ -251,6 +251,13 @@ pub enum MeetCueEvent {
         #[ts(type = "number")]
         median_ms: i64,
     },
+    /// The recognition stream of a channel opened, or was lost and is being
+    /// reopened. Errors reported while it was lost no longer apply once it
+    /// is connected again.
+    Recognition {
+        channel: Channel,
+        connected: bool,
+    },
     Error {
         code: String,
         detail: String,

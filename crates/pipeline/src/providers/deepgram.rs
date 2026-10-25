@@ -353,6 +353,14 @@ struct DeepgramStream {
     sent_ms: u64,
 }
 
+// A stream dropped without `close` (an abandoned connection attempt, a
+// session that was cut short) must not leave its socket open.
+impl Drop for DeepgramStream {
+    fn drop(&mut self) {
+        self.reader.abort();
+    }
+}
+
 fn send_err(e: impl std::fmt::Display) -> MeetCueError {
     MeetCueError::new(codes::ASR_CONNECT, e.to_string())
 }

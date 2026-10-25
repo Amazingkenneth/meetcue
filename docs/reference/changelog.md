@@ -2,6 +2,20 @@
 
 All notable changes to MeetCue. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- Opening **Run setup again**, the activity log or any other window from a button froze MeetCue on Windows: no window could be moved and the app couldn't be quit.
+- Speech recognition:
+  - System sound recognition stopped about 20 seconds into a meeting when nothing was playing yet, showing `MC-ASR-002`. The connection is now kept alive whether or not audio arrives, and a stream the provider ends is reopened without waiting for sound.
+  - An unreachable or slow provider held up everything else: stopping or quitting could take up to a minute while MeetCue retried, and audio was dropped meanwhile. Connecting now happens in the background, and every network step has a time limit.
+  - Error messages now show what went wrong (for example `connection timed out`), connection errors disappear once recognition is back, and the panel marks a side whose recognition is reconnecting.
+  - A setting the provider rejects is reported as `MC-ASR-004` instead of a network problem (`MC-ASR-002`), and isn't retried many times a second.
+  - Connections no longer time out on networks where IPv6 is configured but doesn't work.
+- A microphone that delivers only silence (blocked in Windows privacy settings, or muted) is now reported with `MC-AUD-002`.
+- Unexpected errors inside MeetCue are now written to the log.
+
 ## 0.1.3 — 2026-10-24
 
 ### Changed

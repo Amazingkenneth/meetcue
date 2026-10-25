@@ -18,4 +18,4 @@ context: Array<TranscriptLine>, } | { "type": "questionRemoved", id: number, } |
 /**
  * Cost of this call in micro-dollars, or `None` if the price is unknown.
  */
-costMicros: number | null, sessionMicros: number, } | { "type": "budget", scope: BudgetScope, level: BudgetLevel, spentMicros: number, limitMicros: number, } | { "type": "levels", me: number, remote: number, } | { "type": "latencyWarning", medianMs: number, } | { "type": "error", code: string, detail: string, };
+costMicros: number | null, sessionMicros: number, } | { "type": "budget", scope: BudgetScope, level: BudgetLevel, spentMicros: number, limitMicros: number, } | { "type": "levels", me: number, remote: number, } | { "type": "latencyWarning", medianMs: number, } | { "type": "recognition", channel: Channel, connected: boolean, } | { "type": "error", code: string, detail: string, };

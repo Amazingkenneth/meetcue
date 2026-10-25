@@ -157,14 +157,19 @@ function FullPanel({
       {practice && <PracticeBar p={practice} />}
 
       <div className="ov-sources">
-        <div className="ov-source">
-          <span>{t("overlay.sourceMe")}</span>
-          <Meter db={view.levels.me} label={t("overlay.sourceMe")} />
-        </div>
-        <div className="ov-source">
-          <span>{t("overlay.sourceRemote")}</span>
-          <Meter db={view.levels.remote} label={t("overlay.sourceRemote")} />
-        </div>
+        {(["me", "remote"] as const).map((ch) => {
+          const label = t(ch === "me" ? "overlay.sourceMe" : "overlay.sourceRemote");
+          const offline = view.state !== "idle" && view.state !== "stopped" && view.recognition[ch] === false;
+          return (
+            <div key={ch} className="ov-source" data-offline={offline}>
+              <span>
+                {label}
+                {offline && <span className="ov-offline"> · {t("overlay.reconnecting")}</span>}
+              </span>
+              <Meter db={view.levels[ch]} label={label} />
+            </div>
+          );
+        })}
       </div>
 
       <QueueCards view={view} />
@@ -423,6 +428,7 @@ function ErrorToast({ errors, docsUrl }: { errors: SessionErrorView[]; docsUrl: 
     <div className="ov-toast" role="alert">
       <strong>{errorTitle(last.code)}</strong>
       <p>{errorFix(last.code)}</p>
+      {last.detail && <p className="ov-detail mono">{last.detail}</p>}
       <div className="row">
         <span className="code mono">{last.code}</span>
         <button className="ov-link" onClick={() => void backend().invoke("open_url", { url: errorDocsUrl(docsUrl, last.code) })}>

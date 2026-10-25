@@ -57,6 +57,8 @@ export interface SessionView {
   transcript: TranscriptLine[];
   partial: Record<Channel, Partial | null>;
   levels: Record<Channel, number>;
+  /// Whether each channel's recognition stream is open; null before it reports.
+  recognition: Record<Channel, boolean | null>;
   latencies: number[];
   latencyWarning: number | null;
   sessionMicros: number;
@@ -69,6 +71,9 @@ export interface SessionView {
 
 const TRANSCRIPT_LIMIT = 400;
 const ERROR_LIMIT = 20;
+/// Errors about reaching speech recognition, which stop applying once every
+/// channel is connected again.
+const CONNECTION_ERRORS = new Set(["MC-ASR-002", "MC-ASR-003"]);
 
 export function emptySession(): SessionView {
   return {
@@ -81,6 +86,7 @@ export function emptySession(): SessionView {
     transcript: [],
     partial: { me: null, remote: null },
     levels: { me: -100, remote: -100 },
+    recognition: { me: null, remote: null },
     latencies: [],
     latencyWarning: null,
     sessionMicros: 0,
@@ -215,6 +221,12 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
       return { ...s, budget: { scope: e.scope, level: e.level } };
     case "levels":
       return { ...s, levels: { me: e.me, remote: e.remote } };
+    case "recognition": {
+      const recognition = { ...s.recognition, [e.channel]: e.connected };
+      const recovered = recognition.me !== false && recognition.remote !== false;
+      const errors = recovered ? s.errors.filter((x) => !CONNECTION_ERRORS.has(x.code)) : s.errors;
+      return { ...s, recognition, errors };
+    }
     case "error": {
       const err = { code: e.code, detail: e.detail, at: Date.now() };
       return { ...s, errors: [...s.errors, err].slice(-ERROR_LIMIT) };

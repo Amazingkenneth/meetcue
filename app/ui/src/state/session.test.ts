@@ -95,6 +95,24 @@ describe("session reducer", () => {
     expect(s.transcript).toHaveLength(1);
   });
 
+  it("clears connection errors once every channel recognises again", () => {
+    let s = run([
+      { type: "sessionState", state: "running", tMs: 0 },
+      { type: "recognition", channel: "me", connected: true },
+      { type: "recognition", channel: "remote", connected: true },
+      { type: "error", code: "MC-ASR-002", detail: "stt-rt.soniox.com: connection timed out" },
+      { type: "recognition", channel: "remote", connected: false },
+      { type: "error", code: "MC-ASR-001", detail: "HTTP 401" },
+    ]);
+    expect(s.recognition).toEqual({ me: true, remote: false });
+    expect(s.errors.map((e) => e.code)).toEqual(["MC-ASR-002", "MC-ASR-001"]);
+    // The microphone reconnecting alone doesn't clear the system sound's outage.
+    s = reduce(s, { type: "recognition", channel: "me", connected: true });
+    expect(s.errors).toHaveLength(2);
+    s = reduce(s, { type: "recognition", channel: "remote", connected: true });
+    expect(s.errors.map((e) => e.code)).toEqual(["MC-ASR-001"]);
+  });
+
   it("replays the recorded demo into a consistent state", () => {
     const s = (demo as TimedEvent[]).map((t) => t.event).reduce(reduce, emptySession());
     expect(s.order).toEqual([1, 2, 3]);

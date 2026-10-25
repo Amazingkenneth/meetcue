@@ -87,6 +87,21 @@ html.overlay-view body {
   padding: 8px var(--pad);
 }
 
+.ov-source[data-offline="true"] {
+  border-color: rgba(245, 184, 65, 0.5);
+}
+
+.ov-offline {
+  color: var(--accent);
+}
+
+.ov-detail {
+  margin: 4px 0 0;
+  font-size: 11px;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
 .ov-source {
   display: flex;
   align-items: center;

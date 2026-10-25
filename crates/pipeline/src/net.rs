@@ -6,10 +6,13 @@
 //!   `ALL_PROXY`, else the system proxy the app passes in. WebSocket
 //!   connections go through an HTTP `CONNECT` tunnel.
 
+use std::collections::VecDeque;
+use std::net::SocketAddr;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::Duration;
 
 use base64::Engine;
+use futures::stream::{FuturesUnordered, StreamExt};
 use meetcue_core::{codes, MeetCueError};
 use rustls::ClientConfig;
 use rustls_platform_verifier::ConfigVerifierExt;
@@ -158,16 +161,64 @@ fn connect_err(host: &str, e: impl std::fmt::Display) -> MeetCueError {
     MeetCueError::new(codes::ASR_CONNECT, format!("{host}: {e}"))
 }
 
+/// Delay before the next address is tried while earlier attempts are still
+/// pending (RFC 8305 "Happy Eyeballs").
+const ATTEMPT_DELAY: Duration = Duration::from_millis(250);
+
+/// Resolved addresses with the families alternating, the first family first.
+fn interleave(addrs: Vec<SocketAddr>) -> Vec<SocketAddr> {
+    let first_v6 = addrs.first().is_some_and(SocketAddr::is_ipv6);
+    let (mut a, mut b): (VecDeque<_>, VecDeque<_>) =
+        addrs.into_iter().partition(|x| x.is_ipv6() == first_v6);
+    let mut out = Vec::with_capacity(a.len() + b.len());
+    while !a.is_empty() || !b.is_empty() {
+        out.extend(a.pop_front());
+        out.extend(b.pop_front());
+    }
+    out
+}
+
+/// Connects to the first address of `host` that answers. Attempts start
+/// [`ATTEMPT_DELAY`] apart, alternating IPv6 and IPv4, so an address family
+/// that is configured but not routed (common with IPv6) doesn't use up the
+/// whole connect timeout as trying the addresses one after another would.
+async fn connect_any(host: &str, port: u16) -> std::io::Result<TcpStream> {
+    let addrs = interleave(tokio::net::lookup_host((host, port)).await?.collect());
+    let mut pending = addrs.into_iter();
+    let mut attempts = FuturesUnordered::new();
+    let mut last_err = None;
+    loop {
+        if let Some(addr) = pending.next() {
+            attempts.push(TcpStream::connect(addr));
+        }
+        if attempts.is_empty() {
+            break;
+        }
+        // An attempt finishes, or the next one is due.
+        tokio::select! {
+            r = attempts.next() => match r {
+                Some(Ok(s)) => return Ok(s),
+                // Failed: the next address is tried at once.
+                Some(Err(e)) => last_err = Some(e),
+                None => {}
+            },
+            _ = tokio::time::sleep(ATTEMPT_DELAY), if pending.len() > 0 => {}
+        }
+    }
+    Err(last_err
+        .unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no addresses found")))
+}
+
 /// Opens a TCP connection to `host:port`, through an HTTP CONNECT tunnel
 /// when a proxy is configured.
 pub async fn tcp(host: &str, port: u16, proxy: Option<&Proxy>) -> Result<TcpStream, MeetCueError> {
     let fut = async {
         match proxy {
-            None => TcpStream::connect((host, port))
+            None => connect_any(host, port)
                 .await
                 .map_err(|e| connect_err(host, e)),
             Some(p) => {
-                let mut s = TcpStream::connect((p.host.as_str(), p.port))
+                let mut s = connect_any(&p.host, p.port)
                     .await
                     .map_err(|e| connect_err(&p.host, e))?;
                 let mut req = format!("CONNECT {host}:{port} HTTP/1.1\r\nHost: {host}:{port}\r\n");
@@ -250,6 +301,7 @@ pub async fn websocket(
                 })
                 .unwrap_or_default();
             let code = match status {
+                400 => codes::ASR_PROTOCOL,
                 401 | 403 => codes::ASR_AUTH,
                 429 => codes::ASR_RATE_LIMIT,
                 _ => codes::ASR_CONNECT,
@@ -381,6 +433,35 @@ mod tests {
         assert!(system_bypass("10.1.2.3", "10.*"));
         assert!(!system_bypass("api.example.com", "*.corp.example"));
         assert!(!system_bypass("api.example.com", ""));
+    }
+
+    #[test]
+    fn address_families_alternate() {
+        let a = |s: &str| s.parse::<SocketAddr>().unwrap();
+        let v6 = [a("[2001:db8::1]:443"), a("[2001:db8::2]:443")];
+        let v4 = [a("192.0.2.1:443"), a("192.0.2.2:443"), a("192.0.2.3:443")];
+        assert_eq!(
+            interleave(vec![v6[0], v6[1], v4[0], v4[1], v4[2]]),
+            vec![v6[0], v4[0], v6[1], v4[1], v4[2]]
+        );
+        assert_eq!(
+            interleave(vec![v4[0], v4[1], v6[0]]),
+            vec![v4[0], v6[0], v4[1]]
+        );
+        assert!(interleave(Vec::new()).is_empty());
+    }
+
+    #[tokio::test]
+    async fn connects_by_name_to_a_listening_address() {
+        use tokio::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            let _ = listener.accept().await;
+        });
+        // `localhost` may resolve to ::1 first, where nothing listens.
+        let s = tcp("localhost", port, None).await.unwrap();
+        assert_eq!(s.peer_addr().unwrap().port(), port);
     }
 
     #[tokio::test]

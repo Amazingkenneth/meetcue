@@ -264,6 +264,7 @@ fn process_loop(
     sink: Arc<Sink>,
 ) {
     let mut converter = FrameConverter::new(channel, format, vad_threshold_db);
+    converter.start_clock(clock::mono_ms());
     let mut chunk = Vec::new();
     let mut frames = Vec::new();
     while !done.load(Ordering::SeqCst) {

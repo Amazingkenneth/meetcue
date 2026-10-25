@@ -57,6 +57,9 @@ pub struct FrameConverter {
     pending_out: Vec<f32>,
     /// Capture time of `pending_out[0]`.
     next_ts: Option<i64>,
+    /// When capture started; silence is filled from here until the device
+    /// delivers its first data.
+    started_at: Option<i64>,
     vad: Vad,
 }
 
@@ -75,12 +78,21 @@ impl FrameConverter {
             pending_in: Vec::new(),
             pending_out: Vec::new(),
             next_ts: None,
+            started_at: None,
             vad: Vad::new(vad_threshold_db),
         }
     }
 
     pub fn format(&self) -> InputFormat {
         self.fmt
+    }
+
+    /// Marks when capture started, so [`Self::fill_silence`] keeps time from
+    /// then even if the device has delivered nothing yet: loopback capture
+    /// stays empty until something plays, and without frames the recognizer
+    /// would hear nothing at all and close the stream.
+    pub fn start_clock(&mut self, ts: i64) {
+        self.started_at = Some(ts);
     }
 
     /// Time the next emitted frame will carry.
@@ -122,7 +134,7 @@ impl FrameConverter {
     /// data (loopback capture produces nothing while nothing plays). Keeps the
     /// timeline continuous for voice detection and the recognizer.
     pub fn fill_silence(&mut self, now: i64, out: &mut Vec<AudioFrame>) {
-        let Some(next) = self.next_ts else {
+        let Some(next) = self.next_ts.or(self.started_at) else {
             return;
         };
         if now - next < RESYNC_MS {
@@ -387,6 +399,34 @@ mod tests {
         out.clear();
         c.push_mono(&vec![0.2; 320], 900, &mut out);
         assert_eq!(out[0].capture_ts_ms, 900);
+    }
+
+    #[test]
+    fn silence_is_filled_from_the_start_before_any_data() {
+        let fmt = InputFormat {
+            rate: 48_000,
+            channels: 2,
+            format: SampleFormat::F32,
+        };
+        let mut c = FrameConverter::new(Channel::Remote, fmt, -45.0);
+        let mut out = Vec::new();
+        c.fill_silence(1000, &mut out);
+        assert!(out.is_empty(), "no clock without a start time");
+        c.start_clock(1000);
+        c.fill_silence(1050, &mut out);
+        assert!(out.is_empty());
+        c.fill_silence(2000, &mut out);
+        assert_eq!(out.len(), 50);
+        assert_eq!(out[0].capture_ts_ms, 1000);
+        assert!(out.iter().all(|f| !f.voiced && f.level_db == -100.0));
+        // The first real data continues the timeline.
+        out.clear();
+        c.push_bytes(
+            &interleave_f32(&sine(48_000, 440.0, 100, 0.5), 2),
+            2000,
+            &mut out,
+        );
+        assert_eq!(out.first().map(|f| f.capture_ts_ms), Some(2000));
     }
 
     #[test]

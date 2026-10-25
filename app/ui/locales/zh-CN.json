@@ -43,6 +43,7 @@
     "expand": "展开",
     "sourceMe": "麦克风 · 我",
     "sourceRemote": "系统声音 · 与会者",
+    "reconnecting": "正在重连",
     "queue": "问题队列",
     "prev": "上一问",
     "current": "当前",

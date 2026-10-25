@@ -92,6 +92,11 @@ pub enum Input {
         channel: Channel,
         result: AsrResult,
     },
+    /// A recognition stream of a channel opened, or was lost.
+    AsrStatus {
+        channel: Channel,
+        connected: bool,
+    },
     /// Remote text injected by practice mode. `known_question` skips detection.
     RemoteText {
         text: String,
@@ -331,6 +336,12 @@ impl Engine {
         let mut out = Vec::new();
         match input {
             Input::Asr { channel, result } => self.on_asr(channel, result, now, &mut out),
+            Input::AsrStatus { channel, connected } => {
+                out.push(Output::Emit(MeetCueEvent::Recognition {
+                    channel,
+                    connected,
+                }))
+            }
             Input::RemoteText {
                 text,
                 t_ms,

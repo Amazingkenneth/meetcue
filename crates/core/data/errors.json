@@ -13,10 +13,10 @@
     {
       "code": "MC-AUD-002",
       "severity": "error",
-      "title": { "en": "Microphone access is blocked", "zh-CN": "麦克风权限被拒绝" },
+      "title": { "en": "The microphone is blocked or muted", "zh-CN": "麦克风被禁止访问或已静音" },
       "fix": {
-        "en": "Turn on microphone access for desktop apps in the system privacy settings, then restart capture.",
-        "zh-CN": "在系统隐私设置里允许桌面应用访问麦克风，然后重新开始拾取。"
+        "en": "Turn on microphone access for desktop apps in the system privacy settings and check that the microphone isn't muted (mute key, headset switch or Sound settings), then restart capture.",
+        "zh-CN": "在系统隐私设置里允许桌面应用访问麦克风，并确认麦克风没有被静音（静音键、耳机开关或声音设置），然后重新开始拾取。"
       },
       "action": { "kind": "open-url", "target": "ms-settings:privacy-microphone" }
     },

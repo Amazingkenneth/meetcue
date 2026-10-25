@@ -28,6 +28,13 @@ struct Log {
     /// Result senders of the open streams; dropping them ends the stream as
     /// a provider closing the connection would.
     senders: Vec<mpsc::UnboundedSender<AsrResult>>,
+    /// The next this many opens fail as an unreachable provider would.
+    fail_opens: u32,
+    /// Opens never complete, as with a provider that accepts the connection
+    /// and then says nothing.
+    hang: bool,
+    /// Streams end right after opening, as when the provider rejects a setting.
+    end_at_once: bool,
 }
 
 #[derive(Clone, Default)]
@@ -53,10 +60,22 @@ impl AsrProvider for RecordingAsr {
     }
 
     async fn open(&self, _opts: AsrOptions) -> Result<Box<dyn AsrStream>, MeetCueError> {
+        if self.log().hang {
+            std::future::pending::<()>().await;
+        }
         let (tx, rx) = mpsc::unbounded();
         let mut log = self.log();
+        if log.fail_opens > 0 {
+            log.fail_opens -= 1;
+            return Err(MeetCueError::new(
+                meetcue_core::codes::ASR_CONNECT,
+                "connection timed out",
+            ));
+        }
         log.opens += 1;
-        log.senders.push(tx);
+        if !log.end_at_once {
+            log.senders.push(tx);
+        }
         Ok(Box::new(RecordingStream {
             log: self.log.clone(),
             rx: Some(rx),
@@ -201,6 +220,8 @@ async fn reconnects_every_time_the_provider_closes_the_stream() {
             asr.log().writes.contains(&(round * 100 + 2)),
             "round {round} recognised"
         );
+        // Each stream runs a while before the provider ends it.
+        tokio::time::sleep(Duration::from_secs(15)).await;
         asr.close_streams();
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
@@ -271,5 +292,94 @@ async fn switching_the_hint_model_applies_to_the_next_question() {
         hint_models.iter().all(|m| m == "claude-sonnet-5-5"),
         "{hint_models:?}"
     );
+    backend.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn keeps_the_stream_alive_when_no_audio_arrives() {
+    // System sound capture delivers nothing while nothing plays; the
+    // provider must still hear from us, or it ends the stream (Soniox after
+    // 20 s with a 408, shown as MC-ASR-002).
+    let asr = RecordingAsr::default();
+    let backend = started(&asr).await;
+    tokio::time::sleep(Duration::from_secs(30)).await;
+    {
+        let log = asr.log();
+        assert!(log.keepalives >= 5, "keep-alives: {}", log.keepalives);
+        assert_eq!(log.opens, 1);
+    }
+    backend.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn notices_a_stream_the_provider_ended_without_audio() {
+    let asr = RecordingAsr::default();
+    let backend = started(&asr).await;
+    asr.close_streams();
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    assert_eq!(asr.log().opens, 2, "reopened without waiting for audio");
+    backend.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn an_unreachable_provider_does_not_hold_up_stopping() {
+    let asr = RecordingAsr::default();
+    asr.log().hang = true;
+    let backend = started(&asr).await;
+    push(&backend, 1, 10, true).await;
+    let stopped = tokio::time::timeout(Duration::from_secs(3), backend.stop()).await;
+    assert!(stopped.is_ok(), "stop waited for the connection attempt");
+}
+
+#[tokio::test(start_paused = true)]
+async fn reports_an_outage_once_and_when_recognition_is_back() {
+    let asr = RecordingAsr::default();
+    asr.log().fail_opens = 6;
+    let backend = LocalHintBackend::new();
+    let mut events = backend.events();
+    backend
+        .start(config(&asr, "a", model("anthropic", "claude-haiku-5-5")))
+        .await
+        .unwrap();
+    // Speech during the outage is kept flowing in, then sent once connected.
+    for _ in 0..30 {
+        push(&backend, 1, 50, false).await;
+    }
+    push(&backend, 100, 3, true).await;
+    let mut errors = 0;
+    let mut status = Vec::new();
+    while let Ok(e) = events.try_recv() {
+        match e {
+            MeetCueEvent::Error { code, .. } if code == meetcue_core::codes::ASR_CONNECT => {
+                errors += 1
+            }
+            MeetCueEvent::Recognition { channel, connected } => {
+                assert_eq!(channel, Channel::Remote);
+                status.push(connected);
+            }
+            _ => {}
+        }
+    }
+    assert_eq!(errors, 1, "one message for the whole outage");
+    assert_eq!(status, [false, true]);
+    assert_eq!(asr.log().opens, 1);
+    assert!(
+        asr.log().writes.contains(&102),
+        "speech after the outage is recognised"
+    );
+    backend.stop().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_stream_that_keeps_ending_at_once_is_retried_with_a_growing_wait() {
+    let asr = RecordingAsr::default();
+    asr.log().end_at_once = true;
+    let backend = started(&asr).await;
+    // Twenty seconds of audio: one frame every 20 ms.
+    for _ in 0..20 {
+        push(&backend, 1, 50, true).await;
+    }
+    let opens = asr.log().opens;
+    assert!((3..=7).contains(&opens), "{opens} opens in 20 s");
     backend.stop().await;
 }

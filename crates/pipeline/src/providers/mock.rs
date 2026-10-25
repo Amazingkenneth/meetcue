@@ -122,9 +122,11 @@ impl AsrProvider for MockAsr {
             for (t, result) in schedule {
                 tokio::time::sleep_until(start + Duration::from_millis(t.max(0) as u64)).await;
                 if tx.unbounded_send(result).is_err() {
-                    break;
+                    return;
                 }
             }
+            // Like a real provider, the stream stays open until it is closed.
+            std::future::pending::<()>().await;
         });
         Ok(Box::new(MockAsrStream {
             rx: Some(rx),
