@@ -69,7 +69,23 @@ impl Drop for MemoryWriter {
     }
 }
 
+/// Writes panics to the log. A windowed release build has no console, so
+/// without this a panic in a command, task or capture thread leaves no trace.
+fn log_panics() {
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let thread = std::thread::current();
+        tracing::error!(
+            "panic in thread {}: {info}\n{}",
+            thread.name().unwrap_or("unnamed"),
+            std::backtrace::Backtrace::force_capture()
+        );
+        default(info);
+    }));
+}
+
 pub fn init(logs_dir: &Path, debug: bool) -> Option<WorkerGuard> {
+    log_panics();
     let level = if debug { "debug" } else { "info" };
     let filter = EnvFilter::try_from_env("MEETCUE_LOG").unwrap_or_else(|_| {
         EnvFilter::new(format!("{level},meetcue={level},meetcue_pipeline={level}"))

@@ -253,9 +253,14 @@ pub fn provider_hosts(provider: String) -> Vec<String> {
     EndpointCatalog::builtin().hosts(&provider).to_vec()
 }
 
+/// Async, like every command that starts or stops capture: synchronous
+/// commands run on the main thread, and joining capture threads there
+/// freezes every window.
 #[tauri::command]
-pub fn audio_preview(app: AppHandle, on: bool) -> Res<()> {
-    session::audio_preview(&app, on)
+pub async fn audio_preview(app: AppHandle, on: bool) -> Res<()> {
+    tauri::async_runtime::spawn_blocking(move || session::audio_preview(&app, on))
+        .await
+        .map_err(io_err)?
 }
 
 #[tauri::command]
@@ -303,8 +308,12 @@ pub fn set_always_on_top(app: AppHandle, on: bool) -> Res<()> {
     Ok(())
 }
 
+/// Must be async: a synchronous command runs on the main thread inside the
+/// webview's message handler, and creating a window there deadlocks on
+/// Windows (wry#583). Every window would stop responding to moves and
+/// clicks, and the app could not be quit.
 #[tauri::command]
-pub fn open_window(app: AppHandle, view: String, section: Option<String>) -> Res<()> {
+pub async fn open_window(app: AppHandle, view: String, section: Option<String>) -> Res<()> {
     const VIEWS: &[&str] = &["settings", "wizard", "practice", "review"];
     if !VIEWS.contains(&view.as_str()) {
         return Err(io_err("unknown view"));
