@@ -24,8 +24,11 @@
 | 登录系统时启动 MeetCue | `general.autostart` | `false` |
 | 共享屏幕时隐藏面板 | `overlay.hideInScreenShare` | `true` |
 | 鼠标穿透面板 | `overlay.clickThrough` | `false` |
+| 面板形态 | `overlay.mode`：`full`、`mini`、`hidden` | `full` |
+| 面板位置（拖动面板移动；**重置面板位置** 可放回原处） | `overlay.x`、`overlay.y` | 右上角 |
+| 重新运行设置向导 | `general.wizardCompleted` | 完成设置前为 `false` |
 
-面板最后的形态（`overlay.mode`：`full`、`mini`、`hidden`）和位置（`overlay.x`、`overlay.y`）会自动记住。
+所有设置修改后立即生效，会议进行中也一样：模型、密钥、语言和提示设置从下一个问题起生效，语音识别和音频采集无需重启会话即可切换。
 
 ## 音频
 
@@ -34,8 +37,8 @@
 | 麦克风（我） | `audio.micDevice`；留空表示系统默认 | 空 |
 | 与会者声音 | `audio.remoteSource`：`allSystemSound` | `allSystemSound` |
 | 会议语言 | `audio.languages`，例如 `["zh", "en"]` | `["zh", "en"]` |
-| 人声检测门限 | `audio.vadThresholdDb`，单位 dBFS | `-45` |
-| 静音多久算一句结束 | `audio.endpointSilenceMs` | `700` |
+| 人声检测门限 | `audio.vadThresholdDb`，单位 dBFS，−70 到 −10 | `-45` |
+| 静音多久算一句结束 | `audio.endpointSilenceMs`，500 到 3000 毫秒 | `700` |
 
 ## 供应商与费用
 
@@ -46,8 +49,8 @@
 | 要点模型 | `providers.hints` |
 | Base URL（OpenAI 兼容接口） | `providers.openaiBaseUrl` |
 | HTTPS 代理 | `providers.proxy`；留空表示使用系统代理 |
-| 手动填写的价格 | `providers.pricingOverrides` |
-| 费用估算假设 | `providers.estimate` |
+| 手动填写的价格（列在 **你填写的价格** 中，可在那里删除） | `providers.pricingOverrides` |
+| 费用估算假设（**费用如何估算**） | `providers.estimate`：`speechRatio`、`questionsPerHour`、`hintInputTokens`、`hintOutputTokens`、`detectInputTokens`、`detectOutputTokens`、`systemTokens`、`cancelOverhead` |
 | 预算 | `providers.budget.sessionLimitUsd`、`monthlyLimitUsd`、`onLimit`（`notifyOnly`、`pauseHints`、`endSession`） |
 
 `asr`、`detect`、`hints` 各自包含 `provider`、`model` 和 `endpoint`。端点为 `{"mode": "auto"}`（实测最快）或 `{"mode": "host", "host": "<主机名>"}`。

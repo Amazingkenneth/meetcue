@@ -64,6 +64,13 @@ pub fn save_settings(
     let old = state.settings();
     config::save(&state.paths.settings_file(), &settings).map_err(io_err)?;
     *state.settings.write().unwrap() = settings.clone();
+    // A new microphone or voice threshold: restart capture if it's running.
+    if old.audio.mic_device != settings.audio.mic_device
+        || old.audio.vad_threshold_db != settings.audio.vad_threshold_db
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move { session::restart_audio(&app).await });
+    }
     // A model, language or hint setting changed during a session: apply it now.
     if old.providers != settings.providers
         || old.audio.languages != settings.audio.languages
@@ -281,6 +288,11 @@ pub fn session_history(state: State<'_, AppState>) -> Vec<TimedEvent> {
 #[tauri::command]
 pub fn set_panel_mode(app: AppHandle, mode: PanelMode) {
     windows::set_mode(&app, mode);
+}
+
+#[tauri::command]
+pub fn reset_panel_position(app: AppHandle) {
+    windows::reset_position(&app);
 }
 
 #[tauri::command]
@@ -545,6 +557,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         session_history,
         set_panel_mode,
         set_always_on_top,
+        reset_panel_position,
         open_window,
         open_url,
         hotkey_status,

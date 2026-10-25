@@ -24,8 +24,11 @@ If `settings.json` can't be read, MeetCue renames it to `settings.json.bad` and 
 | Start MeetCue when I sign in | `general.autostart` | `false` |
 | Hide the panel when sharing the screen | `overlay.hideInScreenShare` | `true` |
 | Let clicks pass through the panel | `overlay.clickThrough` | `false` |
+| Panel layout | `overlay.mode`: `full`, `mini`, `hidden` | `full` |
+| Panel position (drag the panel; **Reset panel position** puts it back) | `overlay.x`, `overlay.y` | top right |
+| Run setup again | `general.wizardCompleted` | `false` until setup is finished |
 
-The panel's last mode (`overlay.mode`: `full`, `mini`, `hidden`) and position (`overlay.x`, `overlay.y`) are remembered automatically.
+Every setting applies as soon as it's changed, including during a meeting: models, keys, languages and hint settings take effect for the next question, and recognition and audio capture switch without restarting the session.
 
 ## Audio
 
@@ -34,8 +37,8 @@ The panel's last mode (`overlay.mode`: `full`, `mini`, `hidden`) and position (`
 | Microphone (you) | `audio.micDevice`; empty uses the system default | empty |
 | Other participants | `audio.remoteSource`: `allSystemSound` | `allSystemSound` |
 | Meeting languages | `audio.languages`, e.g. `["zh", "en"]` | `["zh", "en"]` |
-| Voice detection threshold | `audio.vadThresholdDb`, in dBFS | `-45` |
-| Sentence end after silence | `audio.endpointSilenceMs` | `700` |
+| Voice detection threshold | `audio.vadThresholdDb`, in dBFS, −70 to −10 | `-45` |
+| Sentence end after silence | `audio.endpointSilenceMs`, 500 to 3000 ms | `700` |
 
 ## Providers and cost
 
@@ -46,8 +49,8 @@ The panel's last mode (`overlay.mode`: `full`, `mini`, `hidden`) and position (`
 | Hint model | `providers.hints` |
 | Base URL (OpenAI-compatible) | `providers.openaiBaseUrl` |
 | HTTPS proxy | `providers.proxy`; empty uses the system proxy |
-| Prices you entered | `providers.pricingOverrides` |
-| Cost estimate assumptions | `providers.estimate` |
+| Prices you entered (listed under **Your own prices**, where they can be removed) | `providers.pricingOverrides` |
+| Cost estimate assumptions (**How estimates are calculated**) | `providers.estimate`: `speechRatio`, `questionsPerHour`, `hintInputTokens`, `hintOutputTokens`, `detectInputTokens`, `detectOutputTokens`, `systemTokens`, `cancelOverhead` |
 | Budget | `providers.budget.sessionLimitUsd`, `monthlyLimitUsd`, `onLimit` (`notifyOnly`, `pauseHints`, `endSession`) |
 
 Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The endpoint is `{"mode": "auto"}` (fastest measured) or `{"mode": "host", "host": "<host name>"}`.

@@ -55,6 +55,7 @@ export interface Commands {
   session_history: { args: undefined; result: TimedEvent[] };
   set_panel_mode: { args: { mode: PanelMode }; result: null };
   set_always_on_top: { args: { on: boolean }; result: null };
+  reset_panel_position: { args: undefined; result: null };
   open_window: { args: { view: View; section?: string }; result: null };
   open_url: { args: { url: string }; result: null };
   hotkey_status: { args: undefined; result: HotkeyState[] };

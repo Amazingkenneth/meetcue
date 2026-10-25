@@ -376,7 +376,37 @@ function Options({ settings, update }: { settings: Settings; update: Update }) {
         onChange={(v) => void update((s) => ({ ...s, audio: { ...s.audio, stopTtsOnSpeech: v } }))}
         label={t("practice.stopOnSpeech")}
       />
+      <Field label={t("practice.fillersZh")} htmlFor="fillers-zh" hint={t("practice.fillersHint")}>
+        <WordList id="fillers-zh" words={p.fillersZh} onChange={(fillersZh) => setP({ fillersZh })} />
+      </Field>
+      <Field label={t("practice.fillersEn")} htmlFor="fillers-en">
+        <WordList id="fillers-en" words={p.fillersEn} onChange={(fillersEn) => setP({ fillersEn })} />
+      </Field>
     </Section>
+  );
+}
+
+/** Words separated by commas (either width) or 、, edited as one line. */
+export function splitWords(text: string): string[] {
+  return text
+    .split(/[,，、]/)
+    .map((w) => w.trim())
+    .filter(Boolean);
+}
+
+function WordList({ id, words, onChange }: { id: string; words: string[]; onChange: (w: string[]) => void }) {
+  // Keep what's typed (including a trailing comma) until focus leaves.
+  const [text, setText] = useState(words.join(", "));
+  useEffect(() => setText(words.join(", ")), [words]);
+  return (
+    <input
+      id={id}
+      className="input-wide"
+      type="text"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onChange(splitWords(text))}
+    />
   );
 }
 

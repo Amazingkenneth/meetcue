@@ -12,7 +12,7 @@ import type { Settings } from "../bindings/Settings";
 import type { UsageSummary } from "../bindings/UsageSummary";
 import { Badge, Field, Section, Switch } from "../design/components";
 import { useAppEvents, useAppInfo } from "../state/hooks";
-import { millis, usd } from "../util/format";
+import { millis, seconds, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
 import { KeyField } from "./Keys";
 import { LogView } from "./LogView";
@@ -178,6 +178,29 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
             })
           }
         />
+        <Field label={t("settings.panelLayout")} htmlFor="panel-mode" hint={t("settings.panelLayoutHint", { key: settings.hotkeys.cyclePanel })}>
+          <select
+            id="panel-mode"
+            value={settings.overlay.mode}
+            onChange={(e) => void backend().invoke("set_panel_mode", { mode: e.target.value as Settings["overlay"]["mode"] })}
+          >
+            <option value="full">{t("settings.panelFull")}</option>
+            <option value="mini">{t("settings.panelMini")}</option>
+            <option value="hidden">{t("settings.panelHidden")}</option>
+          </select>
+        </Field>
+        <Field label={t("settings.panelPosition")} hint={t("settings.panelPositionHint")}>
+          <button className="btn btn-small" onClick={() => void backend().invoke("reset_panel_position")}>
+            {t("tray.resetPanel")}
+          </button>
+        </Field>
+      </Section>
+      <Section title={t("settings.setupTitle")}>
+        <Field label={t("settings.setupAgain")} hint={t("settings.setupAgainHint")}>
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "wizard" })}>
+            {t("settings.setupAgainButton")}
+          </button>
+        </Field>
       </Section>
     </>
   );
@@ -321,7 +344,8 @@ function AudioTab({ settings, update }: { settings: Settings; update: Update }) 
         <Field label={t("audio.vadThreshold")} htmlFor="vad" hint={t("audio.vadHint")}>
           <input
             id="vad"
-            type="number"
+            className="slider"
+            type="range"
             min={-70}
             max={-10}
             step={1}
@@ -333,15 +357,29 @@ function AudioTab({ settings, update }: { settings: Settings; update: Update }) 
               })
             }
           />
-          <span className="muted">dBFS</span>
+          <span className="mono">{settings.audio.vadThresholdDb} dBFS</span>
+          {settings.audio.vadThresholdDb !== -45 && (
+            <button
+              className="btn-link"
+              onClick={() =>
+                void update((s) => {
+                  s.audio.vadThresholdDb = -45;
+                  return s;
+                })
+              }
+            >
+              {t("common.reset")}
+            </button>
+          )}
         </Field>
         <Field label={t("audio.endpointSilence")} htmlFor="endpoint" hint={t("audio.endpointHint")}>
           <input
             id="endpoint"
-            type="number"
-            min={300}
-            max={2000}
-            step={50}
+            className="slider"
+            type="range"
+            min={500}
+            max={3000}
+            step={100}
             value={settings.audio.endpointSilenceMs}
             onChange={(e) =>
               void update((s) => {
@@ -350,8 +388,24 @@ function AudioTab({ settings, update }: { settings: Settings; update: Update }) 
               })
             }
           />
-          <span className="muted">ms</span>
+          <span className="mono">{seconds(settings.audio.endpointSilenceMs)} s</span>
+          {settings.audio.endpointSilenceMs !== 700 && (
+            <button
+              className="btn-link"
+              onClick={() =>
+                void update((s) => {
+                  s.audio.endpointSilenceMs = 700;
+                  return s;
+                })
+              }
+            >
+              {t("common.reset")}
+            </button>
+          )}
         </Field>
+        <p className="muted" style={{ fontSize: 13, margin: "4px 0 12px" }}>
+          {t("audio.appliesLive")}
+        </p>
       </Section>
     </>
   );
@@ -439,10 +493,62 @@ function Assumptions({ settings, update }: { settings: Settings; update: Update 
         <input id="a-din" type="number" min={0} step={50} value={a.detectInputTokens} onChange={(e) => void setAssumption("detectInputTokens", Number(e.target.value))} />
         <input aria-label={t("providers.outputTokens")} type="number" min={0} step={10} value={a.detectOutputTokens} onChange={(e) => void setAssumption("detectOutputTokens", Number(e.target.value))} />
       </Field>
+      <Field label={t("providers.systemTokens")} htmlFor="a-sys" hint={t("providers.systemTokensHint")}>
+        <input id="a-sys" type="number" min={0} step={100} value={a.systemTokens} onChange={(e) => void setAssumption("systemTokens", Number(e.target.value))} />
+      </Field>
+      <Field label={t("providers.cancelOverhead")} htmlFor="a-cancel" hint={t("providers.cancelOverheadHint")}>
+        <input
+          id="a-cancel"
+          type="number"
+          min={0}
+          max={100}
+          step={5}
+          value={Math.round(a.cancelOverhead * 100)}
+          onChange={(e) => void setAssumption("cancelOverhead", Number(e.target.value) / 100)}
+        />
+        <span className="muted">%</span>
+      </Field>
       <p className="muted" style={{ fontSize: 13 }}>
         {t("providers.estimateFormula")}
       </p>
     </>
+  );
+}
+
+/** Prices the user entered; they win over the providers' own, so they can be removed here. */
+function OwnPrices({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const own = settings.providers.pricingOverrides;
+  if (!own.length) return null;
+  return (
+    <details className="assumptions">
+      <summary>{t("providers.ownPrices", { count: own.length })}</summary>
+      <p className="muted">{t("providers.ownPricesLead")}</p>
+      <ul className="own-prices">
+        {own.map((e) => (
+          <li key={`${e.provider}/${e.model}`} className="row">
+            <span>
+              {providerName(e.provider)} <span className="mono">{e.model}</span>
+            </span>
+            <span className="muted">
+              {e.audio !== undefined ? `$${e.audio} / h` : `$${e.input ?? 0} · $${e.output ?? 0} / 1M`}
+            </span>
+            <span className="spacer" />
+            <button
+              className="btn-link"
+              onClick={() =>
+                void update((s) => {
+                  s.providers.pricingOverrides = s.providers.pricingOverrides.filter((o) => !(o.provider === e.provider && o.model === e.model));
+                  return s;
+                })
+              }
+            >
+              {t("common.remove")}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -468,11 +574,14 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
           credentials={credentials}
           asrExtra={<EndpointField settings={settings} update={update} probe={probe} />}
           footer={
-            <details className="assumptions">
-              <summary>{t("providers.assumptionsTitle")}</summary>
-              <p className="muted">{t("providers.assumptionsLead")}</p>
-              <Assumptions settings={settings} update={update} />
-            </details>
+            <>
+              <details className="assumptions">
+                <summary>{t("providers.assumptionsTitle")}</summary>
+                <p className="muted">{t("providers.assumptionsLead")}</p>
+                <Assumptions settings={settings} update={update} />
+              </details>
+              <OwnPrices settings={settings} update={update} />
+            </>
           }
         />
       </Section>

@@ -24,6 +24,7 @@ pub const COMMANDS: &[&str] = &[
     "session_history",
     "set_panel_mode",
     "set_always_on_top",
+    "reset_panel_position",
     "open_window",
     "open_url",
     "hotkey_status",

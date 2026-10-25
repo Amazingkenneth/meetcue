@@ -1,6 +1,7 @@
 //! Starting, pausing and stopping a meeting session, and forwarding
 //! pipeline events to every window.
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use tauri::{AppHandle, Emitter, Manager};
@@ -302,12 +303,9 @@ fn hangover_ms(endpoint_silence_ms: u32) -> i64 {
 /// without restarting it. If the new settings can't be used (say a key is
 /// missing), the session keeps its current models and the reason is shown.
 pub async fn apply_live(app: &AppHandle) {
-    use std::sync::atomic::{AtomicU64, Ordering};
     // Typing in the role box saves on every key; apply once it settles.
     static LATEST: AtomicU64 = AtomicU64::new(0);
-    let me = LATEST.fetch_add(1, Ordering::SeqCst) + 1;
-    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
-    if LATEST.load(Ordering::SeqCst) != me {
+    if !settled(&LATEST, 1500).await {
         return;
     }
     let state = app.state::<AppState>();
@@ -331,6 +329,38 @@ pub async fn apply_live(app: &AppHandle) {
                 },
             );
         }
+    }
+}
+
+/// Waits `ms`; false if another call with the same counter came meanwhile,
+/// so only the last of a burst of changes is applied.
+async fn settled(counter: &AtomicU64, ms: u64) -> bool {
+    let me = counter.fetch_add(1, Ordering::SeqCst) + 1;
+    tokio::time::sleep(std::time::Duration::from_millis(ms)).await;
+    counter.load(Ordering::SeqCst) == me
+}
+
+/// Restarts capture (and the level preview) with a new microphone or voice
+/// threshold, so the change applies during a meeting without restarting it.
+pub async fn restart_audio(app: &AppHandle) {
+    static LATEST: AtomicU64 = AtomicU64::new(0);
+    if !settled(&LATEST, 800).await {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let old = state.audio.lock().unwrap().take();
+    if let Some(mut old) = old {
+        old.stop();
+        match start_audio(app) {
+            Ok(()) => tracing::info!("audio capture restarted with the new microphone settings"),
+            Err(e) => {
+                let _ = reported(app, Err(e));
+            }
+        }
+    }
+    let previewing = state.preview.lock().unwrap().is_some();
+    if previewing {
+        let _ = audio_preview(app, true);
     }
 }
 

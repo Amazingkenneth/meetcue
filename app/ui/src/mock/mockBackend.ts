@@ -306,9 +306,11 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     set_panel_mode: ({ mode }) => {
       settings = { ...settings, overlay: { ...settings.overlay, mode } };
       emitApp({ type: "panelMode", mode });
+      emitApp({ type: "settingsChanged", settings });
       return null;
     },
     set_always_on_top: () => null,
+    reset_panel_position: () => null,
     open_window: ({ view: v, section }) => {
       window.open(`?view=${v}${section ? `#${section}` : ""}`, "_blank");
       return null;

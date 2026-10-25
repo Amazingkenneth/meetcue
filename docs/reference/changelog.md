@@ -9,6 +9,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 - Prices are read live from Anthropic's, Soniox's and Deepgram's official pricing pages, and from OpenAI-compatible servers that list prices with their models. Every current Claude model now shows its price and estimated cost; only a model with no price anywhere links to the pricing page.
 - Deepgram shows the rate billed today, including limited-time promotions, with the regular rate in the tooltip.
 - Changing a model, key, language or hint setting during a meeting takes effect right away: the next question uses the new models, and recognition switches without losing the sentence in progress.
+- Every setting can now be changed in the app: sliders for the voice threshold and end-of-sentence silence (now up to 3 s), panel layout and **Reset panel position** in **General**, **Run setup again**, all cost estimate assumptions, a list of your own prices with **Remove**, and the filler words counted in practice reviews. A new microphone or voice threshold also applies during a meeting.
 
 ### Added
 

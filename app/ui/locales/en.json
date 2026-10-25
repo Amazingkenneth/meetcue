@@ -101,7 +101,18 @@
     "hideInShare": "Hide the panel when sharing the screen",
     "hideInShareHint": "Screen sharing and most recorders won't capture the panel. Some recording methods and capture hardware still can.",
     "clickThrough": "Let clicks pass through the panel",
-    "clickThroughHint": "The panel stops reacting to the mouse; use the shortcuts instead."
+    "clickThroughHint": "The panel stops reacting to the mouse; use the shortcuts instead.",
+    "panelLayout": "Panel layout",
+    "panelLayoutHint": "Also switches with {{key}} and the buttons on the panel.",
+    "panelFull": "Full",
+    "panelMini": "Mini",
+    "panelHidden": "Hidden",
+    "panelPosition": "Panel position",
+    "panelPositionHint": "Drag the panel by its title bar to move it. This puts it back at the top right of the main screen.",
+    "setupTitle": "Setup",
+    "setupAgain": "Setup assistant",
+    "setupAgainHint": "Walk through languages, audio, models, keys and the latency check again. Your current settings are kept as the starting point.",
+    "setupAgainButton": "Run setup again"
   },
   "audio": {
     "microphone": "Microphone (you)",
@@ -119,14 +130,15 @@
     "vadThreshold": "Voice detection threshold",
     "vadHint": "Lower picks up quieter speech; higher ignores more background noise.",
     "endpointSilence": "Sentence end after silence",
-    "endpointHint": "Shorter shows hints sooner but may split a question in two.",
+    "endpointHint": "How long a pause ends a sentence. Shorter shows hints sooner but may split a question in two; longer waits through pauses in long questions.",
     "languages": "Meeting languages",
     "languagesHint": "Main language first. Soniox recognises Chinese and English mixed in one sentence; Deepgram recognises only the main language.",
     "langZhEn": "Mostly Chinese, some English",
     "langEn": "English",
     "langZh": "Chinese",
     "langEnZh": "Mostly English, some Chinese",
-    "deepgramMixed": "Deepgram can't recognise Chinese and English in the same stream, so it will only recognise {{language}}. For mixed speech, choose Soniox in Providers & cost."
+    "deepgramMixed": "Deepgram can't recognise Chinese and English in the same stream, so it will only recognise {{language}}. For mixed speech, choose Soniox in Providers & cost.",
+    "appliesLive": "These settings, the microphone and the languages apply immediately, also during a meeting."
   },
   "providers": {
     "asrTitle": "Speech recognition",
@@ -185,7 +197,14 @@
     "showAll_other": "Show {{count}} more models",
     "showFewer": "Show fewer",
     "keyOptional": "API key (optional)",
-    "baseUrlPlaceholder": "Base URL, e.g. https://host/v1"
+    "baseUrlPlaceholder": "Base URL, e.g. https://host/v1",
+    "systemTokens": "Stable prompt tokens per call",
+    "systemTokensHint": "Your role and briefing summary, billed at the cache-read price.",
+    "cancelOverhead": "Cancelled early triggers",
+    "cancelOverheadHint": "Extra share for requests started early and then cancelled.",
+    "ownPrices_one": "Your own price ({{count}})",
+    "ownPrices_other": "Your own prices ({{count}})",
+    "ownPricesLead": "Prices you entered replace the provider's. Remove one to use the provider's price again."
   },
   "probe": {
     "title": "Latency probe",
@@ -411,7 +430,10 @@
     "answered": "Done answering",
     "finishedBody": "The review opens in its own window.",
     "hintsOff": "Hints are hidden at this level. You'll see them in the review.",
-    "hintsIn": "Hints appear in {{seconds}} s"
+    "hintsIn": "Hints appear in {{seconds}} s",
+    "fillersZh": "Chinese filler words",
+    "fillersEn": "English filler words",
+    "fillersHint": "Counted in the review. Separate words with commas."
   },
   "review": {
     "title": "Practice review",

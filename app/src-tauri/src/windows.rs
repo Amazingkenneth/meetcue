@@ -150,6 +150,14 @@ pub fn set_mode(app: &AppHandle, mode: PanelMode) {
     }
     persist(app);
     let _ = app.emit(APP_EVENT, AppEvent::PanelMode { mode });
+    // Keeps the layout choice in the settings window in step.
+    let settings = app.state::<AppState>().settings();
+    let _ = app.emit(
+        APP_EVENT,
+        AppEvent::SettingsChanged {
+            settings: Box::new(settings),
+        },
+    );
 }
 
 pub fn cycle_mode(app: &AppHandle) {

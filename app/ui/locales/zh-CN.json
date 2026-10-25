@@ -100,7 +100,18 @@
     "hideInShare": "共享屏幕时隐藏面板",
     "hideInShareHint": "屏幕共享和大多数录屏软件拍不到面板；部分录制方式和硬件采集卡仍可能拍到。",
     "clickThrough": "鼠标穿透面板",
-    "clickThroughHint": "面板不再响应鼠标，请改用快捷键操作。"
+    "clickThroughHint": "面板不再响应鼠标，请改用快捷键操作。",
+    "panelLayout": "面板形态",
+    "panelLayoutHint": "也可以用 {{key}} 或面板上的按钮切换。",
+    "panelFull": "完整",
+    "panelMini": "迷你",
+    "panelHidden": "隐藏",
+    "panelPosition": "面板位置",
+    "panelPositionHint": "拖动面板标题栏即可移动。点此将面板放回主屏幕右上角。",
+    "setupTitle": "初始设置",
+    "setupAgain": "设置向导",
+    "setupAgainHint": "重新走一遍语言、音频、模型、密钥和延迟检测。会以当前设置为起点。",
+    "setupAgainButton": "重新运行设置向导"
   },
   "audio": {
     "microphone": "麦克风（我）",
@@ -118,14 +129,15 @@
     "vadThreshold": "人声检测门限",
     "vadHint": "调低能拾取更轻的说话声，调高能忽略更多背景噪声。",
     "endpointSilence": "静音多久算一句结束",
-    "endpointHint": "越短提示越快，但可能把一个问题切成两段。",
+    "endpointHint": "停顿多久算一句话结束。越短提示越快，但可能把一个问题切成两段；越长越能等完长问题中间的停顿。",
     "languages": "会议语言",
     "languagesHint": "主要语言放在前面。Soniox 能识别同一句中的中英混说；Deepgram 只识别主要语言。",
     "langZhEn": "以中文为主，夹杂英文",
     "langEn": "英文",
     "langZh": "中文",
     "langEnZh": "以英文为主，夹杂中文",
-    "deepgramMixed": "Deepgram 无法在同一路音频中同时识别中文和英文，因此只会识别{{language}}。如需中英混说，请在“供应商与费用”中选择 Soniox。"
+    "deepgramMixed": "Deepgram 无法在同一路音频中同时识别中文和英文，因此只会识别{{language}}。如需中英混说，请在“供应商与费用”中选择 Soniox。",
+    "appliesLive": "这些设置以及麦克风、会议语言都会立即生效，会议进行中也一样。"
   },
   "providers": {
     "asrTitle": "语音识别",
@@ -183,7 +195,13 @@
     "showAll_other": "显示其余 {{count}} 个模型",
     "showFewer": "收起",
     "keyOptional": "API 密钥（可选）",
-    "baseUrlPlaceholder": "接口地址，如 https://host/v1"
+    "baseUrlPlaceholder": "接口地址，如 https://host/v1",
+    "systemTokens": "每次调用的固定提示 token",
+    "systemTokensHint": "你的角色和会前资料摘要，按缓存读取价计费。",
+    "cancelOverhead": "提前触发后取消的比例",
+    "cancelOverheadHint": "为提前发出又被取消的请求额外计入的比例。",
+    "ownPrices_other": "你填写的价格（{{count}}）",
+    "ownPricesLead": "你填写的价格会替代供应商的价格。删除后恢复使用供应商价格。"
   },
   "probe": {
     "title": "延迟探测",
@@ -409,7 +427,10 @@
     "answered": "答完了",
     "finishedBody": "复盘报告会在单独的窗口中打开。",
     "hintsOff": "当前难度下不显示提示，可在复盘中查看。",
-    "hintsIn": "{{seconds}} 秒后显示提示"
+    "hintsIn": "{{seconds}} 秒后显示提示",
+    "fillersZh": "中文口头禅",
+    "fillersEn": "英文口头禅",
+    "fillersHint": "在复盘报告中统计。词与词之间用逗号分隔。"
   },
   "review": {
     "title": "练习复盘",

@@ -569,6 +569,23 @@ input[type="number"] {
   }
 }
 
+/* Range inputs with their value beside them */
+.slider {
+  width: min(260px, 100%);
+  accent-color: var(--brand);
+}
+
+.own-prices {
+  list-style: none;
+  margin: 4px 0 8px;
+  padding: 0;
+}
+
+.own-prices li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
 /* Activity log */
 .log-view {
   height: 280px;
