@@ -1,36 +1,39 @@
 # 发布流程
 
-本页介绍 MeetCue 如何发布新版本：从修改版本号到 Scoop manifest 更新完成。
+发布是自动的。每次推送到默认分支且改动了程序本身，CI 通过后就会发布新版本；不需要手动修改版本号或推送标签。
 
-## 准备
+## 合并之前
 
-1. 确认默认分支上的 CI 全部通过。
-2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，并更新 `verified` 日期和 `updated`。程序从文档站下载这个文件，所以修正价格只需推送到默认分支，无需发布新版本。
-3. 在 Windows 电脑上用默认分支的构建运行[实机测试清单](/zh/test-checklist)。
-4. 把两种语言[更新日志](/zh/reference/changelog)中 **未发布** 下的条目移到新版本标题下。
+1. 在两种语言[更新日志](/zh/reference/changelog)的 **未发布** 部分写上本次改动。发布时这些条目会移到新版本标题下，并用作发布说明。
+2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，有变化时更新 `verified` 日期和 `updated`。程序从文档站下载这个文件，所以修正价格只需推送到默认分支，无需发布新版本。
+3. 涉及音频、语音识别或窗口的改动，请在 Windows 电脑上用该分支的构建运行[实机测试清单](/zh/test-checklist)（CI 会为每次推送上传 `MeetCue-windows-x64`）。
 
-## 修改版本号
+## 版本号如何确定
 
-版本号只在根目录 `Cargo.toml` 的 `[workspace.package]` 中定义。同时把 `package.json`、`app/ui/package.json` 和 `docs/package.json` 改成相同的值；`npm run check:versions` 会检查它们是否一致。`tauri.conf.json` 从 Cargo 读取版本号。
+新版本号是最新的 `v*` 标签把修订号加一。在提交信息（或拉取请求标题，它会成为合并提交的信息）中加入标记可以改变这一点：
 
-## 打标签
+| 标记 | 效果 |
+| --- | --- |
+| `[release minor]` | 0.1.5 → 0.2.0 |
+| `[release major]` | 0.1.5 → 1.0.0 |
+| `[skip release]` | 写在最新的提交中：本次推送不发布 |
 
-```sh
-git tag v0.2.0
-git push origin v0.2.0
-```
+只改动文档、工作流或 Scoop manifest 的推送不会发布。需要手动发布时，在 Actions 页面运行 **Release** 工作流并选择要增加的部分。
 
 ## 发布工作流做了什么
 
-推送 `v*` 标签会在 Windows 上运行 `.github/workflows/release.yml`：
+默认分支上的 CI 完成后会运行 `.github/workflows/release.yml`：
 
-1. 用 Tauri CLI 构建 `MeetCue.exe`，不生成安装程序。
-2. 把 `MeetCue.exe`、`LICENSE` 和 README 文件打包为 `meetcue-win-x64.zip`，并计算 SHA-256 哈希。
-3. 创建 GitHub Release，上传 zip 并生成发布说明。
-4. 用新的版本号、下载地址和哈希更新 `bucket/meetcue.json`，并以仓库变量 `GIT_NAME` 和 `GIT_EMAIL` 的身份提交到默认分支。
-5. 在构建机上安装 Scoop，用更新后的 manifest 安装 MeetCue，确认 `MeetCue.exe --version` 输出新版本号。
+1. 确定版本号。只发布最新的提交：如果 CI 运行期间分支又有新提交，由新提交的运行一并发布。
+2. 在 Windows 上用这个版本号构建 `MeetCue.exe`，检查 `MeetCue.exe --version`，并把 `MeetCue.exe`、`LICENSE` 和 README 文件打包为 `meetcue-win-x64.zip`。
+3. 运行 `scripts/set-version.mjs`：把版本号写入 `Cargo.toml`、`Cargo.lock`、各 `package.json` 和 `package-lock.json`，把更新日志中 **未发布** 的条目移到新版本下，并让 `bucket/meetcue.json` 指向新的 zip 及其 SHA-256 哈希。
+4. 以仓库变量 `GIT_NAME` 和 `GIT_EMAIL` 的身份把这些改动提交到默认分支（"Release x.y.z"），并打上 `vx.y.z` 标签。提交和标签一起推送；如果分支在此期间有了新提交，则什么都不发布，由下一次运行发布。
+5. 创建 GitHub Release，上传 zip，并以更新日志中的这一节作为发布说明，然后重新发布文档站。
+6. 在 Windows 构建机上安装 Scoop，用标签中的 manifest 安装 MeetCue，确认输出新版本号。
 
-哈希只由工作流在上传 zip 的同一次运行中计算并提交。不要手动替换 Release 中的文件；需要修改时请发布新版本。
+`npm run check:versions` 会检查所有 manifest、两个锁文件和 Scoop manifest 的版本号一致，因此提交中的版本号始终等于最新发布的版本。哈希只由工作流在上传 zip 的同一次运行中计算并提交。不要手动替换 Release 中的文件；需要修改时请发布新版本。
+
+如果提交和标签已推送后某个步骤失败，使用 **Re-run failed jobs**，它会为同一标签完成发布。
 
 ## 发布之后
 
@@ -43,4 +46,5 @@ git push origin v0.2.0
 
 - **Settings › Pages**：来源设为 `gh-pages` 分支。默认分支上 `docs/` 或 `errors.json` 有变化时，文档工作流会发布到这里。
 - **Settings › Secrets and variables › Actions › Variables**：设置 `GIT_NAME` 和 `GIT_EMAIL`，供工作流提交时使用。
+- **Settings › Actions › General › Workflow permissions**：工作流用 `GITHUB_TOKEN` 推送到默认分支，如果默认分支有保护规则，需要允许 GitHub Actions 推送。
 - 仓库必须是公开的，否则 Scoop 无法下载 Release 中的文件。
