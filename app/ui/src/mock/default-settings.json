@@ -11,6 +11,8 @@
     "micDevice": null,
     "remoteSource": "allSystemSound",
     "vadThresholdDb": -45.0,
+    "remoteVadThresholdDb": -60.0,
+    "boostQuietVoices": true,
     "endpointSilenceMs": 700,
     "stopTtsOnSpeech": true,
     "languages": [
@@ -65,7 +67,8 @@
     "onlyDirectedToMe": false,
     "queueInterruptions": true,
     "trackCoverage": true,
-    "earlyTrigger": true
+    "earlyTrigger": true,
+    "speculativeHints": true
   },
   "hotkeys": {
     "toggleCapture": "Ctrl+Alt+Space",

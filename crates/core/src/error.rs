@@ -34,6 +34,8 @@ pub mod codes {
     pub const SYS_CONFIG_DIR: &str = "MC-SYS-002";
     pub const SYS_CREDENTIALS: &str = "MC-SYS-003";
     pub const SYS_UNSUPPORTED: &str = "MC-SYS-004";
+    pub const SYS_SETTINGS_SAVE: &str = "MC-SYS-005";
+    pub const SYS_INTERNAL: &str = "MC-SYS-006";
     pub const NET_TLS: &str = "MC-NET-001";
     pub const BUDGET_WARN: &str = "MC-BUD-001";
     pub const BUDGET_REACHED: &str = "MC-BUD-002";
@@ -64,6 +66,8 @@ pub mod codes {
         SYS_CONFIG_DIR,
         SYS_CREDENTIALS,
         SYS_UNSUPPORTED,
+        SYS_SETTINGS_SAVE,
+        SYS_INTERNAL,
         NET_TLS,
         BUDGET_WARN,
         BUDGET_REACHED,

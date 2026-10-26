@@ -4,6 +4,17 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- **Boost quiet voices from the meeting** (**Settings › Audio**, on by default) raises soft-spoken participants to a normal speaking level before recognition, and system sound has its own, lower voice threshold (−60 dBFS), so quiet questions are no longer missed.
+- **Write hints while checking the question** (**Settings › Hints**, on by default) starts hint generation together with question detection, so the first point usually appears about a second sooner.
+- Hovering over the latency in the panel footer shows how the last hint's time split between recognition, detection and hints. When hints are slow, the panel names the slowest stage and the setting that helps most.
+
+### Fixed
+
+- `MC-SYS-002` ("settings folder not writable") appeared for failures that had nothing to do with the settings folder, such as a window or file dialog that couldn't open. Those now report `MC-SYS-006`, and a failed settings save reports `MC-SYS-005`.
+- The check whether the settings folder next to the program is writable could fail for a moment after sign-in or an update and move settings to `%APPDATA%\MeetCue`. It now retries, and the notice about it is shown once instead of on every start.
+
 ## 0.2.3 — 2026-10-26
 
 ### Added

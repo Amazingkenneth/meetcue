@@ -7,9 +7,19 @@ export type AudioSettings = {
  */
 micDevice: string | null, remoteSource: RemoteSource, 
 /**
- * Energy threshold for voice activity, in dBFS.
+ * Energy threshold for voice activity on the microphone, in dBFS.
  */
 vadThresholdDb: number, 
+/**
+ * Energy threshold for voice activity in system sound, in dBFS. Lower
+ * than the microphone's: meeting apps remove background noise, so soft
+ * voices are the quietest thing in it.
+ */
+remoteVadThresholdDb: number, 
+/**
+ * Raise quiet voices in system sound before recognition.
+ */
+boostQuietVoices: boolean, 
 /**
  * Silence that ends a sentence, in milliseconds.
  */

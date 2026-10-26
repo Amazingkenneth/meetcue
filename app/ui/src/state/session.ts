@@ -11,6 +11,7 @@ import type { PointStatus } from "../bindings/PointStatus";
 import type { QuestionStatus } from "../bindings/QuestionStatus";
 import type { SessionState } from "../bindings/SessionState";
 import type { TranscriptLine } from "../bindings/TranscriptLine";
+import type { LatencyBreakdown } from "./latency";
 
 export interface PointView {
   n: number;
@@ -60,6 +61,8 @@ export interface SessionView {
   /// Whether each channel's recognition stream is open; null before it reports.
   recognition: Record<Channel, boolean | null>;
   latencies: number[];
+  /// How the last hint's time split between recognition, detection and hints.
+  lastLatency: LatencyBreakdown | null;
   latencyWarning: number | null;
   sessionMicros: number;
   errors: SessionErrorView[];
@@ -88,6 +91,7 @@ export function emptySession(): SessionView {
     levels: { me: -100, remote: -100 },
     recognition: { me: null, remote: null },
     latencies: [],
+    lastLatency: null,
     latencyWarning: null,
     sessionMicros: 0,
     errors: [],
@@ -211,7 +215,8 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
     }
     case "latencySample": {
       const next = withQuestion(s, e.id, (q) => ({ ...q, latencyMs: e.totalMs }));
-      return { ...next, latencies: [...s.latencies, e.totalMs].slice(-20) };
+      const lastLatency = { asrMs: e.asrMs, detectMs: e.detectMs, generateMs: e.generateMs, totalMs: e.totalMs, early: e.early };
+      return { ...next, latencies: [...s.latencies, e.totalMs].slice(-20), lastLatency };
     }
     case "latencyWarning":
       return { ...s, latencyWarning: e.medianMs };

@@ -175,11 +175,11 @@
     },
     {
       "code": "MC-SYS-002",
-      "severity": "warning",
-      "title": { "en": "The settings folder is not writable", "zh-CN": "无法写入配置目录" },
+      "severity": "info",
+      "title": { "en": "Settings are kept in your user folder", "zh-CN": "设置改存在用户目录中" },
       "fix": {
-        "en": "MeetCue saved settings to your user profile instead. Check the folder permissions if you want portable settings.",
-        "zh-CN": "MeetCue 已改为把设置保存在用户目录中。如需便携配置，请检查程序目录的写入权限。"
+        "en": "MeetCue couldn't write to the config folder next to the program, so it keeps settings in %APPDATA%\\MeetCue instead. Everything works normally and this notice is shown only once. To keep settings next to the program (Scoop's persist folder), make that folder writable and restart MeetCue.",
+        "zh-CN": "MeetCue 无法写入程序旁边的 config 文件夹，因此改把设置保存在 %APPDATA%\\MeetCue。一切功能正常，此提示只显示一次。如希望设置保存在程序旁边（Scoop 的 persist 文件夹），请让该文件夹可写并重启 MeetCue。"
       }
     },
     {
@@ -198,6 +198,24 @@
       "fix": {
         "en": "The feature is planned for a later release. See the platform support table in the docs.",
         "zh-CN": "该功能将在后续版本中支持，请查看文档中的平台支持表。"
+      }
+    },
+    {
+      "code": "MC-SYS-005",
+      "severity": "error",
+      "title": { "en": "Settings could not be saved", "zh-CN": "设置未能保存" },
+      "fix": {
+        "en": "Another program, often antivirus or a sync tool, may be holding settings.json. Try the change again; if it keeps failing, open Settings › Diagnostics, check the settings folder shown there, and make sure it is writable.",
+        "zh-CN": "可能有其他程序（常见的是杀毒软件或同步工具）正在占用 settings.json。请再改一次；如果一直失败，请打开 设置 › 诊断，查看其中显示的设置文件夹，并确认它可以写入。"
+      }
+    },
+    {
+      "code": "MC-SYS-006",
+      "severity": "error",
+      "title": { "en": "MeetCue couldn't finish that action", "zh-CN": "MeetCue 未能完成该操作" },
+      "fix": {
+        "en": "Try again. If it keeps happening, export diagnostics from Settings › Diagnostics and open an issue: the log names the action that failed.",
+        "zh-CN": "请重试。如果反复出现，请在 设置 › 诊断 中导出诊断信息并提交 Issue，日志中会写明失败的操作。"
       }
     },
     {
