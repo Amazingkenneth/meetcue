@@ -31,10 +31,10 @@ When an item fails, note the error code if any, [export diagnostics](/troublesho
 
 ## Practice
 
-- [ ] **Mock interview…** in the tray menu, **No meeting? Try a mock interview** on the idle panel, **Settings › General › Open mock interview** and **Finish and try a mock interview** in setup all open the mock interview window.
+- [ ] **Mock interview…** in the tray menu, **Try a mock interview** on the idle panel, **Settings › General › Open mock interview** and **Finish and try a mock interview** in setup all open the mock interview window.
 - [ ] Each built-in sample loads with **Use this**; follow the [self-test plan](/guide/mock-interview#self-test-plan) for at least rounds 1 and 3.
 - [ ] Practice one round each with the sample subtitles and the sample question list.
-- [ ] Both **Real pipeline** and **Simulated latency** show hints.
+- [ ] Hints appear with **Speech-to-text for the questions** both on and off.
 - [ ] Switching between the four hint levels works.
 - [ ] The review report can be exported.
 

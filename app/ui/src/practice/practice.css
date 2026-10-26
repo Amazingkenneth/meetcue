@@ -70,31 +70,6 @@
   margin-left: 6px;
 }
 
-.practice-radios {
-  display: grid;
-  gap: 8px;
-}
-
-.practice-radio {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  cursor: pointer;
-}
-
-.practice-radio input {
-  margin-top: 4px;
-}
-
-.practice-radio > span {
-  display: grid;
-  gap: 2px;
-}
-
-.practice-radio .muted {
-  font-size: 13px;
-}
-
 .practice-history {
   list-style: none;
   padding: 0;

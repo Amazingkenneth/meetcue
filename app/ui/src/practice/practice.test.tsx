@@ -93,7 +93,7 @@ describe("Practice window", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     await flush();
     expect(screen.getByText("2 questions", { exact: false })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: /Simulated latency/ }));
+    fireEvent.click(screen.getByRole("switch", { name: /Speech-to-text for the questions/ }));
     await flush();
     expect(screen.getByText("Only recognition delay is simulated; the model's delay is real.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start practice" }));

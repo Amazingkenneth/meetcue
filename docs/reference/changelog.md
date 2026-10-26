@@ -7,6 +7,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 ### Added
 
 - Mock interviews are easier to start: **Mock interview…** is near the top of the tray menu, the idle panel links to it, and it can be opened from **Settings › General** and from the last step of setup. The window starts with a step-by-step **How it works**.
+- Practice playback is now a **Speech-to-text for the questions** switch: on (the default) transcribes the spoken questions exactly like a meeting; off sends their text straight to the hint model. Questions are spoken aloud either way. **Recognise my answers** is now **Speech-to-text for my answers**.
 - Built-in sample interviews for software engineering and for network security with AI, as question lists and as interview transcripts, load with one click. Sample job descriptions to use as briefing material are in `samples/materials`.
 - A [mock interview guide](/guide/mock-interview) explains how to test the whole app over your microphone without a real meeting.
 

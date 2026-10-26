@@ -52,8 +52,8 @@
       "severity": "error",
       "title": { "en": "Audio capture is not available on this platform yet", "zh-CN": "此平台暂不支持音频采集" },
       "fix": {
-        "en": "This build supports audio capture on Windows only. Practice mode with simulated latency still works.",
-        "zh-CN": "当前版本只在 Windows 上支持音频采集。练习模式的“模拟延迟”方式仍可使用。"
+        "en": "This build supports audio capture on Windows only. Practice mode with speech-to-text for the questions turned off still works.",
+        "zh-CN": "当前版本只在 Windows 上支持音频采集。练习模式关闭“问题语音转文字”后仍可使用。"
       }
     },
     {

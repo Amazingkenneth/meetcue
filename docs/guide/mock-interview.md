@@ -26,7 +26,7 @@ Start with the demo if you haven't set up any keys yet. Use the mock interview f
 You can open it from any of these places:
 
 - **Tray menu**: click the MeetCue icon in the taskbar notification area and choose **Mock interview…** (third item from the top).
-- **Panel**: while MeetCue isn't listening, the panel shows **No meeting? Try a mock interview** under the start hint.
+- **Panel**: while MeetCue isn't listening, the panel shows **Try a mock interview** under the start hint.
 - **Settings › General › Mock interview**: click **Open mock interview**.
 - **End of setup**: on the last step of the setup window, click **Finish and try a mock interview**.
 
@@ -78,15 +78,17 @@ The preview lists every question or line. You can:
 
 ## Step 5: Choose how to practise {#step-5}
 
+A mock interview works like a real meeting: every question is spoken aloud and comes to MeetCue as sound, and the first two switches decide whether your speech provider transcribes it. Leave both on to test the whole app; turn **Speech-to-text for the questions** off to prepare more cheaply.
+
 For your first mock interview, use these settings:
 
 | Option | First run | Why |
 | --- | --- | --- |
-| Playback | **Real pipeline** | Tests speech recognition of the other side, exactly like a meeting |
+| Speech-to-text for the questions | On | The spoken question is captured from system sound and transcribed by your speech provider, exactly like a meeting |
 | Hint level | **Full** | Shows everything the panel can show |
 | Pause that ends an answer | 3 seconds | Raise to 4 or 5 if MeetCue cuts you off while you think |
 | Follow-up questions | On | Tests that MeetCue reacts to what you actually said |
-| Recognise my answers | On | Needed for coverage ticks and most review figures |
+| Speech-to-text for my answers | On | Needed for coverage ticks and most review figures |
 | Stop reading when I start speaking | On | Lets you interrupt, as in a real conversation |
 
 Then click **Start practice**. The panel comes to the front if it was hidden.
@@ -124,11 +126,11 @@ Run these five rounds to cover everything MeetCue does, one feature at a time. E
 
 | Round | Sample | Settings | Check that |
 | --- | --- | --- | --- |
-| 1 | Software engineer: question list, keep the first 5 | Real pipeline, Full | Each question is read, hints appear, points tick as you speak, the review opens |
-| 2 | Network security and AI: question list, keep the first 5 | Real pipeline, Keywords only, with the security job description added | Hints mention the role (zero trust, detection, LLM security); only keywords show |
-| 3 | Software engineer: interview transcript | Real pipeline, Full | Playback stops at your turns and waits; a greeting usually gets no hints; the review compares your answers with the candidate's lines |
-| 4 | Network security and AI: interview transcript | Simulated latency, Delayed (5 s) | Hints appear about 5 seconds after each question, and the review notes that recognition delay was simulated |
-| 5 | Any question list | Real pipeline, Off | No hints during the round, and you can still answer and get feedback in the review |
+| 1 | Software engineer: question list, keep the first 5 | Speech-to-text on, Full | Each question is read, hints appear, points tick as you speak, the review opens |
+| 2 | Network security and AI: question list, keep the first 5 | Speech-to-text on, Keywords only, with the security job description added | Hints mention the role (zero trust, detection, LLM security); only keywords show |
+| 3 | Software engineer: interview transcript | Speech-to-text on, Full | Playback stops at your turns and waits; a greeting usually gets no hints; the review compares your answers with the candidate's lines |
+| 4 | Network security and AI: interview transcript | Speech-to-text for the questions off, Delayed (5 s) | Hints appear about 5 seconds after each question, and the review notes that recognition delay was simulated |
+| 5 | Any question list | Speech-to-text on, hints Off | No hints during the round, and you can still answer and get feedback in the review |
 
 After round 1, look at the latency in the panel footer. Around 1.5 seconds is typical; much more points to a slow provider or network. See [High latency](/troubleshooting/latency).
 
@@ -174,11 +176,11 @@ Check the questions and answers before you practise with them.
 | Symptom | Likely cause and fix |
 | --- | --- |
 | The question is read but no hints appear | A key or model problem. The panel shows an error code; click **See the fix**. Check the key under **Settings › Providers & cost** with **Verify** |
-| No hints in Real pipeline, but hints in Simulated latency | MeetCue can't hear system sound. Check the system sound bar and see [Audio and devices](/troubleshooting/audio) |
-| Points never tick | **Recognise my answers** is off, or the microphone bar doesn't move. Check **Settings › Audio** |
+| No hints with speech-to-text for the questions on, but hints with it off | MeetCue can't hear system sound. Check the system sound bar and see [Audio and devices](/troubleshooting/audio) |
+| Points never tick | **Speech-to-text for my answers** is off, or the microphone bar doesn't move. Check **Settings › Audio** |
 | Points tick while the question is being read | The microphone hears the speakers. Use headphones, see [echo](/troubleshooting/audio#echo) |
 | MeetCue moves on while you're still thinking | Raise **Pause that ends an answer** to 4 or 5 seconds |
 | The voice reads too fast or too slowly | Change **Reading speed** |
 | Hints are generic | Add **My role** and a job description, see [Step 2](#step-2) |
 
-Every mock interview with **Real pipeline** uses your speech recognition and model providers, so it costs about as much as a meeting of the same length. **Simulated latency** skips recognition of the questions, and turning off **Recognise my answers** removes all recognition cost.
+With both speech-to-text switches on, a mock interview uses your speech recognition and model providers just like a meeting, and costs about as much as a meeting of the same length. Turning off **Speech-to-text for the questions** skips recognition of the questions; the questions are still spoken aloud. Turning off **Speech-to-text for my answers** as well removes all recognition cost.

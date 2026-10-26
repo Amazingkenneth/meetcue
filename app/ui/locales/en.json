@@ -74,7 +74,7 @@
     "openProbe": "Open latency probe",
     "pendingCount_one": "{{count}} waiting",
     "pendingCount_other": "{{count}} waiting",
-    "practiceLink": "No meeting? Try a mock interview"
+    "practiceLink": "Try a mock interview"
   },
   "errors": {
     "seeFix": "See the fix",
@@ -387,11 +387,8 @@
     "classify": "Label lines with the model",
     "classifying": "Labelling…",
     "optionsTitle": "How to practise",
-    "playback": "Playback",
-    "playbackReal": "Real pipeline",
-    "playbackRealHint": "Questions are read aloud and recognised like a real meeting, so the delay matches a meeting. Use headphones.",
-    "playbackSimulated": "Simulated latency",
-    "playbackSimulatedHint": "Questions are read aloud, but their text goes to the hint model after a recognition delay taken from your last latency probe. Saves recognition cost.",
+    "playbackReal": "Speech-to-text on",
+    "playbackSimulated": "Speech-to-text off",
     "simulatedNote": "Only recognition delay is simulated; the model's delay is real.",
     "level": "Hint level",
     "levelHint": "Step down one level at a time until you can answer without hints.",
@@ -406,7 +403,7 @@
     "followUpsHint": "Sometimes asks one short follow-up about your answer.",
     "followUpChance": "Chance of a follow-up",
     "speechRate": "Reading speed",
-    "recognizeMe": "Recognise my answers",
+    "recognizeMe": "Speech-to-text for my answers",
     "recognizeMeHint": "Needed for ticks and most review figures. When off, your answers cause no recognition cost.",
     "stopOnSpeech": "Stop reading when I start speaking",
     "start": "Start practice",
@@ -473,7 +470,10 @@
         "title": "SDN interview transcript (Chinese)",
         "body": "A short Chinese interview about high availability and SDN controllers."
       }
-    }
+    },
+    "sttQuestions": "Speech-to-text for the questions",
+    "sttQuestionsOn": "On, like a real meeting: each question is spoken aloud, captured from system sound and transcribed by your speech provider, so you get the same delay as in a meeting. Use headphones.",
+    "sttQuestionsOff": "Off: each question is still spoken aloud, but its text goes straight to the hint model after a recognition delay taken from your last latency probe. Saves recognition cost."
   },
   "review": {
     "title": "Practice review",

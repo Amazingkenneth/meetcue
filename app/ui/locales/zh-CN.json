@@ -73,7 +73,7 @@
     "probeAgain": "最近几个问题的提示都偏慢，要重新运行延迟探测吗？",
     "openProbe": "打开延迟探测",
     "pendingCount_other": "{{count}} 个排队",
-    "practiceLink": "没有会议？来一场模拟面试"
+    "practiceLink": "试试模拟面试"
   },
   "errors": {
     "seeFix": "查看解决办法",
@@ -385,11 +385,8 @@
     "classify": "用模型标注句子",
     "classifying": "正在标注…",
     "optionsTitle": "练习方式",
-    "playback": "播放方式",
-    "playbackReal": "真实链路",
-    "playbackRealHint": "朗读问题并像真实会议一样识别，延迟与会议中一致。建议戴耳机。",
-    "playbackSimulated": "模拟延迟",
-    "playbackSimulatedHint": "照样朗读问题，但问题文本在一段识别延迟后直接交给要点模型；延迟取自最近一次延迟探测。可节省识别费用。",
+    "playbackReal": "语音转文字：开",
+    "playbackSimulated": "语音转文字：关",
     "simulatedNote": "只模拟了识别延迟，模型延迟为真实值。",
     "level": "提示难度",
     "levelHint": "建议逐档降低，直到不看提示也能回答。",
@@ -404,7 +401,7 @@
     "followUpsHint": "答完后有时会根据你的回答提一个简短的追问。",
     "followUpChance": "追问概率",
     "speechRate": "朗读语速",
-    "recognizeMe": "识别我的回答",
+    "recognizeMe": "我的回答语音转文字",
     "recognizeMeHint": "要点打勾和大部分复盘指标需要它。关闭后你的回答不产生识别费用。",
     "stopOnSpeech": "我开口时停止朗读",
     "start": "开始练习",
@@ -471,7 +468,10 @@
         "title": "SDN 面试字幕（中文）",
         "body": "一段关于高可用和 SDN 控制器的简短中文面试。"
       }
-    }
+    },
+    "sttQuestions": "问题语音转文字",
+    "sttQuestionsOn": "开启，与真实会议一致：每道题都会朗读出来，从系统声音采集，再由语音识别供应商转成文字，延迟与会议中相同。建议戴耳机。",
+    "sttQuestionsOff": "关闭：每道题仍会朗读出来，但问题文本在一段识别延迟后直接交给要点模型；延迟取自最近一次延迟探测。可节省识别费用。"
   },
   "review": {
     "title": "练习复盘",

@@ -80,14 +80,14 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 
 | Setting | Key | Default |
 | --- | --- | --- |
-| Playback | `practice.playback`: `realPipeline`, `simulatedLatency` | `realPipeline` |
+| Speech-to-text for the questions | `practice.playback`: `realPipeline` (on), `simulatedLatency` (off) | `realPipeline` |
 | Hint level | `practice.hintLevel`: `full`, `headsOnly`, `delayed`, `off` | `full` |
 | Delay for delayed hints (s) | `practice.hintDelayS` | `5` |
 | Pause that ends an answer (s) | `practice.answerPauseS` | `3` |
 | Reminder when you haven't started (s) | `practice.nudgeAfterS` | `20` |
 | Follow-up probability | `practice.followUpProbability` | `0.3` |
 | Speech rate | `practice.speechRate` | `1.0` |
-| Recognise my answers | `practice.recognizeMe` | `true` |
+| Speech-to-text for my answers | `practice.recognizeMe` | `true` |
 | Stop reading when I start speaking | `audio.stopTtsOnSpeech` | `true` |
 | Filler words | `practice.fillersZh`, `practice.fillersEn` | see [Practice mode](/guide/practice#review-report) |
 
