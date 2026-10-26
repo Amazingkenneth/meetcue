@@ -21,7 +21,7 @@ pub struct ProviderConfig {
     /// Host chosen by the latency probe or the user; `None` for the default.
     pub host: Option<String>,
     pub key: Option<String>,
-    /// OpenAI-compatible base URL.
+    /// The user's base URL: required for OpenAI-compatible, optional for Anthropic.
     pub base_url: Option<String>,
     /// Explicit HTTPS proxy.
     pub proxy: Option<String>,
@@ -60,6 +60,7 @@ pub fn llm(cfg: &ProviderConfig) -> Result<Arc<dyn LlmProvider>, MeetCueError> {
         "anthropic" => Ok(Arc::new(anthropic::Anthropic::new(
             key(cfg, codes::LLM_AUTH)?,
             cfg.host.clone(),
+            cfg.base_url.clone(),
             cfg.proxy.clone(),
         ))),
         "openai-compatible" => {

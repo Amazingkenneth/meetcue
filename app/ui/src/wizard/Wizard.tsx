@@ -1,33 +1,26 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
-import type { ModelSlot } from "../backend/types";
-import type { ProbeReport } from "../bindings/ProbeReport";
 import { Section } from "../design/components";
-import { KeyField } from "../settings/Keys";
-import { ModelsPanel } from "../settings/ModelPicker";
+import { allChosen, ModelsPanel, SLOTS } from "../settings/ModelPicker";
 import { ProbePanel } from "../settings/Probe";
-import { AudioFields, LanguageField, useCredentials, usePricing } from "../settings/Settings";
-import { PROVIDERS, providerName } from "../settings/providers";
+import { AudioFields, LanguageField, useCredentials } from "../settings/Settings";
+import { providerName, providersInUse, reachable } from "../settings/providers";
 import { useDraft } from "../settings/useDraft";
 
-const STEPS = ["language", "audio", "models", "keys", "probe", "done"] as const;
+const STEPS = ["language", "audio", "models", "probe", "done"] as const;
 type Step = (typeof STEPS)[number];
-const SLOTS: ModelSlot[] = ["asr", "detect", "hints"];
 
 export function Wizard() {
   const { t } = useTranslation();
   const { settings, update } = useDraft();
   const [step, setStep] = useState<Step>("language");
   const [credentials, refresh] = useCredentials();
-  const table = usePricing();
-  const [probe, setProbe] = useState<ProbeReport | null>(null);
   if (!settings) return <p className="app-body muted">{t("common.loading")}</p>;
 
   const idx = STEPS.indexOf(step);
-  const chosen = SLOTS.every((s) => settings.providers[s].provider && settings.providers[s].model);
-  const neededProviders = [...new Set(SLOTS.map((s) => settings.providers[s].provider).filter(Boolean) as string[])];
-  const keysReady = neededProviders.every((p) => credentials[p] || PROVIDERS.find((x) => x.id === p)?.keyOptional);
+  const chosen = allChosen(settings);
+  const keysReady = providersInUse(settings).every((p) => reachable(settings, p) && (credentials[p.id] || p.keyOptional));
   const canNext = step === "models" ? chosen : true;
 
   const finish = async () => {
@@ -65,24 +58,14 @@ export function Wizard() {
       )}
       {step === "models" && (
         <Section title={t("wizard.step.models")} lead={t("wizard.modelsLead")}>
-          <ModelsPanel settings={settings} update={update} table={table} probe={probe} credentials={credentials} />
+          <ModelsPanel settings={settings} update={update} credentials={credentials} onCredentialsChanged={refresh} />
           {!chosen && <p className="note note-warn">{t("wizard.chooseAll")}</p>}
-        </Section>
-      )}
-      {step === "keys" && (
-        <Section title={t("wizard.step.keys")} lead={t("wizard.keysLead")}>
-          {neededProviders.map((id) => {
-            const p = PROVIDERS.find((x) => x.id === id);
-            return p ? (
-              <KeyField key={id} provider={p} configured={!!credentials[id]} settings={settings} update={update} onChanged={refresh} />
-            ) : null;
-          })}
-          {!keysReady && <p className="note note-warn">{t("wizard.keysMissing")}</p>}
+          {chosen && !keysReady && <p className="note note-warn">{t("wizard.keysMissing")}</p>}
         </Section>
       )}
       {step === "probe" && (
         <Section title={t("wizard.step.probe")}>
-          <ProbePanel settings={settings} credentials={credentials} update={update} onReport={setProbe} />
+          <ProbePanel settings={settings} credentials={credentials} update={update} />
         </Section>
       )}
       {step === "done" && (

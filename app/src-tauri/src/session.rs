@@ -64,8 +64,11 @@ pub fn provider_config(
 ) -> Result<ProviderConfig, MeetCueError> {
     let key = state.credentials.get(provider)?;
     let probes = state.probes.lock().unwrap().clone();
+    let base_url = settings.providers.base_url(provider);
+    // A base URL of the user's own replaces the provider's regional hosts.
     let host = match provider {
         "openai-compatible" => None,
+        _ if base_url.is_some() => None,
         _ => choose_host(provider, choice, &probes),
     };
     Ok(ProviderConfig {
@@ -73,7 +76,7 @@ pub fn provider_config(
         model: model.into(),
         host,
         key,
-        base_url: settings.providers.openai_base_url.clone(),
+        base_url,
         proxy: settings.providers.proxy.clone(),
     })
 }

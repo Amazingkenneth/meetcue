@@ -17,7 +17,7 @@
 
 ## 价格查询
 
-为显示当前价格，MeetCue 会在启动时和打开模型列表时读取 Anthropic、Soniox、Deepgram 的公开价格页，以及本站的[价格参考](/zh/reference/pricing)。这些只是普通的网页下载，不会发送任何密钥、账号或会议内容。
+为估算用量费用和预算，MeetCue 会在启动时读取 Anthropic、Soniox、Deepgram 的公开价格页，以及本站的[价格参考](/zh/reference/pricing)。这些只是普通的网页下载，不会发送任何密钥、账号或会议内容。
 
 你发给各供应商的数据适用其各自的隐私政策和数据保留条款。在保密会议中使用 MeetCue 之前，请先查阅这些条款。
 

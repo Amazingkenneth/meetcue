@@ -1,4 +1,5 @@
-//! Claude through the Messages API (`api.anthropic.com`).
+//! Claude through the Messages API (`api.anthropic.com`, or a compatible
+//! gateway at a base URL of the user's own).
 //!
 //! Requests stream over SSE, put the stable system prompt first with a cache
 //! breakpoint, and keep thinking as low as each model allows: hints must
@@ -23,21 +24,37 @@ const MAX_ATTEMPTS: u32 = 3;
 
 pub struct Anthropic {
     key: String,
-    host: String,
+    base: String,
     proxy: Option<String>,
 }
 
 impl Anthropic {
-    pub fn new(key: String, host: Option<String>, proxy: Option<String>) -> Self {
-        Self {
-            key,
-            host: host.unwrap_or_else(|| API_HOST.into()),
-            proxy,
-        }
+    /// `base_url` (such as `https://gateway.example.com`) wins over `host`.
+    pub fn new(
+        key: String,
+        host: Option<String>,
+        base_url: Option<String>,
+        proxy: Option<String>,
+    ) -> Self {
+        let base = match base_url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+            Some(u) => api_base(u),
+            None => format!("https://{}/v1", host.as_deref().unwrap_or(API_HOST)),
+        };
+        Self { key, base, proxy }
     }
 
-    fn base(&self) -> String {
-        format!("https://{}/v1", self.host)
+    fn base(&self) -> &str {
+        &self.base
+    }
+}
+
+/// `https://host` and `https://host/v1` both mean the API root `https://host/v1`.
+pub fn api_base(url: &str) -> String {
+    let url = url.trim().trim_end_matches('/');
+    if url.ends_with("/v1") {
+        url.to_string()
+    } else {
+        format!("{url}/v1")
     }
 }
 
@@ -351,6 +368,24 @@ impl LlmProvider for Anthropic {
 mod tests {
     use super::*;
     use meetcue_core::UsagePurpose;
+
+    #[test]
+    fn base_url_replaces_the_default_host() {
+        let a = |host: Option<&str>, url: Option<&str>| {
+            Anthropic::new("k".into(), host.map(Into::into), url.map(Into::into), None).base
+        };
+        assert_eq!(a(None, None), "https://api.anthropic.com/v1");
+        assert_eq!(a(Some("h.example"), None), "https://h.example/v1");
+        assert_eq!(
+            a(Some("h.example"), Some("https://gw.example/")),
+            "https://gw.example/v1"
+        );
+        assert_eq!(
+            a(None, Some("https://gw.example/anthropic/v1")),
+            "https://gw.example/anthropic/v1"
+        );
+        assert_eq!(a(None, Some("  ")), "https://api.anthropic.com/v1");
+    }
 
     fn req(model: &str) -> LlmRequest {
         LlmRequest::new(model, UsagePurpose::Hints)

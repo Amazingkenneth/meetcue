@@ -4,7 +4,7 @@ This page walks through the setup window that opens the first time you start Mee
 
 ## Before you start
 
-You need an account with one speech recognition provider and one language model provider. MeetCue doesn't pick them for you: the setup window shows prices side by side and you choose.
+You need an account with one speech recognition provider and one language model provider. MeetCue doesn't pick them for you: you choose the provider and type the model name for each task.
 
 | Task | Providers in this release |
 | --- | --- |
@@ -30,15 +30,16 @@ Click **Test levels**, play a video and say something. Both level bars should mo
 With speakers, your microphone also picks up the other participants. MeetCue filters most of this echo, but headphones give the cleanest result.
 :::
 
-## Step 3: Models and prices
+## Step 3: Providers and models
 
-For each of the three tasks, pick a model from the list. Each line shows the model's price (per audio hour, or per million input and output tokens), an estimated cost per hour of meeting, and the measured latency once you have run the latency probe. The list is sorted by estimated cost; **Cheapest** and **Fastest** mark the best figures. You choose each model yourself, and you can't continue until all three are chosen.
+For each of the three tasks, choose a **Provider** and type a **Model** name. Any name the provider accepts works, including models released after this version of MeetCue; once the provider's key is saved, the names it reports appear as suggestions while you type. You can't continue until all three tasks have a provider and a model.
 
-Prices are not built into MeetCue. It reads them from each provider's official pricing page (Anthropic, Soniox, Deepgram) when the list opens, and from the model list of OpenAI-compatible servers that include prices. Anything a page doesn't cover comes from the [price reference](/reference/pricing), and the last prices are kept for offline use; **Update prices** reads them again. Only a model with no price anywhere links to the provider's pricing page instead of showing a figure.
+MeetCue doesn't list models or prices. Each provider has an **Official pricing** link to its own price page; for OpenAI-compatible services, check the pricing page of the service you use.
 
-## Step 4: API keys
+Below the tasks, **Addresses & keys** shows a row for each provider you chose:
 
-Paste the key for each provider you chose and click **Save and verify**. MeetCue stores keys only in Windows Credential Manager; they never appear in the settings file or the logs.
+- **Base URL**: required for OpenAI-compatible services, for example `https://llm.example.com/v1`. For Anthropic it's optional: leave it empty to use `https://api.anthropic.com`, or enter a gateway or proxy that speaks the same API.
+- **Key**: paste it and click **Save and verify**. MeetCue stores keys only in Windows Credential Manager; they never appear in the settings file or the logs.
 
 How to get each key is described in [Providers and keys](/guide/providers):
 
@@ -49,10 +50,10 @@ How to get each key is described in [Providers and keys](/guide/providers):
 
 If verification fails, the message shows an error code such as [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001). Click **See the fix** to open the matching section.
 
-## Step 5: Latency probe
+## Step 4: Latency probe
 
 The probe measures how fast each provider responds from your network and picks the fastest endpoint for each one. It costs a few cents with keys, or nothing if you only measure the network. You can skip it and run it later from **Settings › Providers & cost**. See [Latency probe](/guide/latency).
 
-## Step 6: Done
+## Step 5: Done
 
 Press `Ctrl+Alt+Space` when your next meeting starts. To see MeetCue in action first, try the [five-minute tour](/quick-start).

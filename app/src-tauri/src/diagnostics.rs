@@ -62,8 +62,8 @@ pub fn shareable_settings(s: &Settings) -> String {
     if let Some(p) = &s.providers.proxy {
         s.providers.proxy = Some(mask_userinfo(p));
     }
-    if let Some(u) = &s.providers.openai_base_url {
-        s.providers.openai_base_url = Some(mask_userinfo(u));
+    for u in s.providers.base_urls.values_mut() {
+        *u = mask_userinfo(u);
     }
     redact(&s.to_json())
 }
