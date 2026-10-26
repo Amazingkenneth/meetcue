@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.2.1 — 2026-10-26
+
 ### Fixed
 
 - The level meters stopped moving as soon as a meeting or practice session started, in the panel and in **Settings › Audio**, so the microphone looked dead while MeetCue was listening. Practice also missed when you started speaking.
