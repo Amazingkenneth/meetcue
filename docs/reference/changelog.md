@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.2.2 — 2026-10-26
+
 ### Added
 
 - Mock interviews are easier to start: **Mock interview…** is near the top of the tray menu, the idle panel links to it, and it can be opened from **Settings › General** and from the last step of setup. The window starts with a step-by-step **How it works**.
