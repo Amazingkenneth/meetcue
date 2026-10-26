@@ -2,9 +2,13 @@
 
 本页介绍如何用 MeetCue 演练面试或会议。它会朗读问题，像真实会议一样给出提示，结束后生成复盘报告。
 
+::: tip 第一次使用？
+[模拟面试](/zh/guide/mock-interview)一步步带你完成一次完整的练习，内置软件工程和网络安全与 AI 方向的示例面试。
+:::
+
 ## 导入题目
 
-在托盘菜单中打开 **练习…**，选择文件。文件在本机处理，只有问题文本和你的回答会发送给模型。
+在托盘菜单中打开 **模拟面试…**，或点面板上的 **没有会议？来一场模拟面试**。选择一个内置示例面试，或选择自己的文件。文件在本机处理，只有问题文本和你的回答会发送给模型。
 
 | 类型 | 格式 | 说明 |
 | --- | --- | --- |
@@ -15,7 +19,7 @@
 
 导入后的预览表可以编辑、删除、调整顺序、随机打乱，或只抽取若干题。
 
-可以先用示例文件试试：[sdn-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/sdn-interview.srt) 和 [questions-network.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network.csv)。
+内置示例也放在仓库的 [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice) 目录下，对应的职位描述在 [samples/materials](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/materials)。
 
 ## 选择播放方式
 

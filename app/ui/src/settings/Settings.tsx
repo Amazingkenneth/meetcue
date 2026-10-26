@@ -194,6 +194,13 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
           </button>
         </Field>
       </Section>
+      <Section title={t("settings.practiceTitle")}>
+        <Field label={t("settings.practiceOpen")} hint={t("settings.practiceOpenHint")}>
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "practice" })}>
+            {t("settings.practiceButton")}
+          </button>
+        </Field>
+      </Section>
       <Section title={t("settings.setupTitle")}>
         <Field label={t("settings.setupAgain")} hint={t("settings.setupAgainHint")}>
           <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "wizard" })}>

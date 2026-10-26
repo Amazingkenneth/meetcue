@@ -73,7 +73,8 @@
     "probeAgain": "Hints have been slow for several questions. Run the latency probe again?",
     "openProbe": "Open latency probe",
     "pendingCount_one": "{{count}} waiting",
-    "pendingCount_other": "{{count}} waiting"
+    "pendingCount_other": "{{count}} waiting",
+    "practiceLink": "No meeting? Try a mock interview"
   },
   "errors": {
     "seeFix": "See the fix",
@@ -113,7 +114,11 @@
     "setupTitle": "Setup",
     "setupAgain": "Setup assistant",
     "setupAgainHint": "Walk through languages, audio, models, keys and the latency check again. Your current settings are kept as the starting point.",
-    "setupAgainButton": "Run setup again"
+    "setupAgainButton": "Run setup again",
+    "practiceTitle": "Mock interview",
+    "practiceOpen": "Practise without a meeting",
+    "practiceOpenHint": "Questions are read aloud and you answer over your microphone, with hints and a review. Sample interviews are included.",
+    "practiceButton": "Open mock interview"
   },
   "audio": {
     "microphone": "Microphone (you)",
@@ -331,7 +336,9 @@
       "asr": "Speech recognition",
       "detect": "Question detection",
       "hints": "Hints"
-    }
+    },
+    "donePractice": "No meeting handy? A mock interview reads questions aloud and shows hints exactly as in a meeting, so you can test everything on your own.",
+    "tryPractice": "Finish and try a mock interview"
   },
   "gallery": {
     "title": "MeetCue preview",
@@ -341,14 +348,14 @@
       "overlay": "Panel",
       "settings": "Settings",
       "wizard": "First-run setup",
-      "practice": "Practice",
+      "practice": "Mock interview",
       "review": "Practice review"
     }
   },
   "practice": {
-    "title": "Practice",
-    "lead": "Rehearse an interview or meeting. Questions are read aloud, hints appear in the panel like in a real meeting, and you get a review at the end.",
-    "importTitle": "Choose questions",
+    "title": "Mock interview",
+    "lead": "Rehearse an interview on your own, without a real meeting. Questions are read aloud, hints appear in the panel exactly as in a meeting, and you get a review at the end.",
+    "importTitle": "Use your own file",
     "import": "Choose a file…",
     "importHint": "Subtitles (.srt, .vtt, .txt) or a question list (.txt, .md, .csv). Files are read on this computer; only text goes to the model.",
     "historyTitle": "Past practice",
@@ -427,7 +434,46 @@
     "hintsIn": "Hints appear in {{seconds}} s",
     "fillersZh": "Chinese filler words",
     "fillersEn": "English filler words",
-    "fillersHint": "Counted in the review. Separate words with commas."
+    "fillersHint": "Counted in the review. Separate words with commas.",
+    "howTitle": "How it works",
+    "how": {
+      "headphones": "Put on headphones. MeetCue hears the questions through system sound and your answers through the microphone.",
+      "choose": "Pick a sample interview below, or choose your own file.",
+      "options": "Check the questions, choose a hint level and press Start practice.",
+      "answer": "Answer out loud. Hints appear in the panel and points tick off as you cover them; a short pause ends your answer.",
+      "review": "After the last question, the review opens with your timing, coverage and feedback."
+    },
+    "howBriefing": "Optional: add the matching job description as briefing material, so hints fit the role.",
+    "openHints": "Open briefing material",
+    "samplesTitle": "Try a sample interview",
+    "samplesLead": "Built into MeetCue, with reference answers for the review. Question lists ask one question at a time; transcripts replay an interviewer and stop when it's your turn.",
+    "useSample": "Use this",
+    "sample": {
+      "sweQuestions": {
+        "title": "Software engineer: question list",
+        "body": "14 questions on fundamentals, algorithms, system design, debugging and teamwork."
+      },
+      "sweInterview": {
+        "title": "Software engineer: interview transcript",
+        "body": "A backend engineer technical round with 6 answers to give."
+      },
+      "securityQuestions": {
+        "title": "Network security and AI: question list",
+        "body": "12 questions on TLS, zero trust, detection, incident response, ML for security and LLM security."
+      },
+      "securityInterview": {
+        "title": "Network security and AI: interview transcript",
+        "body": "A security engineer round for an AI platform team with 5 answers to give."
+      },
+      "networkQuestions": {
+        "title": "Network architecture: question list",
+        "body": "10 questions on routing, data center fabrics and SDN."
+      },
+      "sdnInterview": {
+        "title": "SDN interview transcript (Chinese)",
+        "body": "A short Chinese interview about high availability and SDN controllers."
+      }
+    }
   },
   "review": {
     "title": "Practice review",
@@ -467,7 +513,7 @@
     "pause": "Pause listening",
     "resume": "Resume listening",
     "settings": "Settings…",
-    "practice": "Practice…",
+    "practice": "Mock interview…",
     "panel": "Show or hide the panel",
     "resetPanel": "Reset panel position",
     "exportDiagnostics": "Export diagnostics…",

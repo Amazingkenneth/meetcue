@@ -2,9 +2,13 @@
 
 This page shows how to rehearse an interview or a meeting with MeetCue. It reads questions aloud, gives you hints exactly as in a real meeting, and gives you a review report afterwards.
 
+::: tip First time?
+[Mock interview](/guide/mock-interview) walks through a complete practice run step by step, with built-in sample interviews for software engineering and network security with AI.
+:::
+
 ## Import questions
 
-Open **Practice…** from the tray menu and choose a file. Files are processed on your computer; only the text of questions and your answers is sent to the model.
+Open **Mock interview…** from the tray menu, or click **No meeting? Try a mock interview** on the panel. Pick a built-in sample interview, or choose your own file. Files are processed on your computer; only the text of questions and your answers is sent to the model.
 
 | Type | Formats | Notes |
 | --- | --- | --- |
@@ -15,7 +19,7 @@ Subtitle files without speaker names are labelled question or answer by the mode
 
 After import, the preview table lets you edit, delete and reorder questions, shuffle them, or keep only a number of them.
 
-Try it with the sample files: [sdn-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/sdn-interview.srt) and [questions-network.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network.csv).
+The built-in samples are also in the repository under [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice), with matching job descriptions under [samples/materials](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/materials).
 
 ## Choose how questions are played
 

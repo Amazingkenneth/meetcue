@@ -37,6 +37,7 @@ pub const COMMANDS: &[&str] = &[
     "export_diagnostics",
     "import_material",
     "practice_import",
+    "practice_sample",
     "practice_classify",
     "practice_start",
     "practice_control",

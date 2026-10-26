@@ -1,0 +1,79 @@
+1
+00:00:01,000 --> 00:00:07,153
+Interviewer: Hello, welcome. This interview is for the network security engineer role on our AI platform team.
+
+2
+00:00:07,453 --> 00:00:10,914
+Interviewer: To start, how does TLS 1.3 protect a connection?
+
+3
+00:00:12,414 --> 00:00:20,490
+Candidate: The client and server agree on keys with ephemeral Diffie-Hellman, so past sessions stay safe even if a key leaks later.
+
+4
+00:00:20,790 --> 00:00:28,097
+Candidate: The server proves its identity with a certificate signature, and all traffic is encrypted with AEAD ciphers like AES-GCM.
+
+5
+00:00:28,397 --> 00:00:35,704
+Candidate: Compared with 1.2 it drops weak ciphers and RSA key exchange, and the handshake needs only one round trip.
+
+6
+00:00:37,204 --> 00:00:43,357
+Interviewer: How would you design a zero trust network for a company of about five hundred people?
+
+7
+00:00:44,857 --> 00:00:53,318
+Candidate: No network location is trusted by default. Every user signs in with SSO and MFA, and devices must pass a posture check.
+
+8
+00:00:53,618 --> 00:00:59,002
+Candidate: Applications sit behind an identity-aware proxy, access is least privilege, and workloads are segmented.
+
+9
+00:00:59,302 --> 00:01:05,840
+Candidate: I'd roll it out in phases, starting with the most sensitive apps like finance and source code.
+
+10
+00:01:07,340 --> 00:01:15,032
+Interviewer: An alert says a server is sending a lot of DNS queries with long random subdomains. What do you do?
+
+11
+00:01:16,532 --> 00:01:24,608
+Candidate: That looks like DNS tunnelling or exfiltration. I'd confirm the volume and entropy, then isolate the host or sinkhole the domain.
+
+12
+00:01:24,908 --> 00:01:32,600
+Candidate: Then I find the process making the queries, check for persistence and other affected hosts, and write up the indicators.
+
+13
+00:01:34,100 --> 00:01:40,638
+Interviewer: Our team also builds ML models for detection. How would you use machine learning to find intrusions?
+
+14
+00:01:42,138 --> 00:01:48,291
+Candidate: I'd extract features from network flows, like bytes, duration, ports and timing, and baseline normal behaviour.
+
+15
+00:01:48,591 --> 00:01:54,360
+Candidate: Supervised models catch known attacks, and anomaly detection such as isolation forests finds new ones.
+
+16
+00:01:54,660 --> 00:02:01,967
+Candidate: Since attacks are rare, I'd measure precision at a fixed alert budget, not accuracy, and retrain as traffic drifts.
+
+17
+00:02:03,467 --> 00:02:11,159
+Interviewer: We also ship an LLM assistant over internal documents. What is prompt injection, and how would you defend against it?
+
+18
+00:02:12,659 --> 00:02:19,197
+Candidate: Prompt injection is when untrusted text, like a document or web page, contains instructions the model follows.
+
+19
+00:02:19,497 --> 00:02:27,573
+Candidate: I'd treat model output as untrusted, give tools least privilege, require confirmation for risky actions, and enforce document permissions at retrieval.
+
+20
+00:02:29,073 --> 00:02:33,688
+Interviewer: Thanks. That's the end of the technical part. Any questions for me?

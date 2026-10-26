@@ -4,6 +4,12 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- Mock interviews are easier to start: **Mock interview…** is near the top of the tray menu, the idle panel links to it, and it can be opened from **Settings › General** and from the last step of setup. The window starts with a step-by-step **How it works**.
+- Built-in sample interviews for software engineering and for network security with AI, as question lists and as interview transcripts, load with one click. Sample job descriptions to use as briefing material are in `samples/materials`.
+- A [mock interview guide](/guide/mock-interview) explains how to test the whole app over your microphone without a real meeting.
+
 ## 0.2.1 — 2026-10-26
 
 ### Fixed

@@ -67,6 +67,12 @@ export function Practice() {
       }
     });
 
+  const loadSample = (name: string) =>
+    run("import", async () => {
+      setScript(await backend().invoke("practice_sample", { name }));
+      setFinished(false);
+    });
+
   if (!settings) return <p className="app-body muted">{t("common.loading")}</p>;
   const running = started || progress !== null;
 
@@ -91,7 +97,7 @@ export function Practice() {
         {running ? (
           <Running settings={settings} progress={progress} />
         ) : !script ? (
-          <ImportStep busy={busy === "import"} onImport={importFile} finished={finished} />
+          <ImportStep busy={busy === "import"} onImport={importFile} onSample={loadSample} finished={finished} />
         ) : (
           <>
             <Preview
@@ -129,7 +135,27 @@ export function Practice() {
   );
 }
 
-function ImportStep({ busy, onImport, finished }: { busy: boolean; onImport: () => void; finished: boolean }) {
+/** Sample interviews built into the app; names match `practice::SAMPLES`. */
+export const SAMPLES = [
+  { key: "sweQuestions", file: "questions-software-engineer.csv" },
+  { key: "sweInterview", file: "swe-interview.srt" },
+  { key: "securityQuestions", file: "questions-security-ai.csv" },
+  { key: "securityInterview", file: "security-ai-interview.srt" },
+  { key: "networkQuestions", file: "questions-network.csv" },
+  { key: "sdnInterview", file: "sdn-interview.srt" },
+] as const;
+
+function ImportStep({
+  busy,
+  onImport,
+  onSample,
+  finished,
+}: {
+  busy: boolean;
+  onImport: () => void;
+  onSample: (file: string) => void;
+  finished: boolean;
+}) {
   const { t } = useTranslation();
   const [reports, setReports] = useState<PracticeReportSummary[]>([]);
   useEffect(() => {
@@ -140,8 +166,38 @@ function ImportStep({ busy, onImport, finished }: { busy: boolean; onImport: () 
   }, [finished]);
   return (
     <>
+      <Section title={t("practice.howTitle")}>
+        <ol className="practice-steps">
+          <li>{t("practice.how.headphones")}</li>
+          <li>{t("practice.how.choose")}</li>
+          <li>{t("practice.how.options")}</li>
+          <li>{t("practice.how.answer")}</li>
+          <li>{t("practice.how.review")}</li>
+        </ol>
+        <p className="muted">
+          {t("practice.howBriefing")}{" "}
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "settings", section: "hints" })}>
+            {t("practice.openHints")}
+          </button>
+        </p>
+      </Section>
+      <Section title={t("practice.samplesTitle")} lead={t("practice.samplesLead")}>
+        <ul className="practice-samples">
+          {SAMPLES.map((s) => (
+            <li key={s.file}>
+              <span>
+                <strong>{t(`practice.sample.${s.key}.title`)}</strong>
+                <span className="muted">{t(`practice.sample.${s.key}.body`)}</span>
+              </span>
+              <button className="btn btn-small" onClick={() => onSample(s.file)} disabled={busy}>
+                {t("practice.useSample")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Section>
       <Section title={t("practice.importTitle")} lead={t("practice.importHint")}>
-        <button className="btn btn-primary" onClick={onImport} disabled={busy}>
+        <button className="btn" onClick={onImport} disabled={busy}>
           {t("practice.import")}
         </button>
       </Section>

@@ -105,6 +105,17 @@ describe("Practice window", () => {
     expect(screen.getByText("The review opens in its own window.")).toBeInTheDocument();
   });
 
+  it("starts from a built-in sample interview", async () => {
+    render(<Practice />);
+    await flush();
+    expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Use this" })).toHaveLength(6);
+    fireEvent.click(screen.getAllByRole("button", { name: "Use this" })[2]);
+    await flush();
+    expect(screen.getByText("questions-security-ai")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start practice" })).toBeEnabled();
+  });
+
   it("shows the review report in Chinese", async () => {
     const b = createMockBackend();
     setBackend(b);

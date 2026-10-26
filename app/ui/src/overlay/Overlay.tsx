@@ -256,9 +256,14 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
               <p>{t("overlay.emptyBody")}</p>
             </>
           ) : (
-            <p>
-              {t("overlay.idleHintBefore")} <kbd>{toggleKey}</kbd> {t("overlay.idleHintAfter")}
-            </p>
+            <>
+              <p>
+                {t("overlay.idleHintBefore")} <kbd>{toggleKey}</kbd> {t("overlay.idleHintAfter")}
+              </p>
+              <button className="ov-link" onClick={() => void backend().invoke("open_window", { view: "practice" })}>
+                {t("overlay.practiceLink")}
+              </button>
+            </>
           )}
         </div>
       </div>

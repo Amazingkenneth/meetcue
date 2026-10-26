@@ -506,6 +506,11 @@ pub async fn practice_import(app: AppHandle) -> Res<Option<PracticeScript>> {
 }
 
 #[tauri::command]
+pub fn practice_sample(name: String) -> Res<PracticeScript> {
+    practice::sample(&name)
+}
+
+#[tauri::command]
 pub async fn practice_classify(app: AppHandle, script: PracticeScript) -> Res<PracticeScript> {
     practice::classify(&app, script).await
 }
@@ -580,6 +585,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         export_diagnostics,
         import_material,
         practice_import,
+        practice_sample,
         practice_classify,
         practice_start,
         practice_control,

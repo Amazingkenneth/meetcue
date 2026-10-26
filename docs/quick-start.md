@@ -39,4 +39,5 @@ While the demo runs, try these shortcuts. They work even though another app has 
 
 - Set up your providers in [First-time setup](/setup).
 - Read [Meeting mode](/guide/meeting) for how questions are detected and queued.
+- Test everything over your microphone, without a meeting, in a [mock interview](/guide/mock-interview).
 - Rehearse with your own questions in [Practice mode](/guide/practice).
