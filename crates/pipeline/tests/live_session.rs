@@ -383,3 +383,35 @@ async fn a_stream_that_keeps_ending_at_once_is_retried_with_a_growing_wait() {
     assert!((3..=7).contains(&opens), "{opens} opens in 20 s");
     backend.stop().await;
 }
+
+#[tokio::test(start_paused = true)]
+async fn input_levels_reach_the_meters() {
+    let asr = RecordingAsr::default();
+    let backend = LocalHintBackend::new();
+    let mut events = backend.events();
+    backend
+        .start(config(&asr, "a", model("anthropic", "claude-haiku-5-5")))
+        .await
+        .unwrap();
+    for i in 0..50 {
+        for (channel, level_db) in [(Channel::Me, -30.0), (Channel::Remote, -100.0)] {
+            let frame = AudioFrame {
+                channel,
+                samples: vec![i; 320],
+                capture_ts_ms: 0,
+                voiced: level_db > -45.0,
+                level_db,
+            };
+            backend.push_audio(channel, frame).await;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let mut loudest = f32::MIN;
+    while let Ok(e) = events.try_recv() {
+        if let MeetCueEvent::Levels { me, .. } = e {
+            loudest = loudest.max(me);
+        }
+    }
+    assert_eq!(loudest, -30.0, "the microphone level reaches the panel");
+    backend.stop().await;
+}
