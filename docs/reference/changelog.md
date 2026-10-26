@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.2.0 — 2026-10-26
+
 ### Changed
 
 - Providers and models are entered freely, the same way in setup and in **Settings › Providers & cost**: choose a provider and type any model name for each task. The names a provider reports appear as suggestions; MeetCue no longer lists models or prices, and links to each provider's official pricing page instead.
