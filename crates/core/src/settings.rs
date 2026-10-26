@@ -297,6 +297,11 @@ pub struct Hotkeys {
     pub focus_prev: String,
     pub focus_next: String,
     pub mark_answered: String,
+    /// Move the panel; holding the keys keeps it moving.
+    pub move_up: String,
+    pub move_down: String,
+    pub move_left: String,
+    pub move_right: String,
 }
 
 impl Default for Hotkeys {
@@ -307,6 +312,12 @@ impl Default for Hotkeys {
             focus_prev: "Ctrl+Alt+[".into(),
             focus_next: "Ctrl+Alt+]".into(),
             mark_answered: "Ctrl+Alt+Enter".into(),
+            // Shift keeps clear of graphics drivers that rotate the screen
+            // with Ctrl+Alt plus an arrow key.
+            move_up: "Ctrl+Alt+Shift+Up".into(),
+            move_down: "Ctrl+Alt+Shift+Down".into(),
+            move_left: "Ctrl+Alt+Shift+Left".into(),
+            move_right: "Ctrl+Alt+Shift+Right".into(),
         }
     }
 }
@@ -425,6 +436,7 @@ mod tests {
         assert_eq!(s.providers.asr.provider.as_deref(), Some("soniox"));
         assert_eq!(s.providers.asr.endpoint, EndpointChoice::Auto);
         assert_eq!(s.hotkeys.toggle_capture, "Ctrl+Alt+Space");
+        assert_eq!(s.hotkeys.move_up, "Ctrl+Alt+Shift+Up");
     }
 
     /// Writes the defaults for the UI's browser preview (next to the bindings).

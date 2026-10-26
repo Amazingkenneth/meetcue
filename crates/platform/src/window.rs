@@ -119,9 +119,104 @@ pub fn color_share(pixels: &[u32], rgb: u32, tolerance: u8) -> f64 {
         / pixels.len() as f64
 }
 
+/// A screen or window rectangle in physical pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rect {
+    pub x: i32,
+    pub y: i32,
+    pub w: i32,
+    pub h: i32,
+}
+
+impl Rect {
+    fn contains(&self, x: i32, y: i32) -> bool {
+        x >= self.x && x < self.x + self.w && y >= self.y && y < self.y + self.h
+    }
+}
+
+/// Where the panel goes when moved by (`dx`, `dy`) from `win`. It stays on
+/// the screen under its top centre, falling back to the screen it was on, so
+/// it can cross to a neighbouring screen sideways. Horizontally it stays fully
+/// visible; vertically its top stays on screen and at least `keep` pixels of
+/// it remain visible, since the full panel is nearly as tall as the screen.
+pub fn nudge_target(screens: &[Rect], win: Rect, dx: i32, dy: i32, keep: i32) -> (i32, i32) {
+    let (x, y) = (win.x + dx, win.y + dy);
+    let on = |x: i32, y: i32| screens.iter().find(|s| s.contains(x + win.w / 2, y));
+    let Some(s) = on(x, y)
+        .or_else(|| on(win.x, win.y))
+        .or_else(|| screens.first())
+    else {
+        return (x, y);
+    };
+    let x = x.min(s.x + s.w - win.w).max(s.x);
+    let y = y.min(s.y + s.h - keep.min(win.h)).max(s.y);
+    (x, y)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const LEFT: Rect = Rect {
+        x: 0,
+        y: 0,
+        w: 1920,
+        h: 1080,
+    };
+    const RIGHT: Rect = Rect {
+        x: 1920,
+        y: 0,
+        w: 1920,
+        h: 1080,
+    };
+
+    fn panel(x: i32, y: i32) -> Rect {
+        Rect {
+            x,
+            y,
+            w: 440,
+            h: 1000,
+        }
+    }
+
+    #[test]
+    fn nudge_moves_and_stops_at_the_edges() {
+        assert_eq!(
+            nudge_target(&[LEFT], panel(500, 40), 0, -10, 120),
+            (500, 30)
+        );
+        assert_eq!(nudge_target(&[LEFT], panel(500, 4), 0, -10, 120), (500, 0));
+        assert_eq!(nudge_target(&[LEFT], panel(4, 40), -10, 0, 120), (0, 40));
+        assert_eq!(
+            nudge_target(&[LEFT], panel(1475, 40), 10, 0, 120),
+            (1480, 40)
+        );
+        assert_eq!(
+            nudge_target(&[LEFT], panel(500, 955), 0, 10, 120),
+            (500, 960)
+        );
+    }
+
+    #[test]
+    fn nudge_crosses_to_a_neighbouring_screen() {
+        let screens = [LEFT, RIGHT];
+        // Still mostly on the left screen: held at its right edge.
+        assert_eq!(
+            nudge_target(&screens, panel(1480, 40), 10, 0, 120),
+            (1480, 40)
+        );
+        // Once the top centre is past the edge, the right screen takes over.
+        assert_eq!(
+            nudge_target(&screens, panel(1480, 40), 300, 0, 120),
+            (1920, 40)
+        );
+    }
+
+    #[test]
+    fn nudge_from_off_screen_comes_back() {
+        assert_eq!(nudge_target(&[LEFT], panel(-900, -50), 10, 0, 120), (0, 0));
+        assert_eq!(nudge_target(&[], panel(5, 5), 10, 0, 120), (15, 5));
+    }
 
     #[test]
     fn share_of_marker_color() {

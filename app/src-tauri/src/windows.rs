@@ -1,6 +1,9 @@
 //! Window management: the overlay panel (full, mini, hidden) and the normal
 //! settings, wizard, practice and review windows.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
+
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
@@ -15,6 +18,15 @@ pub const OVERLAY: &str = "overlay";
 const WIDTH: f64 = 440.0;
 const MINI_HEIGHT: f64 = 200.0;
 const MARGIN: f64 = 20.0;
+/// Logical pixels per press of a move shortcut, and per frame while held.
+const NUDGE_STEP: f64 = 10.0;
+const GLIDE_STEP: f64 = 6.0;
+const GLIDE_DELAY: Duration = Duration::from_millis(300);
+const GLIDE_FRAME: Duration = Duration::from_millis(16);
+/// A missed key release must not leave the panel drifting.
+const GLIDE_MAX: Duration = Duration::from_secs(15);
+/// How much of the panel stays on screen when it is moved down.
+const KEEP_VISIBLE: f64 = 120.0;
 
 fn full_height(win: &WebviewWindow) -> f64 {
     win.current_monitor()
@@ -186,6 +198,89 @@ pub fn cycle_mode(app: &AppHandle) {
         (PanelMode::Mini, true) => PanelMode::Hidden,
     };
     set_mode(app, next);
+}
+
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+/// One counter per direction: a press or release bumps it, which ends the
+/// glide started by the previous press. Separate counters let two arrows
+/// held together move the panel diagonally.
+static HOLDS: [AtomicU64; 4] = [const { AtomicU64::new(0) }; 4];
+
+/// Handles a move shortcut: a press moves the panel a little, holding it
+/// keeps the panel moving until the keys are released.
+pub fn move_key(app: &AppHandle, dir: Direction, pressed: bool) {
+    let hold = HOLDS[dir as usize].fetch_add(1, Ordering::SeqCst) + 1;
+    if !pressed {
+        persist(app);
+        return;
+    }
+    if !nudge(app, dir, NUDGE_STEP) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(GLIDE_DELAY).await;
+        let start = std::time::Instant::now();
+        while HOLDS[dir as usize].load(Ordering::SeqCst) == hold
+            && start.elapsed() < GLIDE_MAX
+            && nudge(&app, dir, GLIDE_STEP)
+        {
+            tokio::time::sleep(GLIDE_FRAME).await;
+        }
+    });
+}
+
+/// Moves the visible panel by `step` logical pixels, keeping it on screen.
+/// Returns false when it could not move (hidden, or already at the edge).
+fn nudge(app: &AppHandle, dir: Direction, step: f64) -> bool {
+    use meetcue_platform::window::{nudge_target, Rect};
+    let Some(win) = app.get_webview_window(OVERLAY) else {
+        return false;
+    };
+    if !win.is_visible().unwrap_or(false) {
+        return false;
+    }
+    let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) else {
+        return false;
+    };
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let d = (step * scale).round() as i32;
+    let (dx, dy) = match dir {
+        Direction::Up => (0, -d),
+        Direction::Down => (0, d),
+        Direction::Left => (-d, 0),
+        Direction::Right => (d, 0),
+    };
+    let screens: Vec<Rect> = win
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| Rect {
+            x: m.position().x,
+            y: m.position().y,
+            w: m.size().width as i32,
+            h: m.size().height as i32,
+        })
+        .collect();
+    let current = Rect {
+        x: pos.x,
+        y: pos.y,
+        w: size.width as i32,
+        h: size.height as i32,
+    };
+    let keep = (KEEP_VISIBLE * scale) as i32;
+    let (x, y) = nudge_target(&screens, current, dx, dy, keep);
+    if (x, y) == (pos.x, pos.y) {
+        return false;
+    }
+    win.set_position(PhysicalPosition::new(x, y)).is_ok()
 }
 
 pub fn reset_position(app: &AppHandle) {
