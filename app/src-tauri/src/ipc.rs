@@ -257,8 +257,9 @@ pub fn provider_hosts(provider: String) -> Vec<String> {
 /// commands run on the main thread, and joining capture threads there
 /// freezes every window.
 #[tauri::command]
-pub async fn audio_preview(app: AppHandle, on: bool) -> Res<()> {
-    tauri::async_runtime::spawn_blocking(move || session::audio_preview(&app, on))
+pub async fn audio_preview(app: AppHandle, window: tauri::WebviewWindow, on: bool) -> Res<()> {
+    let owner = window.label().to_string();
+    tauri::async_runtime::spawn_blocking(move || session::audio_preview(&app, &owner, on))
         .await
         .map_err(io_err)?
 }

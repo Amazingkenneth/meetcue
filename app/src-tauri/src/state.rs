@@ -1,5 +1,6 @@
 //! State shared by commands, the tray, hotkeys and the event forwarder.
 
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex, RwLock};
 
 use meetcue_audio::AudioSource;
@@ -20,7 +21,7 @@ pub struct AppState {
     pub credentials: Arc<dyn CredentialStore>,
     pub backend: Arc<LocalHintBackend>,
     pub audio: Mutex<Option<Box<dyn AudioSource>>>,
-    pub preview: Mutex<Option<Box<dyn AudioSource>>>,
+    pub preview: Mutex<Preview>,
     pub session: Mutex<SessionState>,
     pub demo: bool,
     pub self_test: bool,
@@ -28,6 +29,15 @@ pub struct AppState {
     pub probes: Mutex<Vec<ProbeReport>>,
     pub hotkeys: Mutex<Vec<HotkeyState>>,
     pub practice: Mutex<Option<PracticeRunner>>,
+}
+
+/// Capture for the level meters while no session runs.
+#[derive(Default)]
+pub struct Preview {
+    /// Labels of the windows that show level meters: the panel while it's
+    /// visible, and the settings window while its level test is on.
+    pub owners: BTreeSet<String>,
+    pub source: Option<Box<dyn AudioSource>>,
 }
 
 impl AppState {

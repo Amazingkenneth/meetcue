@@ -244,6 +244,7 @@ pub async fn start(app: &AppHandle, script: PracticeScript) -> Result<(), MeetCu
     if !state.demo {
         if let Err(e) = session::start_audio(app) {
             state.backend.stop().await;
+            let _ = session::sync_preview(app, false);
             return Err(e);
         }
     }
