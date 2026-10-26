@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.2.3 — 2026-10-26
+
 ### Added
 
 - The mock interview window is a guided four-step flow: a sound check with live level bars, choosing the questions, reviewing them, and practising. Every step says what comes next, and the running step says what is expected of you right now.
