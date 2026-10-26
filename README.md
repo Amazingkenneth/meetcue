@@ -42,6 +42,8 @@ npx tauri dev             # run the desktop app (from app/src-tauri)
 
 See [Development setup](https://amazingkenneth.github.io/meetcue/contribute/development) and [Architecture](https://amazingkenneth.github.io/meetcue/contribute/architecture).
 
+For everything else about contributing, read the [contributor guide](https://amazingkenneth.github.io/meetcue/contribute/development) on the documentation site.
+
 ## License
 
 [MIT](LICENSE)

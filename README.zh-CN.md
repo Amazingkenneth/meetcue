@@ -42,6 +42,8 @@ npx tauri dev             # 运行桌面应用（在 app/src-tauri 目录）
 
 参见[开发环境](https://amazingkenneth.github.io/meetcue/zh/contribute/development)与[架构](https://amazingkenneth.github.io/meetcue/zh/contribute/architecture)。
 
+其余贡献相关事项，请阅读文档站上的[贡献者指南](https://amazingkenneth.github.io/meetcue/zh/contribute/development)。
+
 ## 许可证
 
 [MIT](LICENSE)
