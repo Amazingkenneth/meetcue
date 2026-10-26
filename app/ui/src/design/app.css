@@ -703,3 +703,47 @@ table.data tr[data-suggested="true"] td:first-child {
     grid-template-columns: 1fr;
   }
 }
+
+/* Erase all data: the only destructive action in settings. */
+.btn-danger {
+  color: var(--err);
+  border-color: var(--err);
+}
+
+.btn-danger:not(.btn-small) {
+  background: var(--err);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.btn-danger:not(.btn-small):hover:not(:disabled) {
+  background: var(--err);
+  filter: brightness(1.08);
+}
+
+.danger-box {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--err);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.danger-box p {
+  margin: 0 0 8px;
+}
+
+.danger-box ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.danger-box label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.danger-box .err {
+  margin: 8px 0 0;
+  color: var(--err);
+}

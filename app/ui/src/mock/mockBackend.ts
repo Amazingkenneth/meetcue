@@ -240,6 +240,18 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       credentials.delete(key);
       return null;
     },
+    // The desktop shell restarts afterwards; here the preview just starts over.
+    wipe_all_data: () => {
+      credentials.clear();
+      history = [];
+      probes.length = 0;
+      logs.length = 0;
+      practiceScript = null;
+      settings = structuredClone(defaults) as unknown as Settings;
+      emitApp({ type: "settingsChanged", settings: structuredClone(settings) });
+      log("INFO", "meetcue", "all data erased");
+      return null;
+    },
     verify_provider: ({ provider }) =>
       credentials.has(provider) || provider === "openai-compatible"
         ? { ok: true, code: null, detail: null }

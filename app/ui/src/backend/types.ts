@@ -40,6 +40,7 @@ export interface Commands {
   credential_status: { args: undefined; result: Record<string, boolean> };
   set_credential: { args: { key: string; value: string }; result: null };
   delete_credential: { args: { key: string }; result: null };
+  wipe_all_data: { args: undefined; result: null };
   verify_provider: { args: { provider: string }; result: VerifyResult };
   list_models: { args: { provider: string }; result: ModelInfo[] };
   get_pricing: { args: undefined; result: PriceTable };

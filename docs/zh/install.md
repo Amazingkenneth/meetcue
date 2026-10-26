@@ -49,7 +49,7 @@ scoop update meetcue
 scoop uninstall meetcue
 ```
 
-如果要同时删除设置，加上 `--purge`。API 密钥保留在 Windows 凭据管理器中名为 `MeetCue` 的条目里，如有需要请在那里删除。
+如果要同时删除设置，加上 `--purge`。API 密钥保留在 Windows 凭据管理器中名为 `MeetCue` 的条目里，如有需要请在那里删除；也可以在卸载前运行 **设置 › 通用 › 清除所有数据**，一并删除密钥和设置。
 
 ## 遇到问题
 

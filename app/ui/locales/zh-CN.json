@@ -553,5 +553,22 @@
     "help": "帮助",
     "quit": "退出 MeetCue",
     "log": "运行日志…"
+  },
+  "wipe": {
+    "title": "清除所有数据",
+    "label": "恢复初始状态",
+    "hint": "从系统凭据管理器中移除你的 API 密钥，删除 MeetCue 在这台电脑上保存的所有内容，然后像刚安装时一样重新启动。适合在把电脑交给他人或卸载前使用。",
+    "button": "清除所有数据…",
+    "confirmTitle": "以下内容将被永久删除：",
+    "itemKeys": "保存在系统凭据管理器中的全部 API 密钥",
+    "itemSettings": "你的设置，包括资料和快捷键",
+    "itemRecords": "练习报告、用量与费用记录、延迟检测历史",
+    "itemLogs": "日志和缓存的价格表",
+    "confirmLead": "此操作无法撤销。请先导出需要保留的内容。",
+    "typeToConfirm": "输入 {{word}} 以确认。",
+    "confirmWord": "清除",
+    "confirmButton": "清除并重启",
+    "working": "正在清除…",
+    "failed": "部分数据未能清除：{{detail}}"
   }
 }

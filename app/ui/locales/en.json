@@ -555,5 +555,22 @@
     "help": "Help",
     "quit": "Quit MeetCue",
     "log": "Activity log…"
+  },
+  "wipe": {
+    "title": "Erase all data",
+    "label": "Start over",
+    "hint": "Removes your API keys from the system credential store and deletes everything MeetCue saved on this computer, then restarts MeetCue as if newly installed. Use it before handing the computer to someone else or uninstalling.",
+    "button": "Erase all data…",
+    "confirmTitle": "This permanently deletes:",
+    "itemKeys": "All API keys saved in the system credential store",
+    "itemSettings": "Your settings, including materials and shortcuts",
+    "itemRecords": "Practice reports, usage and cost records, and latency check history",
+    "itemLogs": "Logs and cached price lists",
+    "confirmLead": "It can't be undone. Export anything you want to keep first.",
+    "typeToConfirm": "Type {{word}} to confirm.",
+    "confirmWord": "ERASE",
+    "confirmButton": "Erase and restart",
+    "working": "Erasing…",
+    "failed": "Some data could not be erased: {{detail}}"
   }
 }
