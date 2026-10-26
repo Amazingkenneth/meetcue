@@ -1,0 +1,18 @@
+# Agent pull requests that touch any of these paths are not merged
+# automatically; they get the needs-review label and wait for a human.
+# One bash pattern per line; * also matches "/".
+.github/*
+CLAUDE.md
+bucket/*
+scripts/check-versions.mjs
+rust-toolchain.toml
+.cargo/*
+Cargo.toml
+*/Cargo.toml
+Cargo.lock
+package.json
+*/package.json
+package-lock.json
+app/src-tauri/tauri.conf.json
+app/src-tauri/capabilities/*
+.gitleaks*
