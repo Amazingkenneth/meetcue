@@ -1,0 +1,54 @@
+name: Agent
+
+# Claude works on an issue when the repository owner labels it "agent" or
+# mentions @claude in an issue or pull request comment. Its commits land on a
+# claude/ branch; agent-merge.yml opens and merges the pull request.
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: agent-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude:
+    # Only the owner can start work, so nobody else can steer an agent that
+    # has write access.
+    if: >-
+      github.actor == github.repository_owner && (
+        (github.event_name == 'issues' && github.event.label.name == 'agent') ||
+        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/agent-setup
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          label_trigger: agent
+          track_progress: true
+          additional_permissions: |
+            actions: read
+          claude_args: >-
+            --allowedTools "Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(mkdir:*),Bash(ls:*)"

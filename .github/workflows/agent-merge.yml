@@ -1,0 +1,110 @@
+name: Agent merge
+
+# Opens a pull request for each claude/ branch Claude pushes, then merges it
+# once CI passes, unless it touches a protected path. When CI fails, Claude
+# gets a few attempts to fix it. See .github/scripts/agent-gate.sh.
+
+on:
+  push:
+    branches: ["claude/**"]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: read
+
+jobs:
+  open:
+    name: Open the pull request
+    if: github.event_name == 'push' && github.actor == 'claude[bot]'
+    runs-on: ubuntu-latest
+    env:
+      # A personal token, so CI runs on the pull request.
+      GH_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+      BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Open a pull request unless one exists
+        run: |
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')" ]; then
+            echo "A pull request is already open for $BRANCH"; exit 0
+          fi
+          gh label create agent --color 5319e7 --description "Worked on by Claude; merges itself when CI passes" 2>/dev/null || true
+          gh label create needs-review --color d93f0b --description "Agent pull request waiting for a human" 2>/dev/null || true
+          gh label create agent:hold --color fbca04 --description "Don't merge this agent pull request automatically" 2>/dev/null || true
+          if [[ $BRANCH =~ issue-([0-9]+) ]]; then
+            issue=${BASH_REMATCH[1]}
+            title=$(gh issue view "$issue" --json title --jq .title)
+            body="Closes #$issue"
+          else
+            title=$(git log -1 --format=%s)
+            body="Opened from \`$BRANCH\`."
+          fi
+          gh pr create --head "$BRANCH" --title "$title" --label agent --body "$body
+
+          This merges itself once CI passes. Add the \`agent:hold\` label to stop that."
+
+  gate:
+    name: Merge or fix
+    if: >-
+      github.event_name == 'workflow_run' &&
+      startsWith(github.event.workflow_run.head_branch, 'claude/') &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      fix: ${{ steps.gate.outputs.fix }}
+      pr: ${{ steps.gate.outputs.pr }}
+    steps:
+      # The default branch, never the pull request's own copy of the rules.
+      - uses: actions/checkout@v5
+      - id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+        run: .github/scripts/agent-gate.sh
+
+  fix:
+    name: Ask Claude to fix CI
+    needs: gate
+    if: needs.gate.outputs.fix == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+    concurrency:
+      group: agent-fix-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+      - uses: ./.github/actions/agent-setup
+      - name: Save the failed CI log
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: gh run view "$RUN_ID" --log-failed | tail -n 400 > .agent-ci-failure.log || true
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            CI failed on pull request #${{ needs.gate.outputs.pr }} (branch ${{ github.event.workflow_run.head_branch }}).
+            The failing steps' log is in .agent-ci-failure.log; don't commit that file.
+            Find the cause, fix it, run the matching checks from CLAUDE.md, then commit and
+            push to this branch. Don't disable, skip or weaken tests or lints to get CI green.
+            If the failure isn't caused by this branch, push nothing and explain why.
+          claude_args: >-
+            --allowedTools "Bash(cargo:*),Bash(npm:*),Bash(npx:*),Bash(node:*),Bash(git:*),Bash(mkdir:*),Bash(ls:*)"
