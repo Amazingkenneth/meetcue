@@ -113,8 +113,23 @@ pub fn units(text: &str) -> Vec<String> {
         }
     }
     flush(&mut run, &mut out);
-    out.extend(latin_words(text).filter(|w| !EN_STOPWORDS.contains(&w.as_str())));
+    out.extend(
+        latin_words(text)
+            .filter(|w| !EN_STOPWORDS.contains(&w.as_str()))
+            .map(stem),
+    );
     out
+}
+
+/// Drops a plural or tense ending so "regions", "deployed" and "deploying"
+/// match "region" and "deploy". Short words and "-ss" words stay as they are.
+fn stem(word: String) -> String {
+    for suffix in ["ing", "ed", "s"] {
+        if word.len() > suffix.len() + 3 && word.ends_with(suffix) && !word.ends_with("ss") {
+            return word[..word.len() - suffix.len()].to_string();
+        }
+    }
+    word
 }
 
 pub fn unit_set(text: &str) -> HashSet<String> {
@@ -224,6 +239,8 @@ mod tests {
         assert!(u.contains(&"用".to_string()));
         let u = units("The controller uses OpenFlow 1.3");
         assert_eq!(u, vec!["controller", "uses", "openflow", "1.3"]);
+        let u = units("regions deployed deploying services access");
+        assert_eq!(u, vec!["region", "deploy", "deploy", "service", "access"]);
     }
 
     #[test]

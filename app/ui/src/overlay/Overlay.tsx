@@ -9,6 +9,7 @@ import {
   contextAround,
   coverageCount,
   currentId,
+  displayOrder,
   medianLatency,
   neighbours,
   nextPoint,
@@ -242,12 +243,11 @@ function QueueCards({ view }: { view: SessionView }) {
 function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
   const { t } = useTranslation();
   const current = currentId(view);
-  const refs = useRef(new Map<number, HTMLElement>());
-  const currentPoints = current === null ? 0 : (view.questions[current]?.points.length ?? 0);
+  const listRef = useRef<HTMLDivElement>(null);
+  // The current question is first in the list, so a new one scrolls to the top.
   useEffect(() => {
-    if (current === null) return;
-    refs.current.get(current)?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, [current, currentPoints]);
+    listRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
+  }, [current]);
 
   if (!view.order.length) {
     return (
@@ -273,8 +273,8 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
     );
   }
   return (
-    <div className="ov-chat" aria-live="polite">
-      {view.order.map((id) => {
+    <div className="ov-chat" aria-live="polite" ref={listRef}>
+      {displayOrder(view).map((id) => {
         const q = view.questions[id];
         if (!q) return null;
         return (
@@ -284,10 +284,6 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
             view={view}
             display={display}
             isCurrent={id === current}
-            ref={(el: HTMLElement | null) => {
-              if (el) refs.current.set(id, el);
-              else refs.current.delete(id);
-            }}
           />
         );
       })}
@@ -310,13 +306,11 @@ function ChatBlock({
   view,
   display,
   isCurrent,
-  ref,
 }: {
   q: QuestionView;
   view: SessionView;
   display: HintDisplay;
   isCurrent: boolean;
-  ref: (el: HTMLElement | null) => void;
 }) {
   const { t } = useTranslation();
   const [shownAt] = useState(() => Date.now());
@@ -329,7 +323,7 @@ function ChatBlock({
   const at = view.startedAt !== null ? clock(q.tMs - view.startedAt) : "";
   const context = useMemo(() => (showContext ? contextAround(view, q) : []), [showContext, view, q]);
   return (
-    <article className="ov-block" data-current={isCurrent} ref={ref} aria-current={isCurrent ? "true" : undefined}>
+    <article className="ov-block" data-current={isCurrent} aria-current={isCurrent ? "true" : undefined}>
       <header>
         <span className="mono">{at}</span>
         <span>{t("overlay.them")}</span>
@@ -382,21 +376,28 @@ function ChatBlock({
         </p>
       )}
       <ol className="ov-points" hidden={vis.hidden}>
-        {(vis.hidden ? [] : q.points).map((p) => (
+        {(vis.hidden ? [] : q.points).map((p, index) => (
           <li className="ov-point" key={p.n} data-status={p.status}>
-            <span className="num">
-              {p.status === "done" ? (
-                <span className="ov-check" aria-label={t("overlay.doneLabel")}>
-                  ✓
-                </span>
-              ) : (
-                p.n
-              )}
-            </span>
-            <span className="body">
-              <span className="head">{p.head}</span> {!headsOnly && <span className="rest">{p.rest}</span>}
-            </span>
-            {p.status === "next" && <span className="next-tag">{t("overlay.nextTag")}</span>}
+            {/* Ticks come from what you say; a click fixes one that was missed or wrong. */}
+            <button
+              aria-pressed={p.status === "done"}
+              title={t(p.status === "done" ? "overlay.untickHint" : "overlay.tickHint")}
+              onClick={() => void backend().invoke("user_action", { action: { type: "togglePoint", id: q.id, index } })}
+            >
+              <span className="num">
+                {p.status === "done" ? (
+                  <span className="ov-check" aria-label={t("overlay.doneLabel")}>
+                    ✓
+                  </span>
+                ) : (
+                  p.n
+                )}
+              </span>
+              <span className="body">
+                <span className="head">{p.head}</span> {!headsOnly && <span className="rest">{p.rest}</span>}
+              </span>
+              {p.status === "next" && <span className="next-tag">{t("overlay.nextTag")}</span>}
+            </button>
           </li>
         ))}
       </ol>

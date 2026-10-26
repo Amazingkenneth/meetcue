@@ -23,7 +23,7 @@ From top to bottom, the full panel shows:
 1. **Title bar**: status, elapsed time, pause, keep on top, and the switch to the mini bar.
 2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
 3. **Question queue**: the previous, current and next question, with their status. Click a card to scroll to that question.
-4. **Conversation**: one block per question. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
+4. **Conversation**: one block per question. The question you are answering is always at the top, followed by questions waiting their turn and then earlier ones, newest first. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
 5. **Footer**: shortcut reminders and the latency of the last hint.
 
 The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, the next point to cover in large type, and how many questions are waiting.
@@ -32,7 +32,7 @@ To keep your eyes near the camera, move the panel right under it with `Ctrl+Alt+
 
 ## Coverage ticks
 
-With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green tick and dims, and the next uncovered point is marked **Next**. Matching uses words for English and character pairs for Chinese, so paraphrasing a point closely is enough.
+With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough.
 
 If you use speakers instead of headphones, your microphone also hears the other participants. MeetCue ignores microphone text that closely matches what was just played, so their words don't tick off your points.
 
