@@ -87,6 +87,8 @@ describe("Practice window", () => {
   it("imports, edits and starts a practice", async () => {
     render(<Practice />);
     await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Next: choose questions" }));
+    await flush();
     fireEvent.click(screen.getByRole("button", { name: "Choose a file…" }));
     await flush();
     expect(screen.getByText("3 questions", { exact: false })).toBeInTheDocument();
@@ -100,20 +102,34 @@ describe("Practice window", () => {
     await flush();
     expect(screen.getByRole("heading", { name: "Practice is running" })).toBeInTheDocument();
     expect(screen.getByText("Question 1 / 2")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ask again" }));
+    await flush();
     fireEvent.click(screen.getByRole("button", { name: "End practice" }));
     await flush();
     expect(screen.getByText("The review opens in its own window.")).toBeInTheDocument();
   });
 
-  it("starts from a built-in sample interview", async () => {
+  it("checks the sound, picks a voice and starts from a built-in sample", async () => {
+    const b = createMockBackend();
+    setBackend(b);
     render(<Practice />);
     await flush();
-    expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Check what MeetCue hears" })).toBeInTheDocument();
+    expect(screen.getByRole("meter", { name: "System sound · Others" })).toBeInTheDocument();
+    const voice = screen.getByLabelText("English voice") as HTMLSelectElement;
+    fireEvent.change(voice, { target: { value: "mock-en" } });
+    await flush();
+    expect(voice.value).toBe("mock-en");
+    expect((await b.invoke("get_settings")).practice.voiceEn).toBe("mock-en");
+    fireEvent.click(screen.getAllByRole("button", { name: "Try it" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Next: choose questions" }));
+    await flush();
     expect(screen.getAllByRole("button", { name: "Use this" })).toHaveLength(6);
     fireEvent.click(screen.getAllByRole("button", { name: "Use this" })[2]);
     await flush();
     expect(screen.getByText("questions-security-ai")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start practice" })).toBeEnabled();
+    expect(screen.getByText(/the first question is read aloud/)).toBeInTheDocument();
   });
 
   it("shows the review report in Chinese", async () => {

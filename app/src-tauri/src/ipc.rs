@@ -9,7 +9,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use meetcue_core::ipc::{
-    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, UsageSummary, VerifyResult,
+    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, UsageSummary, VerifyResult, Voice,
 };
 use meetcue_core::pricing::{
     estimate_hourly, CostAssumptions, HourlyEstimate, PriceEntry, PriceTable,
@@ -21,6 +21,7 @@ use meetcue_pipeline::practice::{PracticeReport, PracticeReportSummary, Practice
 use meetcue_pipeline::probe::{self, ProbeEnv, ProbeReport, ProbeRequest};
 use meetcue_pipeline::provider::ModelInfo;
 use meetcue_pipeline::{materials, providers, HintBackend};
+use meetcue_platform::speech::Speaker;
 
 use crate::state::{AppState, DOCS_URL};
 use crate::usage::{self, LedgerLine};
@@ -511,6 +512,32 @@ pub fn practice_sample(name: String) -> Res<PracticeScript> {
 }
 
 #[tauri::command]
+pub async fn list_voices() -> Vec<Voice> {
+    tauri::async_runtime::spawn_blocking(|| {
+        Speaker::new()
+            .voices()
+            .into_iter()
+            .map(|v| Voice {
+                id: v.id,
+                name: v.name,
+                lang: v.lang,
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn preview_voice(app: AppHandle, voice: String, lang: String) -> Res<()> {
+    let rate = app.state::<AppState>().settings().practice.speech_rate;
+    let sample = practice::voice_sample(&lang);
+    tauri::async_runtime::spawn_blocking(move || Speaker::new().speak(sample, &lang, rate, &voice))
+        .await
+        .map_err(io_err)?
+}
+
+#[tauri::command]
 pub async fn practice_classify(app: AppHandle, script: PracticeScript) -> Res<PracticeScript> {
     practice::classify(&app, script).await
 }
@@ -528,6 +555,7 @@ pub fn practice_control(app: AppHandle, control: String) -> Res<()> {
         "skip" => practice::Control::Skip,
         "stop" => practice::Control::Stop,
         "answered" => practice::Control::Answered,
+        "repeat" => practice::Control::Repeat,
         _ => return Err(io_err("unknown control")),
     };
     practice::control(&app, c);
@@ -586,6 +614,8 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         import_material,
         practice_import,
         practice_sample,
+        list_voices,
+        preview_voice,
         practice_classify,
         practice_start,
         practice_control,

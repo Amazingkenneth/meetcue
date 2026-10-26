@@ -2,6 +2,8 @@
 //! and when to move on. A pure state machine driven with explicit times, like
 //! the hint engine, so every pacing rule is unit-tested.
 
+use std::collections::HashSet;
+
 use meetcue_core::QuestionId;
 
 use super::{PracticeKind, PracticeScript};
@@ -19,6 +21,9 @@ pub struct PacerConfig {
     pub simulated: bool,
     /// Stop reading when the user starts to speak.
     pub stop_on_speech: bool,
+    /// Filler words ("um", "嗯") that never count as the user speaking over
+    /// the question.
+    pub fillers: Vec<String>,
     /// Longest pause between subtitle lines.
     pub max_gap_ms: i64,
     /// Seed for the follow-up dice, so runs are reproducible in tests.
@@ -33,6 +38,7 @@ impl Default for PacerConfig {
             follow_up_probability: 0.3,
             simulated: false,
             stop_on_speech: true,
+            fillers: Vec::new(),
             max_gap_ms: 2_000,
             seed: 1,
         }
@@ -65,6 +71,8 @@ pub enum PacerInput {
     /// The follow-up the runner generated; `None` if generation failed.
     FollowUp(Option<String>),
     Answered,
+    /// Read the current question again.
+    Repeat,
     Skip,
     Pause,
     Resume,
@@ -197,6 +205,8 @@ pub struct Pacer {
     speaking_text: String,
     /// Questions detected before the answer turn they belong to opened.
     pending_qids: Vec<QuestionId>,
+    /// The line being read is a repeat, already handed to the pipeline.
+    repeating: bool,
     total: u32,
     answered_turns: u32,
     rng: u64,
@@ -268,6 +278,7 @@ impl Pacer {
             records: Vec::new(),
             speaking_text: String::new(),
             pending_qids: Vec::new(),
+            repeating: false,
             total,
             answered_turns: 0,
         }
@@ -339,6 +350,11 @@ impl Pacer {
                     self.paused = None;
                     self.skip(now, &mut out);
                 }
+                PacerInput::Repeat => {
+                    self.paused = None;
+                    self.state = prev;
+                    self.repeat(now, &mut out);
+                }
                 _ => {}
             }
             return out;
@@ -374,6 +390,7 @@ impl Pacer {
                 }
                 _ => {}
             },
+            PacerInput::Repeat => self.repeat(now, &mut out),
             PacerInput::Skip => self.skip(now, &mut out),
             PacerInput::Pause => {
                 if self.state == State::Speaking {
@@ -463,12 +480,13 @@ impl Pacer {
             ..
         }) = self.steps.get(self.pos).cloned()
         {
-            if self.cfg.simulated {
+            if self.cfg.simulated && !self.repeating {
                 out.push(PacerOutput::Inject {
                     text,
                     known_question,
                 });
             }
+            self.repeating = false;
             self.speaking_text.clear();
             self.pos += 1;
             // Subtitles: keep the original rhythm, with long gaps shortened.
@@ -515,24 +533,35 @@ impl Pacer {
         }
     }
 
-    fn is_echo(&self, text: &str) -> bool {
-        if self.speaking_text.is_empty() {
-            return false;
+    /// Whether recognised microphone text is the user talking over the
+    /// question: at least three words (or four Chinese characters) that the
+    /// question doesn't contain and that aren't fillers. A cough, an "um" or
+    /// one misheard word of the question's own echo never stops the reading.
+    fn interrupts(&self, text: &str) -> bool {
+        let filler = |w: &str| self.cfg.fillers.iter().any(|f| f.eq_ignore_ascii_case(w));
+        let spoken: HashSet<String> = text::words(&self.speaking_text).into_iter().collect();
+        let new_words = text::words(text)
+            .into_iter()
+            .filter(|w| !spoken.contains(w) && !filler(w))
+            .count();
+        let mut heard_zh: String = text.chars().filter(|&c| text::is_cjk(c)).collect();
+        for f in &self.cfg.fillers {
+            heard_zh = heard_zh.replace(f.as_str(), "");
         }
-        let heard = text::unit_set(text);
-        if heard.is_empty() {
-            return true;
-        }
-        text::containment(&heard, &text::unit_set(&self.speaking_text)) >= 0.5
+        let new_chars = heard_zh
+            .chars()
+            .filter(|&c| !self.speaking_text.contains(c))
+            .count();
+        new_words >= 3 || new_chars >= 4
     }
 
     fn voice(&mut self, now: i64, text: Option<(String, bool)>, out: &mut Vec<PacerOutput>) {
         match self.state {
             State::Speaking => {
-                // Only recognised words that aren't the played line's echo
-                // count as the user speaking over the question.
+                // Only real speech that isn't the played line's echo counts
+                // as the user speaking over the question.
                 if let Some((t, _)) = &text {
-                    if self.cfg.stop_on_speech && !self.is_echo(t) {
+                    if self.cfg.stop_on_speech && self.interrupts(t) {
                         out.push(PacerOutput::StopSpeaking);
                         self.after_speech(now, out);
                         if matches!(self.state, State::Waiting { .. }) {
@@ -647,6 +676,35 @@ impl Pacer {
                 end_ms: None,
             },
         );
+    }
+
+    /// Reads the question of the current answer turn again. A partial answer
+    /// is discarded and the turn starts over when the reading ends.
+    fn repeat(&mut self, now: i64, out: &mut Vec<PacerOutput>) {
+        match self.state {
+            State::Speaking => {
+                out.push(PacerOutput::StopSpeaking);
+                self.repeating = true;
+                self.enter_step(now, out);
+            }
+            State::Waiting { .. } | State::Answering => {
+                if self.pos == 0 || !matches!(self.steps.get(self.pos - 1), Some(Step::Play { .. }))
+                {
+                    return;
+                }
+                if let Some(r) = self.records.pop() {
+                    for id in r.question_ids {
+                        if !self.pending_qids.contains(&id) {
+                            self.pending_qids.push(id);
+                        }
+                    }
+                }
+                self.pos -= 1;
+                self.repeating = true;
+                self.enter_step(now, out);
+            }
+            _ => {}
+        }
     }
 
     fn skip(&mut self, now: i64, out: &mut Vec<PacerOutput>) {
@@ -819,6 +877,63 @@ mod tests {
         assert!(out.contains(&PacerOutput::StopSpeaking));
         assert_eq!(phase(&out), Some(Phase::Answering));
         assert_eq!(p.records()[0].first_word_ms, Some(800));
+    }
+
+    #[test]
+    fn fillers_coughs_and_a_misheard_echo_do_not_interrupt() {
+        let mut p = Pacer::new(
+            &questions(1),
+            PacerConfig {
+                fillers: vec!["um".into(), "uh".into(), "嗯".into()],
+                ..cfg()
+            },
+        );
+        p.start(0);
+        for heard in [
+            "Um.",
+            "Hmm",
+            "um uh",
+            "Quest 1",
+            "嗯嗯",
+            "Question one okay",
+        ] {
+            assert!(p.handle(text(heard), 500).is_empty(), "{heard}");
+        }
+        assert!(p
+            .handle(text("我觉得是这样"), 600)
+            .contains(&PacerOutput::StopSpeaking));
+    }
+
+    #[test]
+    fn repeats_the_question_and_starts_the_answer_over() {
+        let mut p = Pacer::new(
+            &questions(2),
+            PacerConfig {
+                simulated: true,
+                ..cfg()
+            },
+        );
+        p.start(0);
+        p.handle(PacerInput::SpeechDone, 1_000);
+        p.handle(PacerInput::QuestionDetected { id: 7 }, 1_200);
+        p.handle(text("well I would"), 2_000);
+        let out = p.handle(PacerInput::Repeat, 2_500);
+        assert_eq!(speaks(&out), vec!["Question 1?"]);
+        assert_eq!(phase(&out), Some(Phase::Speaking));
+        assert!(p.records().is_empty());
+        // The repeat isn't handed to the pipeline a second time.
+        let out = p.handle(PacerInput::SpeechDone, 3_500);
+        assert!(!out.iter().any(|o| matches!(o, PacerOutput::Inject { .. })));
+        assert_eq!(phase(&out), Some(Phase::Waiting));
+        assert_eq!(p.records()[0].question_ids, vec![7]);
+        assert_eq!(p.records()[0].answer, "");
+        // Repeating again reads the same question once more.
+        let out = p.handle(PacerInput::Repeat, 3_700);
+        assert_eq!(speaks(&out), vec!["Question 1?"]);
+        // Repeating while the question is still being read restarts it.
+        let out = p.handle(PacerInput::Repeat, 3_800);
+        assert!(out.contains(&PacerOutput::StopSpeaking));
+        assert_eq!(speaks(&out), vec!["Question 1?"]);
     }
 
     #[test]

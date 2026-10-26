@@ -374,6 +374,10 @@ pub struct PracticeSettings {
     pub nudge_after_s: f32,
     pub follow_up_probability: f32,
     pub speech_rate: f32,
+    /// System voice ids for reading questions, per language; empty means the
+    /// first voice Windows offers for that language.
+    pub voice_zh: String,
+    pub voice_en: String,
     pub recognize_me: bool,
     /// Filler words per language, editable in the settings.
     pub fillers_zh: Vec<String>,
@@ -390,6 +394,8 @@ impl Default for PracticeSettings {
             nudge_after_s: 20.0,
             follow_up_probability: 0.3,
             speech_rate: 1.0,
+            voice_zh: String::new(),
+            voice_en: String::new(),
             recognize_me: true,
             fillers_zh: ["嗯", "啊", "那个", "就是", "然后"]
                 .map(String::from)

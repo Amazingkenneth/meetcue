@@ -48,6 +48,8 @@
     "allow-import-material",
     "allow-practice-import",
     "allow-practice-sample",
+    "allow-list-voices",
+    "allow-preview-voice",
     "allow-practice-classify",
     "allow-practice-start",
     "allow-practice-control",

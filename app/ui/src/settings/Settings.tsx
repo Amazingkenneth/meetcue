@@ -212,7 +212,7 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
   );
 }
 
-function useLevels(): { me: number; remote: number } {
+export function useLevels(): { me: number; remote: number } {
   const [levels, setLevels] = useState({ me: -100, remote: -100 });
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -233,7 +233,7 @@ function useLevels(): { me: number; remote: number } {
   return levels;
 }
 
-function LevelBar({ db, label }: { db: number; label: string }) {
+export function LevelBar({ db, label }: { db: number; label: string }) {
   const pct = Math.max(0, Math.min(100, ((db + 70) / 70) * 100));
   return (
     <span className="row">

@@ -67,12 +67,15 @@ export function Overlay() {
 function PracticeBar({ p }: { p: PracticeProgress }) {
   const { t } = useTranslation();
   const paused = p.phase === "paused";
-  const control = (c: "pause" | "resume" | "skip") => void backend().invoke("practice_control", { control: c });
+  const control = (c: "pause" | "resume" | "skip" | "repeat") => void backend().invoke("practice_control", { control: c });
   return (
     <div className="ov-practice" role="status">
       <strong>{t("practice.progress", { index: p.index, total: p.total })}</strong>
       <span className="ov-muted">{p.nudge ? t("practice.phase.nudge") : t(`practice.phase.${p.phase}`)}</span>
       <span className="grow" />
+      <button className="ov-icon" onClick={() => control("repeat")}>
+        {t("practice.repeat")}
+      </button>
       <button className="ov-icon" onClick={() => control(paused ? "resume" : "pause")}>
         {paused ? t("practice.resume") : t("practice.pause")}
       </button>

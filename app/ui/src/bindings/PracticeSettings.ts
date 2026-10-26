@@ -2,7 +2,12 @@
 import type { HintLevel } from "./HintLevel";
 import type { PlaybackMode } from "./PlaybackMode";
 
-export type PracticeSettings = { playback: PlaybackMode, hintLevel: HintLevel, hintDelayS: number, answerPauseS: number, nudgeAfterS: number, followUpProbability: number, speechRate: number, recognizeMe: boolean, 
+export type PracticeSettings = { playback: PlaybackMode, hintLevel: HintLevel, hintDelayS: number, answerPauseS: number, nudgeAfterS: number, followUpProbability: number, speechRate: number, 
+/**
+ * System voice ids for reading questions, per language; empty means the
+ * first voice Windows offers for that language.
+ */
+voiceZh: string, voiceEn: string, recognizeMe: boolean, 
 /**
  * Filler words per language, editable in the settings.
  */

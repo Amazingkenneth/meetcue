@@ -88,6 +88,8 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Follow-up probability | `practice.followUpProbability` | `0.3` |
 | Speech rate | `practice.speechRate` | `1.0` |
 | Speech-to-text for my answers | `practice.recognizeMe` | `true` |
+| English voice | `practice.voiceEn`: a Windows voice id, empty for the first one | `""` |
+| Chinese voice | `practice.voiceZh`: a Windows voice id, empty for the first one | `""` |
 | Stop reading when I start speaking | `audio.stopTtsOnSpeech` | `true` |
 | Filler words | `practice.fillersZh`, `practice.fillersEn` | see [Practice mode](/guide/practice#review-report) |
 
