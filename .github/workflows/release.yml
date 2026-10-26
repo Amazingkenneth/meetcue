@@ -5,7 +5,8 @@ name: Release
 # GitHub release, and the version, changelogs and Scoop manifest are committed
 # to the default branch together with a v* tag. Nobody tags by hand.
 #
-# Commit message markers (anywhere in the commits since the last release):
+# Markers in a commit's title (for a merge commit, the pull request title),
+# so a commit that only mentions them in its description doesn't count:
 #   [release minor] / [release major]  raise that part instead of the patch
 #   [skip release]                     in the newest commit: don't release it
 
@@ -72,10 +73,17 @@ jobs:
             skip "$sha is already $last"
           fi
           range=${last:+$last..}HEAD
-          log=$(git log --format=%B "$range")
+          # A commit's title, or for a GitHub merge commit the pull request
+          # title on the first line of its body.
+          titles() {
+            git log --format='%s%x1f%b%x1e' "$@" | awk -v RS='\x1e' -F '\x1f' '
+              NF { sub(/^\n/, ""); print $1
+                   if ($1 ~ /^Merge pull request /) { split($2, b, "\n"); print b[1] } }'
+          }
+          log=$(titles "$range")
 
           if [ "$EVENT" = workflow_run ]; then
-            if grep -qiF '[skip release]' <<<"$(git log -1 --format=%B)"; then
+            if grep -qiF '[skip release]' <<<"$(titles -1)"; then
               skip "the newest commit says [skip release]"
             fi
             # Documentation, workflows and the Scoop manifest ship without a release.
