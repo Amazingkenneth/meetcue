@@ -419,7 +419,8 @@ async fn run_loop(
     tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let mut level_tick = interval(Duration::from_millis(66));
     level_tick.set_missed_tick_behavior(MissedTickBehavior::Skip);
-    let mut last_levels = [f32::NAN; 2];
+    // `None` until the first emit, so the meters always get a first value.
+    let mut last_levels: Option<[f32; 2]> = None;
 
     let mut end = false;
     let outputs = engine.start(now_ms());
@@ -465,8 +466,10 @@ async fn run_loop(
             _ = level_tick.tick() => {
                 let me = f32::from_bits(ctx.levels[0].swap((-100f32).to_bits(), Ordering::Relaxed));
                 let remote = f32::from_bits(ctx.levels[1].swap((-100f32).to_bits(), Ordering::Relaxed));
-                if (me - last_levels[0]).abs() >= 1.0 || (remote - last_levels[1]).abs() >= 1.0 {
-                    last_levels = [me, remote];
+                let changed = last_levels
+                    .is_none_or(|[m, r]| (me - m).abs() >= 1.0 || (remote - r).abs() >= 1.0);
+                if changed {
+                    last_levels = Some([me, remote]);
                     ctx.emit(start, MeetCueEvent::Levels { me, remote });
                 }
                 continue;
