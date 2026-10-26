@@ -10,7 +10,7 @@ Releases are automatic. Every push to the default branch that changes the app is
 
 ## Choosing the version
 
-The version is the latest `v*` tag with its patch number raised. Put a marker in a commit message (or the pull request title, which becomes the merge commit's message) to change that:
+The version is the latest `v*` tag with its patch number raised. Put a marker in the pull request title, or in the title of a commit pushed straight to the default branch, to change that. A marker that only appears in a description is ignored, so describing the markers never triggers them.
 
 | Marker | Effect |
 | --- | --- |
