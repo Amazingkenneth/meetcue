@@ -72,7 +72,11 @@
     "cyclePanel": "Ctrl+Alt+H",
     "focusPrev": "Ctrl+Alt+[",
     "focusNext": "Ctrl+Alt+]",
-    "markAnswered": "Ctrl+Alt+Enter"
+    "markAnswered": "Ctrl+Alt+Enter",
+    "moveUp": "Ctrl+Alt+Shift+Up",
+    "moveDown": "Ctrl+Alt+Shift+Down",
+    "moveLeft": "Ctrl+Alt+Shift+Left",
+    "moveRight": "Ctrl+Alt+Shift+Right"
   },
   "overlay": {
     "clickThrough": false,

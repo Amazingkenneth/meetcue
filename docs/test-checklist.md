@@ -25,7 +25,7 @@ When an item fails, note the error code if any, [export diagnostics](/troublesho
 - [ ] In a real meeting, a question block with talking points appears about 1.5 seconds after the other person finishes a question, and the footer latency matches.
 - [ ] While answering, points you cover are ticked and the next one is highlighted.
 - [ ] A question asked while you answer goes to **Next** without replacing the current hints.
-- [ ] All five shortcuts work, and the meeting app's own shortcuts (such as `Ctrl+Shift+M` in Teams) still work.
+- [ ] All nine shortcuts work, holding a move shortcut glides the panel and stops on release, and the meeting app's own shortcuts (such as `Ctrl+Shift+M` in Teams) still work.
 - [ ] Clicking the panel doesn't take focus from the meeting window.
 - [ ] When sharing the whole screen, the other side can't see the panel.
 

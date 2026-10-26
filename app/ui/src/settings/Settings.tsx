@@ -14,6 +14,7 @@ import { useAppEvents, useAppInfo } from "../state/hooks";
 import { millis, seconds, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
 import type { ModelSlot } from "../backend/types";
+import defaults from "../mock/default-settings.json";
 import { LogView } from "./LogView";
 import { ModelsPanel, PriceEditor, SLOTS } from "./ModelPicker";
 import { ProbePanel } from "./Probe";
@@ -820,6 +821,8 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
 }
 
 const HOTKEY_ORDER: (keyof Hotkeys)[] = ["toggleCapture", "cyclePanel", "focusPrev", "focusNext", "markAnswered"];
+const MOVE_ORDER: (keyof Hotkeys)[] = ["moveUp", "moveDown", "moveLeft", "moveRight"];
+const ARROWS: Record<string, string> = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
 
 /** Builds an accelerator such as `Ctrl+Alt+K` from a key event. */
 export function acceleratorFromEvent(e: Pick<KeyboardEvent, "ctrlKey" | "altKey" | "shiftKey" | "metaKey" | "key" | "code">): string | null {
@@ -828,6 +831,7 @@ export function acceleratorFromEvent(e: Pick<KeyboardEvent, "ctrlKey" | "altKey"
   let key = e.key;
   if (e.code === "Space") key = "Space";
   else if (key === "Enter") key = "Enter";
+  else if (ARROWS[key]) key = ARROWS[key];
   else if (key.length === 1) key = key.toUpperCase();
   if (!mods.length) return null;
   return [...mods, key].join("+");
@@ -843,44 +847,48 @@ function ShortcutsTab({ settings, update }: { settings: Settings; update: Update
   useAppEvents((e) => {
     if (e.type === "hotkeyStatus") setStatus(e.hotkeys);
   });
+  const row = (action: keyof Hotkeys) => {
+    const ok = status.find((s) => s.action === action)?.ok ?? true;
+    return (
+      <Field key={action} label={t(`shortcuts.${action}`)}>
+        <span className="kbd" style={!ok ? { borderColor: "var(--err)", color: "var(--err)" } : undefined}>
+          {settings.hotkeys[action]}
+        </span>
+        {!ok && <Badge tone="err">{errorTitle("MC-HK-001")}</Badge>}
+        <button
+          className="btn btn-small"
+          aria-pressed={capturing === action}
+          onClick={() => setCapturing(capturing === action ? null : action)}
+          onKeyDown={(e) => {
+            if (capturing !== action) return;
+            e.preventDefault();
+            if (e.key === "Escape") {
+              setCapturing(null);
+              return;
+            }
+            const acc = acceleratorFromEvent(e.nativeEvent);
+            if (acc) {
+              setCapturing(null);
+              void update((s) => {
+                s.hotkeys[action] = acc;
+                return s;
+              });
+            }
+          }}
+        >
+          {capturing === action ? t("shortcuts.pressKeys") : t("shortcuts.change")}
+        </button>
+      </Field>
+    );
+  };
   return (
     <>
       <h2 className="page">{t("settings.tab.shortcuts")}</h2>
       <Section lead={t("shortcuts.lead")}>
-        {HOTKEY_ORDER.map((action) => {
-          const ok = status.find((s) => s.action === action)?.ok ?? true;
-          return (
-            <Field key={action} label={t(`shortcuts.${action}`)}>
-              <span className="kbd" style={!ok ? { borderColor: "var(--err)", color: "var(--err)" } : undefined}>
-                {settings.hotkeys[action]}
-              </span>
-              {!ok && <Badge tone="err">{errorTitle("MC-HK-001")}</Badge>}
-              <button
-                className="btn btn-small"
-                aria-pressed={capturing === action}
-                onClick={() => setCapturing(capturing === action ? null : action)}
-                onKeyDown={(e) => {
-                  if (capturing !== action) return;
-                  e.preventDefault();
-                  if (e.key === "Escape") {
-                    setCapturing(null);
-                    return;
-                  }
-                  const acc = acceleratorFromEvent(e.nativeEvent);
-                  if (acc) {
-                    setCapturing(null);
-                    void update((s) => {
-                      s.hotkeys[action] = acc;
-                      return s;
-                    });
-                  }
-                }}
-              >
-                {capturing === action ? t("shortcuts.pressKeys") : t("shortcuts.change")}
-              </button>
-            </Field>
-          );
-        })}
+        {HOTKEY_ORDER.map(row)}
+      </Section>
+      <Section title={t("shortcuts.moveTitle")} lead={t("shortcuts.moveLead")}>
+        {MOVE_ORDER.map(row)}
         <div className="row" style={{ padding: "10px 0" }}>
           <span className="muted">{t("shortcuts.why")}</span>
           <span className="spacer" />
@@ -888,7 +896,7 @@ function ShortcutsTab({ settings, update }: { settings: Settings; update: Update
             className="btn btn-small"
             onClick={() =>
               void update((s) => {
-                s.hotkeys = { toggleCapture: "Ctrl+Alt+Space", cyclePanel: "Ctrl+Alt+H", focusPrev: "Ctrl+Alt+[", focusNext: "Ctrl+Alt+]", markAnswered: "Ctrl+Alt+Enter" };
+                s.hotkeys = { ...(defaults.hotkeys as Hotkeys) };
                 return s;
               })
             }

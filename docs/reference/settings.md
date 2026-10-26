@@ -75,6 +75,10 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Previous question | `hotkeys.focusPrev` | `Ctrl+Alt+[` |
 | Next question | `hotkeys.focusNext` | `Ctrl+Alt+]` |
 | Mark answered | `hotkeys.markAnswered` | `Ctrl+Alt+Enter` |
+| Move the panel up | `hotkeys.moveUp` | `Ctrl+Alt+Shift+Up` |
+| Move the panel down | `hotkeys.moveDown` | `Ctrl+Alt+Shift+Down` |
+| Move the panel left | `hotkeys.moveLeft` | `Ctrl+Alt+Shift+Left` |
+| Move the panel right | `hotkeys.moveRight` | `Ctrl+Alt+Shift+Right` |
 
 ## Practice
 

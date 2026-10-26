@@ -13,6 +13,12 @@
   --ov-line: #262a34;
   --ov-text: #ecedef;
   --ov-text-2: #a3a9b5;
+  /* Body text of hints and answers: close to --ov-text, so emphasised words
+     stand out by weight rather than by a jump in brightness. */
+  --ov-text-body: #c4c8d0;
+  /* Quiet accent for the current item, used instead of solid amber. */
+  --ov-accent-soft: rgba(245, 184, 65, 0.35);
+  --ov-accent-wash: rgba(255, 255, 255, 0.04);
   --ov-text-3: #8a91a0;
   --accent: #f5b841;
   --accent-ink: #1a1405;

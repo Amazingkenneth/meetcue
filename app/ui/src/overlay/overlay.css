@@ -150,7 +150,7 @@ html.overlay-view body {
 }
 
 .ov-qcard[data-current="true"] {
-  border-color: var(--accent) !important;
+  border-color: var(--ov-accent-soft) !important;
   background: var(--ov-card-focus) !important;
 }
 
@@ -211,7 +211,7 @@ html.overlay-view body {
 
 .ov-block[data-current="true"] {
   background: var(--ov-card-focus);
-  border-color: rgba(245, 184, 65, 0.55);
+  border-color: rgba(245, 184, 65, 0.25);
 }
 
 .ov-block header {
@@ -295,19 +295,22 @@ html.overlay-view body {
   font-size: 12px;
 }
 
-.ov-point .head { font-weight: 700; color: var(--ov-text); }
-.ov-point .rest { color: var(--ov-text-2); }
+/* Highlighting stays gentle: on camera, a bright jump between words or rows
+   pulls the eyes around and makes reading obvious. */
+.ov-point .head { font-weight: 600; color: var(--ov-text); }
+.ov-point .rest { color: var(--ov-text-body); }
 .ov-point .body { flex: 1; min-width: 0; }
 
-.ov-point[data-status="done"] { opacity: 0.5; }
+.ov-point[data-status="done"] { opacity: 0.6; }
+.ov-point[data-status="done"] .head { font-weight: 500; }
 
 .ov-point[data-status="done"] .num {
   color: var(--done);
 }
 
 .ov-point[data-status="next"] {
-  background: rgba(245, 184, 65, 0.14);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--ov-accent-wash);
+  box-shadow: inset 2px 0 0 var(--ov-accent-soft);
 }
 
 .ov-point .next-tag {
@@ -315,9 +318,8 @@ html.overlay-view body {
   font-size: 11px;
   padding: 0 6px;
   border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 600;
+  border: 1px solid var(--ov-accent-soft);
+  color: var(--ov-text-2);
 }
 
 .ov-check {
@@ -341,12 +343,12 @@ html.overlay-view body {
 
 .ov-answer {
   margin: 6px 0 0;
-  color: var(--ov-text-2);
+  color: var(--ov-text-body);
   line-height: 1.6;
   white-space: pre-wrap;
 }
 
-.ov-answer strong { color: var(--ov-text); }
+.ov-answer strong { color: var(--ov-text); font-weight: 600; }
 
 .ov-muted { color: var(--ov-text-3); font-size: 12px; }
 .ov-fail { color: var(--danger); font-size: 12px; }
@@ -402,7 +404,7 @@ html.overlay-view body {
 
 .ov-mini .big {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.25;
   color: var(--ov-text);
 }
@@ -411,7 +413,7 @@ html.overlay-view body {
   display: block;
   font-size: 13px;
   font-weight: 400;
-  color: var(--ov-text-2);
+  color: var(--ov-text-body);
 }
 
 .ov-mini .after {

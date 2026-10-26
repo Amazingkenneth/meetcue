@@ -28,6 +28,8 @@ From top to bottom, the full panel shows:
 
 The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, the next point to cover in large type, and how many questions are waiting.
 
+To keep your eyes near the camera, move the panel right under it with `Ctrl+Alt+Shift` and the arrow keys. See [Move the panel](/guide/shortcuts#move-the-panel).
+
 ## Coverage ticks
 
 With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green tick and dims, and the next uncovered point is marked **Next**. Matching uses words for English and character pairs for Chinese, so paraphrasing a point closely is enough.

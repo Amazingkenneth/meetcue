@@ -75,6 +75,10 @@
 | 上一问 | `hotkeys.focusPrev` | `Ctrl+Alt+[` |
 | 下一问 | `hotkeys.focusNext` | `Ctrl+Alt+]` |
 | 标为已答 | `hotkeys.markAnswered` | `Ctrl+Alt+Enter` |
+| 面板上移 | `hotkeys.moveUp` | `Ctrl+Alt+Shift+Up` |
+| 面板下移 | `hotkeys.moveDown` | `Ctrl+Alt+Shift+Down` |
+| 面板左移 | `hotkeys.moveLeft` | `Ctrl+Alt+Shift+Left` |
+| 面板右移 | `hotkeys.moveRight` | `Ctrl+Alt+Shift+Right` |
 
 ## 练习
 

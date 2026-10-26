@@ -8,6 +8,7 @@ use meetcue_core::ipc::{AppEvent, HotkeyState};
 use meetcue_core::{codes, FocusTarget, UserAction};
 
 use crate::state::AppState;
+use crate::windows::Direction;
 use crate::{session, windows, APP_EVENT};
 
 #[derive(Clone, Copy)]
@@ -17,6 +18,7 @@ enum Action {
     Prev,
     Next,
     Answered,
+    Move(windows::Direction),
 }
 
 fn run(app: &AppHandle, action: Action) {
@@ -46,6 +48,8 @@ fn run(app: &AppHandle, action: Action) {
                         .await
                 }
             }
+            // Handled in the shortcut callback, which also sees the release.
+            Action::Move(_) => {}
             Action::Answered => {
                 if state.practice.lock().unwrap().is_some() {
                     crate::practice::control(&app, crate::practice::Control::Answered);
@@ -75,12 +79,20 @@ pub fn register_all(app: &AppHandle) -> Vec<HotkeyState> {
         ("focusPrev", keys.focus_prev, Action::Prev),
         ("focusNext", keys.focus_next, Action::Next),
         ("markAnswered", keys.mark_answered, Action::Answered),
+        ("moveUp", keys.move_up, Action::Move(Direction::Up)),
+        ("moveDown", keys.move_down, Action::Move(Direction::Down)),
+        ("moveLeft", keys.move_left, Action::Move(Direction::Left)),
+        ("moveRight", keys.move_right, Action::Move(Direction::Right)),
     ];
     let mut status = Vec::new();
     for (name, accel, action) in list {
         let result = gs.on_shortcut(accel.as_str(), move |app, _shortcut, event| {
-            if event.state == ShortcutState::Pressed {
-                run(app, action);
+            let pressed = event.state == ShortcutState::Pressed;
+            match action {
+                // Moving also needs the release, to stop when the keys are let go.
+                Action::Move(dir) => windows::move_key(app, dir, pressed),
+                _ if pressed => run(app, action),
+                _ => {}
             }
         });
         if let Err(e) = &result {
