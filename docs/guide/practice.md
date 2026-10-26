@@ -2,9 +2,13 @@
 
 This page shows how to rehearse an interview or a meeting with MeetCue. It reads questions aloud, gives you hints exactly as in a real meeting, and gives you a review report afterwards.
 
+::: tip First time?
+[Mock interview](/guide/mock-interview) walks through a complete practice run step by step, with built-in sample interviews for software engineering and network security with AI.
+:::
+
 ## Import questions
 
-Open **Practice…** from the tray menu and choose a file. Files are processed on your computer; only the text of questions and your answers is sent to the model.
+Open **Mock interview…** from the tray menu, or click **Try a mock interview** on the panel. Pick a built-in sample interview, or choose your own file. Files are processed on your computer; only the text of questions and your answers is sent to the model.
 
 | Type | Formats | Notes |
 | --- | --- | --- |
@@ -15,14 +19,14 @@ Subtitle files without speaker names are labelled question or answer by the mode
 
 After import, the preview table lets you edit, delete and reorder questions, shuffle them, or keep only a number of them.
 
-Try it with the sample files: [sdn-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/sdn-interview.srt) and [questions-network.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network.csv).
+The built-in samples are also in the repository under [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice), with matching job descriptions under [samples/materials](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/materials).
 
-## Choose how questions are played
+## Speech-to-text
 
-- **Real pipeline** (default): questions are spoken through your speakers with the Windows speech voices and recognised by your speech provider like a real meeting. The delay you see is the delay you'll get in a meeting.
-- **Simulated latency**: questions are still spoken, but their text goes straight to the hint model after a recognition delay drawn from your last latency probe. This saves the speech recognition cost for the other side. The model's own delay is real.
+Questions are always spoken aloud with the Windows speech voices, as in a real meeting. Two switches decide what is transcribed:
 
-Your microphone is still recognised in both modes for coverage ticks and the review. You can turn that off too, which removes all speech recognition cost but also the ticks and some review figures.
+- **Speech-to-text for the questions** (on by default): the spoken question is captured from system sound and recognised by your speech provider like a real meeting. The delay you see is the delay you'll get in a meeting. When off, the question's text goes straight to the hint model after a recognition delay drawn from your last latency probe. This saves the speech recognition cost for the other side. The model's own delay is real.
+- **Speech-to-text for my answers** (on by default): your microphone is recognised for coverage ticks and the review. Turning it off as well removes all speech recognition cost, but also the ticks and some review figures.
 
 ## Pace and follow-ups
 

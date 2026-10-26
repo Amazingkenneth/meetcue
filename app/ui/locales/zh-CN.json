@@ -72,7 +72,8 @@
     "latencyMedian": "中位数 {{value}} s · 打开延迟探测",
     "probeAgain": "最近几个问题的提示都偏慢，要重新运行延迟探测吗？",
     "openProbe": "打开延迟探测",
-    "pendingCount_other": "{{count}} 个排队"
+    "pendingCount_other": "{{count}} 个排队",
+    "practiceLink": "试试模拟面试"
   },
   "errors": {
     "seeFix": "查看解决办法",
@@ -112,7 +113,11 @@
     "setupTitle": "初始设置",
     "setupAgain": "设置向导",
     "setupAgainHint": "重新走一遍语言、音频、模型、密钥和延迟检测。会以当前设置为起点。",
-    "setupAgainButton": "重新运行设置向导"
+    "setupAgainButton": "重新运行设置向导",
+    "practiceTitle": "模拟面试",
+    "practiceOpen": "不开会也能练习",
+    "practiceOpenHint": "程序朗读问题，你通过麦克风回答，全程有提示，结束后有复盘。内置示例面试。",
+    "practiceButton": "打开模拟面试"
   },
   "audio": {
     "microphone": "麦克风（我）",
@@ -329,7 +334,9 @@
       "asr": "语音识别",
       "detect": "问题检测",
       "hints": "要点生成"
-    }
+    },
+    "donePractice": "手边没有会议？模拟面试会朗读问题，并像真实会议一样给出提示，一个人就能把整个流程试一遍。",
+    "tryPractice": "完成并开始模拟面试"
   },
   "gallery": {
     "title": "MeetCue 预览",
@@ -339,14 +346,14 @@
       "overlay": "面板",
       "settings": "设置",
       "wizard": "首次设置",
-      "practice": "练习",
+      "practice": "模拟面试",
       "review": "练习复盘"
     }
   },
   "practice": {
-    "title": "练习",
-    "lead": "演练面试或会议。程序朗读问题，面板像真实会议一样给出提示，结束后生成复盘报告。",
-    "importTitle": "选择题目",
+    "title": "模拟面试",
+    "lead": "不用真的开会，一个人就能演练面试。程序朗读问题，面板像真实会议一样给出提示，结束后生成复盘报告。",
+    "importTitle": "使用自己的文件",
     "import": "选择文件…",
     "importHint": "会议字幕（.srt、.vtt、.txt）或问题列表（.txt、.md、.csv）。文件在本机读取，只有文字会发给模型。",
     "historyTitle": "历次练习",
@@ -378,11 +385,8 @@
     "classify": "用模型标注句子",
     "classifying": "正在标注…",
     "optionsTitle": "练习方式",
-    "playback": "播放方式",
-    "playbackReal": "真实链路",
-    "playbackRealHint": "朗读问题并像真实会议一样识别，延迟与会议中一致。建议戴耳机。",
-    "playbackSimulated": "模拟延迟",
-    "playbackSimulatedHint": "照样朗读问题，但问题文本在一段识别延迟后直接交给要点模型；延迟取自最近一次延迟探测。可节省识别费用。",
+    "playbackReal": "语音转文字：开",
+    "playbackSimulated": "语音转文字：关",
     "simulatedNote": "只模拟了识别延迟，模型延迟为真实值。",
     "level": "提示难度",
     "levelHint": "建议逐档降低，直到不看提示也能回答。",
@@ -397,7 +401,7 @@
     "followUpsHint": "答完后有时会根据你的回答提一个简短的追问。",
     "followUpChance": "追问概率",
     "speechRate": "朗读语速",
-    "recognizeMe": "识别我的回答",
+    "recognizeMe": "我的回答语音转文字",
     "recognizeMeHint": "要点打勾和大部分复盘指标需要它。关闭后你的回答不产生识别费用。",
     "stopOnSpeech": "我开口时停止朗读",
     "start": "开始练习",
@@ -425,7 +429,49 @@
     "hintsIn": "{{seconds}} 秒后显示提示",
     "fillersZh": "中文口头禅",
     "fillersEn": "英文口头禅",
-    "fillersHint": "在复盘报告中统计。词与词之间用逗号分隔。"
+    "fillersHint": "在复盘报告中统计。词与词之间用逗号分隔。",
+    "howTitle": "流程",
+    "how": {
+      "headphones": "戴上耳机。MeetCue 从系统声音听到问题，从麦克风听到你的回答。",
+      "choose": "在下面选一个示例面试，或选择自己的文件。",
+      "options": "检查题目，选好提示难度，点“开始练习”。",
+      "answer": "出声回答。提示显示在面板上，讲到的要点会自动打勾；停顿片刻即视为答完。",
+      "review": "最后一题结束后自动打开复盘，包括反应时间、要点覆盖和点评。"
+    },
+    "howBriefing": "可选：把对应的职位描述添加为会前资料，提示会更贴合岗位。",
+    "openHints": "打开会前资料",
+    "samplesTitle": "试试示例面试",
+    "samplesLead": "内置在 MeetCue 中，带参考回答供复盘使用。问题列表一次问一道题；面试字幕会重放面试官的话，轮到你时停下来等你回答。",
+    "useSample": "使用",
+    "sample": {
+      "sweQuestions": {
+        "title": "软件工程师：问题列表",
+        "body": "14 道题，涵盖基础知识、算法、系统设计、排障和团队协作（英文）。"
+      },
+      "sweInterview": {
+        "title": "软件工程师：面试字幕",
+        "body": "一场后端工程师技术面，需要回答 6 次（英文）。"
+      },
+      "securityQuestions": {
+        "title": "网络安全与 AI：问题列表",
+        "body": "12 道题，涵盖 TLS、零信任、威胁检测、应急响应、机器学习安全检测和大模型安全（英文）。"
+      },
+      "securityInterview": {
+        "title": "网络安全与 AI：面试字幕",
+        "body": "一场 AI 平台团队安全工程师面试，需要回答 5 次（英文）。"
+      },
+      "networkQuestions": {
+        "title": "网络架构：问题列表",
+        "body": "10 道题，涵盖路由、数据中心网络和 SDN（英文）。"
+      },
+      "sdnInterview": {
+        "title": "SDN 面试字幕（中文）",
+        "body": "一段关于高可用和 SDN 控制器的简短中文面试。"
+      }
+    },
+    "sttQuestions": "问题语音转文字",
+    "sttQuestionsOn": "开启，与真实会议一致：每道题都会朗读出来，从系统声音采集，再由语音识别供应商转成文字，延迟与会议中相同。建议戴耳机。",
+    "sttQuestionsOff": "关闭：每道题仍会朗读出来，但问题文本在一段识别延迟后直接交给要点模型；延迟取自最近一次延迟探测。可节省识别费用。"
   },
   "review": {
     "title": "练习复盘",
@@ -465,7 +511,7 @@
     "pause": "暂停拾取",
     "resume": "继续拾取",
     "settings": "设置…",
-    "practice": "练习…",
+    "practice": "模拟面试…",
     "panel": "显示或隐藏面板",
     "resetPanel": "重置面板位置",
     "exportDiagnostics": "导出诊断信息…",

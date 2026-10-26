@@ -57,3 +57,5 @@ The probe measures how fast each provider responds from your network and picks t
 ## Step 5: Done
 
 Press `Ctrl+Alt+Space` when your next meeting starts. To see MeetCue in action first, try the [five-minute tour](/quick-start).
+
+To test everything with your own voice before a real meeting, click **Finish and try a mock interview**. See [Mock interview](/guide/mock-interview).

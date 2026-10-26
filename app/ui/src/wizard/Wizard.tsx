@@ -23,12 +23,13 @@ export function Wizard() {
   const keysReady = providersInUse(settings).every((p) => reachable(settings, p) && (credentials[p.id] || p.keyOptional));
   const canNext = step === "models" ? chosen : true;
 
-  const finish = async () => {
+  const finish = async (practice = false) => {
     await update((s) => {
       s.general.wizardCompleted = true;
       return s;
     });
     await backend().invoke("set_panel_mode", { mode: "full" });
+    if (practice) await backend().invoke("open_window", { view: "practice" });
     await backend().closeWindow();
   };
 
@@ -78,6 +79,7 @@ export function Wizard() {
               </li>
             ))}
           </ul>
+          <p>{t("wizard.donePractice")}</p>
           <p className="muted">{t("wizard.doneDemo")}</p>
         </Section>
       )}
@@ -99,9 +101,14 @@ export function Wizard() {
             {t("common.next")}
           </button>
         ) : (
-          <button className="btn btn-primary" onClick={() => void finish()}>
-            {t("common.finish")}
-          </button>
+          <>
+            <button className="btn" onClick={() => void finish(true)}>
+              {t("wizard.tryPractice")}
+            </button>
+            <button className="btn btn-primary" onClick={() => void finish()}>
+              {t("common.finish")}
+            </button>
+          </>
         )}
       </div>
     </div>

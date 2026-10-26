@@ -29,3 +29,29 @@ fn network_question_list() {
     assert_eq!(s.items[4].followups.len(), 2);
     assert_eq!(s.items[2].category.as_deref(), Some("Data center"));
 }
+
+#[test]
+fn english_interview_subtitles() {
+    for (name, answers) in [("swe-interview.srt", 6), ("security-ai-interview.srt", 5)] {
+        let s = parse_file(name, &sample(name)).unwrap();
+        assert_eq!(s.kind, PracticeKind::Subtitles, "{name}");
+        assert_eq!(s.speakers, vec!["Interviewer", "Candidate"], "{name}");
+        assert_eq!(s.me_speaker.as_deref(), Some("Candidate"), "{name}");
+        let p = Pacer::new(&s, PacerConfig::default());
+        assert_eq!(p.total(), answers, "{name}");
+    }
+}
+
+#[test]
+fn technical_question_lists() {
+    for (name, count) in [
+        ("questions-software-engineer.csv", 14),
+        ("questions-security-ai.csv", 12),
+    ] {
+        let s = parse_file(name, &sample(name)).unwrap();
+        assert_eq!(s.kind, PracticeKind::Questions, "{name}");
+        assert_eq!(s.items.len(), count, "{name}");
+        assert!(s.items.iter().all(|i| i.reference.is_some()), "{name}");
+        assert!(s.items.iter().all(|i| i.category.is_some()), "{name}");
+    }
+}

@@ -26,9 +26,9 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         &[
             &MenuItem::with_id(app, "toggle", toggle_label, true, None::<&str>)?,
             &item("panel", "tray.panel")?,
+            &item("practice", "tray.practice")?,
             &PredefinedMenuItem::separator(app)?,
             &item("settings", "tray.settings")?,
-            &item("practice", "tray.practice")?,
             &item("reset", "tray.resetPanel")?,
             &item("log", "tray.log")?,
             &item("diagnostics", "tray.exportDiagnostics")?,

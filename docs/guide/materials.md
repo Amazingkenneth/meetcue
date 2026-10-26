@@ -26,6 +26,8 @@ MeetCue extracts the text on your computer and shows how many characters were fo
 
 The material is placed in the part of the instructions that stays the same during a meeting. Providers that support prompt caching then charge much less for it after the first question.
 
+To try it with a mock interview, use one of the sample job descriptions: [jd-software-engineer.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-software-engineer.md) or [jd-security-ai.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-security-ai.md). They match the built-in sample interviews in [Mock interview](/guide/mock-interview).
+
 ## Keep it focused
 
 Long material makes every hint request larger and slower to start. One or two pages that match the meeting work better than a full document archive. Remove files you no longer need with **Remove**.

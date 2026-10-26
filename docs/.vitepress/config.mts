@@ -23,6 +23,7 @@ function sidebarEn(): DefaultTheme.Sidebar {
       text: "Guides",
       items: [
         { text: "Meeting mode", link: "/guide/meeting" },
+        { text: "Mock interview", link: "/guide/mock-interview" },
         { text: "Practice mode", link: "/guide/practice" },
         { text: "Keyboard shortcuts", link: "/guide/shortcuts" },
         { text: "Latency probe", link: "/guide/latency" },
@@ -81,6 +82,7 @@ function sidebarZh(): DefaultTheme.Sidebar {
       text: "指南",
       items: [
         { text: "会议模式", link: "/zh/guide/meeting" },
+        { text: "模拟面试", link: "/zh/guide/mock-interview" },
         { text: "练习模式", link: "/zh/guide/practice" },
         { text: "快捷键", link: "/zh/guide/shortcuts" },
         { text: "延迟探测", link: "/zh/guide/latency" },

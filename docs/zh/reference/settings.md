@@ -80,14 +80,14 @@
 
 | 设置 | 键名 | 默认值 |
 | --- | --- | --- |
-| 播放方式 | `practice.playback`：`realPipeline`、`simulatedLatency` | `realPipeline` |
+| 问题语音转文字 | `practice.playback`：`realPipeline`（开）、`simulatedLatency`（关） | `realPipeline` |
 | 提示难度 | `practice.hintLevel`：`full`、`headsOnly`、`delayed`、`off` | `full` |
 | 延迟显示的秒数 | `practice.hintDelayS` | `5` |
 | 停顿多久算答完（秒） | `practice.answerPauseS` | `3` |
 | 未开口提醒（秒） | `practice.nudgeAfterS` | `20` |
 | 追问概率 | `practice.followUpProbability` | `0.3` |
 | 朗读语速 | `practice.speechRate` | `1.0` |
-| 识别我的回答 | `practice.recognizeMe` | `true` |
+| 我的回答语音转文字 | `practice.recognizeMe` | `true` |
 | 我开口时停止朗读 | `audio.stopTtsOnSpeech` | `true` |
 | 口头禅词表 | `practice.fillersZh`、`practice.fillersEn` | 见[练习模式](/zh/guide/practice#review-report) |
 

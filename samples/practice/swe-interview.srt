@@ -1,0 +1,83 @@
+1
+00:00:01,000 --> 00:00:06,384
+Interviewer: Hi, thanks for joining. This is the technical round for the backend engineer role.
+
+2
+00:00:06,684 --> 00:00:11,684
+Interviewer: Let's start simple. Can you walk me through a project you're proud of?
+
+3
+00:00:13,184 --> 00:00:21,645
+Candidate: Sure. At my last job I owned the order service for an online store, about two thousand requests per second at peak.
+
+4
+00:00:21,945 --> 00:00:29,637
+Candidate: Checkout was slow during sales, so I profiled it and found that we called the inventory service once per item.
+
+5
+00:00:29,937 --> 00:00:36,860
+Candidate: I batched those calls and added a short-lived cache, which cut p99 latency from 900 to 250 milliseconds.
+
+6
+00:00:38,360 --> 00:00:42,590
+Interviewer: Nice. What is the difference between a process and a thread?
+
+7
+00:00:44,090 --> 00:00:52,551
+Candidate: A process has its own memory space. Threads live inside a process and share its memory, but each has its own stack.
+
+8
+00:00:52,851 --> 00:01:00,543
+Candidate: Threads are cheaper to create and switch, but shared memory means you need locks or atomics to avoid race conditions.
+
+9
+00:01:02,043 --> 00:01:07,427
+Interviewer: How would you find the first duplicate in a list of a million integers?
+
+10
+00:01:08,927 --> 00:01:18,542
+Candidate: I'd walk the list once with a hash set and return the first value that's already in the set. That's linear time and linear memory.
+
+11
+00:01:18,842 --> 00:01:28,457
+Candidate: If memory were tight I could sort a copy first, which is n log n, or use a bitmap if the value range is small.
+
+12
+00:01:29,957 --> 00:01:34,957
+Interviewer: Okay, a design question. How would you design a URL shortener like bit.ly?
+
+13
+00:01:36,457 --> 00:01:43,764
+Candidate: First I'd ask about scale. Say a hundred million new links a month and many more reads than writes.
+
+14
+00:01:44,064 --> 00:01:52,525
+Candidate: I'd generate a short code by encoding a unique ID in base sixty-two, and store code to URL in a key-value store.
+
+15
+00:01:52,825 --> 00:02:03,209
+Candidate: Reads go through a cache and a CDN, the redirect is a 302 so we can count clicks, and click events go to a queue for analytics.
+
+16
+00:02:04,709 --> 00:02:10,478
+Interviewer: How do you make sure the same link isn't created twice if the client retries?
+
+17
+00:02:11,978 --> 00:02:20,439
+Candidate: The client sends an idempotency key, and the server stores it with the result, so a retry returns the same short code.
+
+18
+00:02:21,939 --> 00:02:27,708
+Interviewer: Last one. A service's p99 latency doubled right after a deploy. What do you do?
+
+19
+00:02:29,208 --> 00:02:37,284
+Candidate: If users are affected I roll back first. Then I compare traces between the two versions to find the slow span.
+
+20
+00:02:37,584 --> 00:02:44,507
+Candidate: Common causes are a new database query without an index, a smaller connection pool, or more garbage collection.
+
+21
+00:02:46,007 --> 00:02:50,622
+Interviewer: Great, that's all from me. Do you have any questions for us?

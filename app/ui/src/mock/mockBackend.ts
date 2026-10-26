@@ -354,6 +354,10 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       practiceScript = mockPracticeScript();
       return practiceScript;
     },
+    practice_sample: ({ name }) => {
+      practiceScript = { ...mockPracticeScript(), title: name.replace(/\.[^.]+$/, "") };
+      return practiceScript;
+    },
     practice_classify: ({ script }) => ({
       ...script,
       needsClassification: false,

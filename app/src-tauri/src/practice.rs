@@ -112,6 +112,43 @@ pub async fn import(app: &AppHandle) -> Result<Option<PracticeScript>, MeetCueEr
     parse::parse_file(&name, &bytes).map(Some)
 }
 
+/// Sample interviews built into the app, so a mock interview needs no file.
+const SAMPLES: &[(&str, &[u8])] = &[
+    (
+        "questions-software-engineer.csv",
+        include_bytes!("../../../samples/practice/questions-software-engineer.csv"),
+    ),
+    (
+        "swe-interview.srt",
+        include_bytes!("../../../samples/practice/swe-interview.srt"),
+    ),
+    (
+        "questions-security-ai.csv",
+        include_bytes!("../../../samples/practice/questions-security-ai.csv"),
+    ),
+    (
+        "security-ai-interview.srt",
+        include_bytes!("../../../samples/practice/security-ai-interview.srt"),
+    ),
+    (
+        "questions-network.csv",
+        include_bytes!("../../../samples/practice/questions-network.csv"),
+    ),
+    (
+        "sdn-interview.srt",
+        include_bytes!("../../../samples/practice/sdn-interview.srt"),
+    ),
+];
+
+/// Parses one of the built-in sample files.
+pub fn sample(name: &str) -> Result<PracticeScript, MeetCueError> {
+    let (file, bytes) = SAMPLES
+        .iter()
+        .find(|(f, _)| *f == name)
+        .ok_or_else(|| err(format!("unknown sample {name}")))?;
+    parse::parse_file(file, bytes)
+}
+
 /// Labels subtitle lines without speakers as questions or answers.
 pub async fn classify(
     app: &AppHandle,

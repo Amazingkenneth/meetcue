@@ -76,3 +76,9 @@ question,reference_answer,category,followups
 
 - [sdn-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/sdn-interview.srt): a short interview in Chinese and English.
 - [questions-network.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network.csv): ten network architecture questions with reference answers.
+- [questions-software-engineer.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-software-engineer.csv): fourteen software engineering questions with reference answers and follow-ups.
+- [swe-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/swe-interview.srt): a backend software engineer technical round in English.
+- [questions-security-ai.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-security-ai.csv): twelve network security and AI security questions with reference answers and follow-ups.
+- [security-ai-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/security-ai-interview.srt): a network security engineer round for an AI platform team, in English.
+
+All of them are built into MeetCue: click **Use this** in the mock interview window. See [Mock interview](/guide/mock-interview).

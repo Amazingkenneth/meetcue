@@ -93,7 +93,7 @@ describe("Practice window", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     await flush();
     expect(screen.getByText("2 questions", { exact: false })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("radio", { name: /Simulated latency/ }));
+    fireEvent.click(screen.getByRole("switch", { name: /Speech-to-text for the questions/ }));
     await flush();
     expect(screen.getByText("Only recognition delay is simulated; the model's delay is real.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Start practice" }));
@@ -103,6 +103,17 @@ describe("Practice window", () => {
     fireEvent.click(screen.getByRole("button", { name: "End practice" }));
     await flush();
     expect(screen.getByText("The review opens in its own window.")).toBeInTheDocument();
+  });
+
+  it("starts from a built-in sample interview", async () => {
+    render(<Practice />);
+    await flush();
+    expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Use this" })).toHaveLength(6);
+    fireEvent.click(screen.getAllByRole("button", { name: "Use this" })[2]);
+    await flush();
+    expect(screen.getByText("questions-security-ai")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Start practice" })).toBeEnabled();
   });
 
   it("shows the review report in Chinese", async () => {

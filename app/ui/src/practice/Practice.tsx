@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { HintLevel } from "../bindings/HintLevel";
-import type { PlaybackMode } from "../bindings/PlaybackMode";
 import type { PracticeReportSummary } from "../bindings/PracticeReportSummary";
 import type { PracticeScript } from "../bindings/PracticeScript";
 import type { Settings } from "../bindings/Settings";
@@ -67,6 +66,12 @@ export function Practice() {
       }
     });
 
+  const loadSample = (name: string) =>
+    run("import", async () => {
+      setScript(await backend().invoke("practice_sample", { name }));
+      setFinished(false);
+    });
+
   if (!settings) return <p className="app-body muted">{t("common.loading")}</p>;
   const running = started || progress !== null;
 
@@ -91,7 +96,7 @@ export function Practice() {
         {running ? (
           <Running settings={settings} progress={progress} />
         ) : !script ? (
-          <ImportStep busy={busy === "import"} onImport={importFile} finished={finished} />
+          <ImportStep busy={busy === "import"} onImport={importFile} onSample={loadSample} finished={finished} />
         ) : (
           <>
             <Preview
@@ -129,7 +134,27 @@ export function Practice() {
   );
 }
 
-function ImportStep({ busy, onImport, finished }: { busy: boolean; onImport: () => void; finished: boolean }) {
+/** Sample interviews built into the app; names match `practice::SAMPLES`. */
+export const SAMPLES = [
+  { key: "sweQuestions", file: "questions-software-engineer.csv" },
+  { key: "sweInterview", file: "swe-interview.srt" },
+  { key: "securityQuestions", file: "questions-security-ai.csv" },
+  { key: "securityInterview", file: "security-ai-interview.srt" },
+  { key: "networkQuestions", file: "questions-network.csv" },
+  { key: "sdnInterview", file: "sdn-interview.srt" },
+] as const;
+
+function ImportStep({
+  busy,
+  onImport,
+  onSample,
+  finished,
+}: {
+  busy: boolean;
+  onImport: () => void;
+  onSample: (file: string) => void;
+  finished: boolean;
+}) {
   const { t } = useTranslation();
   const [reports, setReports] = useState<PracticeReportSummary[]>([]);
   useEffect(() => {
@@ -140,8 +165,38 @@ function ImportStep({ busy, onImport, finished }: { busy: boolean; onImport: () 
   }, [finished]);
   return (
     <>
+      <Section title={t("practice.howTitle")}>
+        <ol className="practice-steps">
+          <li>{t("practice.how.headphones")}</li>
+          <li>{t("practice.how.choose")}</li>
+          <li>{t("practice.how.options")}</li>
+          <li>{t("practice.how.answer")}</li>
+          <li>{t("practice.how.review")}</li>
+        </ol>
+        <p className="muted">
+          {t("practice.howBriefing")}{" "}
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "settings", section: "hints" })}>
+            {t("practice.openHints")}
+          </button>
+        </p>
+      </Section>
+      <Section title={t("practice.samplesTitle")} lead={t("practice.samplesLead")}>
+        <ul className="practice-samples">
+          {SAMPLES.map((s) => (
+            <li key={s.file}>
+              <span>
+                <strong>{t(`practice.sample.${s.key}.title`)}</strong>
+                <span className="muted">{t(`practice.sample.${s.key}.body`)}</span>
+              </span>
+              <button className="btn btn-small" onClick={() => onSample(s.file)} disabled={busy}>
+                {t("practice.useSample")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Section>
       <Section title={t("practice.importTitle")} lead={t("practice.importHint")}>
-        <button className="btn btn-primary" onClick={onImport} disabled={busy}>
+        <button className="btn" onClick={onImport} disabled={busy}>
           {t("practice.import")}
         </button>
       </Section>
@@ -294,10 +349,6 @@ function Options({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   const p = settings.practice;
   const setP = (patch: Partial<Settings["practice"]>) => void update((s) => ({ ...s, practice: { ...s.practice, ...patch } }));
-  const playbacks: [PlaybackMode, string, string][] = [
-    ["realPipeline", t("practice.playbackReal"), t("practice.playbackRealHint")],
-    ["simulatedLatency", t("practice.playbackSimulated"), t("practice.playbackSimulatedHint")],
-  ];
   const levels: [HintLevel, string][] = [
     ["full", t("practice.levelFull")],
     ["headsOnly", t("practice.levelHeads")],
@@ -306,20 +357,19 @@ function Options({ settings, update }: { settings: Settings; update: Update }) {
   ];
   return (
     <Section title={t("practice.optionsTitle")}>
-      <Field label={t("practice.playback")}>
-        <div className="practice-radios" role="radiogroup" aria-label={t("practice.playback")}>
-          {playbacks.map(([value, label, hint]) => (
-            <label key={value} className="practice-radio">
-              <input type="radio" name="playback" checked={p.playback === value} onChange={() => setP({ playback: value })} />
-              <span>
-                <strong>{label}</strong>
-                <span className="muted">{hint}</span>
-              </span>
-            </label>
-          ))}
-          {p.playback === "simulatedLatency" && <p className="note">{t("practice.simulatedNote")}</p>}
-        </div>
-      </Field>
+      <Switch
+        checked={p.playback === "realPipeline"}
+        onChange={(on) => setP({ playback: on ? "realPipeline" : "simulatedLatency" })}
+        label={t("practice.sttQuestions")}
+        description={p.playback === "realPipeline" ? t("practice.sttQuestionsOn") : t("practice.sttQuestionsOff")}
+      />
+      {p.playback === "simulatedLatency" && <p className="note">{t("practice.simulatedNote")}</p>}
+      <Switch
+        checked={p.recognizeMe}
+        onChange={(v) => setP({ recognizeMe: v })}
+        label={t("practice.recognizeMe")}
+        description={t("practice.recognizeMeHint")}
+      />
       <Field label={t("practice.level")} hint={t("practice.levelHint")}>
         <div className="btn-group" role="group" aria-label={t("practice.level")}>
           {levels.map(([value, label]) => (
@@ -365,12 +415,6 @@ function Options({ settings, update }: { settings: Settings; update: Update }) {
         <input id="rate" type="range" min={0.6} max={1.6} step={0.1} value={p.speechRate} onChange={(e) => setP({ speechRate: Number(e.target.value) })} />{" "}
         <span className="mono">{p.speechRate.toFixed(1)}×</span>
       </Field>
-      <Switch
-        checked={p.recognizeMe}
-        onChange={(v) => setP({ recognizeMe: v })}
-        label={t("practice.recognizeMe")}
-        description={t("practice.recognizeMeHint")}
-      />
       <Switch
         checked={settings.audio.stopTtsOnSpeech}
         onChange={(v) => void update((s) => ({ ...s, audio: { ...s.audio, stopTtsOnSpeech: v } }))}

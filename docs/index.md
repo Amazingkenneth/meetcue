@@ -20,7 +20,8 @@ features:
   - title: Meeting prompter
     details: Press Ctrl+Alt+Space. When someone asks you a question, numbered talking points appear in about a second and a half, and tick off as you cover them.
   - title: Practice mode
-    details: Import subtitles from a past meeting or a list of interview questions. MeetCue asks them aloud with real-meeting timing and gives you a review afterwards.
+    details: Run a mock interview on your own with built-in samples, or import subtitles and question lists. MeetCue asks them aloud with real-meeting timing and gives you a review afterwards.
+    link: /guide/mock-interview
   - title: Latency probe
     details: Measure how fast each speech and model provider responds from your network, compare prices, and pick the combination that suits you.
 ---

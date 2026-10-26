@@ -39,4 +39,5 @@
 
 - 在[首次设置](/zh/setup)中配置供应商。
 - 阅读[会议模式](/zh/guide/meeting)，了解问题如何被检测和排队。
+- 不用开会，通过麦克风在[模拟面试](/zh/guide/mock-interview)中把整个流程试一遍。
 - 在[练习模式](/zh/guide/practice)中用自己的题目演练。

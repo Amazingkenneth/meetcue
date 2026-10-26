@@ -6,7 +6,7 @@ This page explains what MeetCue sends to which provider, what it keeps on your c
 
 - Audio from your microphone and from system sound while listening is on, converted to 16 kHz mono. Silence is not sent, except about 0.3 s just before speech starts so the first word isn't cut off, and up to about a second after it so the recognizer can tell the sentence ended.
 - Terms from your briefing material, as recognition hints.
-- In practice mode with **Simulated latency**, the other side's audio isn't sent.
+- In practice mode with **Speech-to-text for the questions** off, the other side's audio isn't sent.
 
 ## What goes to your language model provider
 

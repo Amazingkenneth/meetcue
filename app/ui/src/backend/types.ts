@@ -68,6 +68,7 @@ export interface Commands {
   export_diagnostics: { args: undefined; result: string | null };
   import_material: { args: undefined; result: Material | null };
   practice_import: { args: undefined; result: PracticeScript | null };
+  practice_sample: { args: { name: string }; result: PracticeScript };
   practice_classify: { args: { script: PracticeScript }; result: PracticeScript };
   practice_start: { args: { script: PracticeScript }; result: null };
   practice_control: { args: { control: PracticeControl }; result: null };
