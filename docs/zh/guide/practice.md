@@ -21,6 +21,10 @@
 
 内置示例也放在仓库的 [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice) 目录下，对应的职位描述在 [samples/materials](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/materials)。
 
+## 提问的声音
+
+问题由 Windows 语音朗读。在模拟面试窗口的第一步，可以分别为中文和英文选择语音，点 **试听** 听效果，并调整朗读语速。选择 **Windows 提供的第一个语音** 即保持 MeetCue 原来的选择。更多语音可在 Windows 设置 › 时间和语言 › 语音 中安装。
+
 ## 语音转文字
 
 问题总是用 Windows 自带的语音朗读出来，与真实会议一样。两个开关决定哪些内容转成文字：
@@ -33,7 +37,8 @@
 - 问题列表：MeetCue 提一个问题后等待。20 秒内没有开口，面板会轻提示。停顿 3 秒或按 `Ctrl+Alt+Enter` 表示答完。
 - 开启追问后，MeetCue 会按一定概率（默认 30%）根据你的回答提一个简短的追问。
 - 会议字幕：其他说话人的句子按原时间轴播放，较长的空白压缩到 2 秒。播放到你的句子时暂停等你回答，原句作为复盘里的参考回答。
-- `Ctrl+Alt+]` 跳过当前题，`Ctrl+Alt+Space` 暂停或继续。问题还在朗读时你开口说话，朗读会停止。
+- `Ctrl+Alt+]` 跳过当前题，`Ctrl+Alt+Space` 暂停或继续。练习窗口和面板上的 **再问一遍** 会从头重读当前这道题，并丢弃已经开始的回答。
+- 问题还在朗读时你开口说话，朗读会停止。只有真正的说话才算：咳嗽、口头禅，或者把问题本身听错的词都不会打断朗读。可以用 **我开口时停止朗读** 关闭这一行为。
 
 ## 提示难度
 

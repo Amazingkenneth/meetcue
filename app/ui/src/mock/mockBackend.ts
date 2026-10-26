@@ -354,6 +354,11 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       practiceScript = mockPracticeScript();
       return practiceScript;
     },
+    list_voices: () => [
+      { id: "mock-en", name: "Microsoft Aria (English)", lang: "en" },
+      { id: "mock-zh", name: "Microsoft Xiaoxiao (Chinese)", lang: "zh" },
+    ],
+    preview_voice: () => null,
     practice_sample: ({ name }) => {
       practiceScript = { ...mockPracticeScript(), title: name.replace(/\.[^.]+$/, "") };
       return practiceScript;

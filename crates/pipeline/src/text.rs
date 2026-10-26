@@ -83,6 +83,11 @@ fn latin_words(text: &str) -> impl Iterator<Item = String> + '_ {
     out.into_iter()
 }
 
+/// Lowercase Latin words, stop words included.
+pub fn words(text: &str) -> Vec<String> {
+    latin_words(text).collect()
+}
+
 /// Matching units of a text: CJK character bigrams (a lone character counts
 /// as itself) plus lowercase Latin words that are not stop words.
 pub fn units(text: &str) -> Vec<String> {

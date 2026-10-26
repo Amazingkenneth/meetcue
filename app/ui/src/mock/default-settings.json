@@ -93,6 +93,8 @@
     "nudgeAfterS": 20.0,
     "followUpProbability": 0.3,
     "speechRate": 1.0,
+    "voiceZh": "",
+    "voiceEn": "",
     "recognizeMe": true,
     "fillersZh": [
       "嗯",

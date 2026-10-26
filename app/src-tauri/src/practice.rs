@@ -52,6 +52,17 @@ pub enum Control {
     Skip,
     Stop,
     Answered,
+    /// Read the current question again.
+    Repeat,
+}
+
+/// The sentence the settings read aloud when trying a voice.
+pub fn voice_sample(lang: &str) -> &'static str {
+    if lang.starts_with("zh") {
+        "你好，这是模拟面试的提问声音。"
+    } else {
+        "Hello, this is the voice that will read your interview questions."
+    }
 }
 
 enum Msg {
@@ -300,6 +311,13 @@ pub async fn start(app: &AppHandle, script: PracticeScript) -> Result<(), MeetCu
             follow_up_probability: s.practice.follow_up_probability,
             simulated,
             stop_on_speech: s.audio.stop_tts_on_speech,
+            fillers: s
+                .practice
+                .fillers_zh
+                .iter()
+                .chain(s.practice.fillers_en.iter())
+                .cloned()
+                .collect(),
             seed: rand::rng().random(),
             ..Default::default()
         },
@@ -374,6 +392,7 @@ async fn run(mut ctx: RunCtx, mut pacer: Pacer) {
                     Control::Skip => PacerInput::Skip,
                     Control::Stop => PacerInput::Stop,
                     Control::Answered => PacerInput::Answered,
+                    Control::Repeat => PacerInput::Repeat,
                 }),
                 Some(Msg::SpeechDone(n)) => (n == ctx.utterance).then_some(PacerInput::SpeechDone),
                 Some(Msg::FollowUp(q)) => Some(PacerInput::FollowUp(q)),
@@ -436,14 +455,15 @@ async fn apply(ctx: &mut RunCtx, outputs: Vec<PacerOutput>) {
                 let n = ctx.utterance;
                 let speaker = ctx.speaker.clone();
                 let tx = ctx.tx.clone();
-                let rate = app.state::<AppState>().settings().practice.speech_rate;
-                let lang = match lang {
-                    Lang::Zh => "zh",
-                    Lang::En => "en",
+                let p = app.state::<AppState>().settings().practice;
+                let rate = p.speech_rate;
+                let (lang, voice) = match lang {
+                    Lang::Zh => ("zh", p.voice_zh),
+                    Lang::En => ("en", p.voice_en),
                 };
                 let app2 = app.clone();
                 tauri::async_runtime::spawn_blocking(move || {
-                    if let Err(e) = speaker.speak(&text, lang, rate) {
+                    if let Err(e) = speaker.speak(&text, lang, rate, &voice) {
                         tracing::warn!("speech synthesis failed: {e}");
                         let _ = app2.emit(
                             PIPELINE_EVENT,

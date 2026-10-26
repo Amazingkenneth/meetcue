@@ -5,7 +5,9 @@ import type { HintLevel } from "../bindings/HintLevel";
 import type { PracticeReportSummary } from "../bindings/PracticeReportSummary";
 import type { PracticeScript } from "../bindings/PracticeScript";
 import type { Settings } from "../bindings/Settings";
+import type { Voice } from "../bindings/Voice";
 import { Field, Section, Switch } from "../design/components";
+import { LevelBar, useLevels } from "../settings/Settings";
 import { useDraft } from "../settings/useDraft";
 import { useAppEvents } from "../state/hooks";
 import {
@@ -29,6 +31,9 @@ function errorCode(e: unknown): string {
   return String((e as { code?: string })?.code ?? e);
 }
 
+const STEPS = ["sound", "questions", "check", "practise"] as const;
+type Step = (typeof STEPS)[number];
+
 export function Practice() {
   const { t } = useTranslation();
   const { settings, update } = useDraft();
@@ -37,11 +42,14 @@ export function Practice() {
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [step, setStep] = useState<Step>("sound");
   const progress = usePracticeProgress();
   useAppEvents((e) => {
     if (e.type === "practiceFinished") {
       setStarted(false);
       setFinished(true);
+      setScript(null);
+      setStep("questions");
     }
   });
 
@@ -57,23 +65,25 @@ export function Practice() {
     }
   };
 
+  const chose = (s: PracticeScript) => {
+    setScript(s);
+    setFinished(false);
+    setStep("check");
+  };
+
   const importFile = () =>
     run("import", async () => {
       const s = await backend().invoke("practice_import");
-      if (s) {
-        setScript(s);
-        setFinished(false);
-      }
+      if (s) chose(s);
     });
 
   const loadSample = (name: string) =>
-    run("import", async () => {
-      setScript(await backend().invoke("practice_sample", { name }));
-      setFinished(false);
-    });
+    run("import", async () => chose(await backend().invoke("practice_sample", { name })));
 
   if (!settings) return <p className="app-body muted">{t("common.loading")}</p>;
   const running = started || progress !== null;
+  const current: Step = running ? "practise" : step;
+  const ready = !!script && !script.needsClassification && script.items.length > 0 && answerTurns(script) > 0;
 
   return (
     <div className="app practice">
@@ -82,6 +92,13 @@ export function Practice() {
         <p>{t("practice.lead")}</p>
       </header>
       <div className="app-body">
+        <ol className="steps" aria-label={t("practice.stepsLabel")}>
+          {STEPS.map((id, i) => (
+            <li key={id} aria-current={id === current ? "step" : undefined} data-done={i < STEPS.indexOf(current)}>
+              {i + 1}. {t(`practice.step.${id}`)}
+            </li>
+          ))}
+        </ol>
         {error && (
           <div className="note note-err" role="alert">
             <strong>{errorTitle(error)}</strong> <span className="mono">{error}</span>
@@ -95,42 +112,160 @@ export function Practice() {
         )}
         {running ? (
           <Running settings={settings} progress={progress} />
-        ) : !script ? (
-          <ImportStep busy={busy === "import"} onImport={importFile} onSample={loadSample} finished={finished} />
+        ) : current === "sound" ? (
+          <SoundCheck settings={settings} update={update} onNext={() => setStep("questions")} />
+        ) : current === "questions" ? (
+          <ChooseStep
+            busy={busy === "import"}
+            onImport={importFile}
+            onSample={loadSample}
+            finished={finished}
+            onBack={() => setStep("sound")}
+          />
         ) : (
-          <>
-            <Preview
-              script={script}
-              onChange={setScript}
-              busy={busy}
-              onClassify={() =>
-                run("classify", async () => {
-                  setScript(await backend().invoke("practice_classify", { script }));
-                })
-              }
-            />
-            <Options settings={settings} update={update} />
-            <div className="practice-actions">
-              <button className="btn" onClick={() => setScript(null)} disabled={busy !== null}>
-                {t("practice.back")}
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={busy !== null || script.items.length === 0 || script.needsClassification || answerTurns(script) === 0}
-                onClick={() =>
-                  run("start", async () => {
-                    await backend().invoke("practice_start", { script });
-                    setStarted(true);
+          script && (
+            <>
+              <Preview
+                script={script}
+                onChange={setScript}
+                busy={busy}
+                onClassify={() =>
+                  run("classify", async () => {
+                    setScript(await backend().invoke("practice_classify", { script }));
                   })
                 }
-              >
-                {busy === "start" ? t("practice.starting") : t("practice.start")}
-              </button>
-            </div>
-          </>
+              />
+              <Options settings={settings} update={update} />
+              <p className="practice-next" role="status">
+                {t("practice.nextStart", { seconds: seconds(settings.practice.answerPauseS * 1000) })}
+              </p>
+              <div className="practice-actions">
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setScript(null);
+                    setStep("questions");
+                  }}
+                  disabled={busy !== null}
+                >
+                  {t("practice.back")}
+                </button>
+                <button
+                  className="btn btn-primary"
+                  disabled={busy !== null || !ready}
+                  onClick={() =>
+                    run("start", async () => {
+                      await backend().invoke("practice_start", { script });
+                      setStarted(true);
+                    })
+                  }
+                >
+                  {busy === "start" ? t("practice.starting") : t("practice.start")}
+                </button>
+              </div>
+            </>
+          )
         )}
       </div>
     </div>
+  );
+}
+
+/** Step 1: headphones, levels and how the questions are spoken. */
+function SoundCheck({ settings, update, onNext }: { settings: Settings; update: Update; onNext: () => void }) {
+  const { t } = useTranslation();
+  const levels = useLevels();
+  useEffect(() => {
+    void backend().invoke("audio_preview", { on: true });
+    return () => void backend().invoke("audio_preview", { on: false });
+  }, []);
+  return (
+    <>
+      <Section title={t("practice.soundTitle")} lead={t("practice.soundLead")}>
+        <div className="note">{t("practice.headphones")}</div>
+        <Field label={t("overlay.sourceMe")} hint={t("practice.micHint")}>
+          <LevelBar db={levels.me} label={t("overlay.sourceMe")} />
+        </Field>
+        <Field label={t("overlay.sourceRemote")} hint={t("practice.systemHint")}>
+          <LevelBar db={levels.remote} label={t("overlay.sourceRemote")} />
+        </Field>
+        <p className="muted">
+          {t("practice.audioSettings")}{" "}
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "settings", section: "audio" })}>
+            {t("practice.openAudio")}
+          </button>
+        </p>
+      </Section>
+      <VoiceStep settings={settings} update={update} />
+      <Section title={t("practice.briefingTitle")} lead={t("practice.howBriefing")}>
+        <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "settings", section: "hints" })}>
+          {t("practice.openHints")}
+        </button>
+      </Section>
+      <p className="practice-next" role="status">
+        {t("practice.nextChoose")}
+      </p>
+      <div className="practice-actions">
+        <button className="btn btn-primary" onClick={onNext}>
+          {t("practice.toQuestions")}
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** The voice that reads the questions, per language, with a sample. */
+function VoiceStep({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const [voices, setVoices] = useState<Voice[] | null>(null);
+  useEffect(() => {
+    void backend()
+      .invoke("list_voices")
+      .then(setVoices)
+      .catch(() => setVoices([]));
+  }, []);
+  const p = settings.practice;
+  const setP = (patch: Partial<Settings["practice"]>) => void update((s) => ({ ...s, practice: { ...s.practice, ...patch } }));
+  const langs: [("zh" | "en"), string, string][] = [
+    ["en", t("practice.voiceEn"), p.voiceEn],
+    ["zh", t("practice.voiceZh"), p.voiceZh],
+  ];
+  return (
+    <Section title={t("practice.voiceTitle")} lead={t("practice.voiceLead")}>
+      {voices !== null && voices.length === 0 && <p className="note note-warn">{t("practice.noVoices")}</p>}
+      {langs.map(([lang, label, value]) => {
+        const forLang = (voices ?? []).filter((v) => v.lang.toLowerCase().startsWith(lang));
+        return (
+          <Field key={lang} label={label} htmlFor={`voice-${lang}`} hint={t("practice.voiceHint")}>
+            <select
+              id={`voice-${lang}`}
+              className="input-wide"
+              value={value}
+              disabled={forLang.length === 0}
+              onChange={(e) => setP(lang === "zh" ? { voiceZh: e.target.value } : { voiceEn: e.target.value })}
+            >
+              <option value="">{t("practice.voiceAuto")}</option>
+              {forLang.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>{" "}
+            <button
+              className="btn btn-small"
+              disabled={forLang.length === 0}
+              onClick={() => void backend().invoke("preview_voice", { voice: value, lang })}
+            >
+              {t("practice.tryVoice")}
+            </button>
+          </Field>
+        );
+      })}
+      <Field label={t("practice.speechRate")} htmlFor="rate">
+        <input id="rate" type="range" min={0.6} max={1.6} step={0.1} value={p.speechRate} onChange={(e) => setP({ speechRate: Number(e.target.value) })} />{" "}
+        <span className="mono">{p.speechRate.toFixed(1)}×</span>
+      </Field>
+    </Section>
   );
 }
 
@@ -144,16 +279,18 @@ export const SAMPLES = [
   { key: "sdnInterview", file: "sdn-interview.srt" },
 ] as const;
 
-function ImportStep({
+function ChooseStep({
   busy,
   onImport,
   onSample,
   finished,
+  onBack,
 }: {
   busy: boolean;
   onImport: () => void;
   onSample: (file: string) => void;
   finished: boolean;
+  onBack: () => void;
 }) {
   const { t } = useTranslation();
   const [reports, setReports] = useState<PracticeReportSummary[]>([]);
@@ -165,21 +302,6 @@ function ImportStep({
   }, [finished]);
   return (
     <>
-      <Section title={t("practice.howTitle")}>
-        <ol className="practice-steps">
-          <li>{t("practice.how.headphones")}</li>
-          <li>{t("practice.how.choose")}</li>
-          <li>{t("practice.how.options")}</li>
-          <li>{t("practice.how.answer")}</li>
-          <li>{t("practice.how.review")}</li>
-        </ol>
-        <p className="muted">
-          {t("practice.howBriefing")}{" "}
-          <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "settings", section: "hints" })}>
-            {t("practice.openHints")}
-          </button>
-        </p>
-      </Section>
       <Section title={t("practice.samplesTitle")} lead={t("practice.samplesLead")}>
         <ul className="practice-samples">
           {SAMPLES.map((s) => (
@@ -221,6 +343,14 @@ function ImportStep({
           </ul>
         )}
       </Section>
+      <p className="practice-next" role="status">
+        {t("practice.nextCheck")}
+      </p>
+      <div className="practice-actions">
+        <button className="btn" onClick={onBack}>
+          {t("practice.toSound")}
+        </button>
+      </div>
     </>
   );
 }
@@ -411,10 +541,6 @@ function Options({ settings, update }: { settings: Settings; update: Update }) {
           <span className="mono">{Math.round(p.followUpProbability * 100)}%</span>
         </Field>
       )}
-      <Field label={t("practice.speechRate")} htmlFor="rate">
-        <input id="rate" type="range" min={0.6} max={1.6} step={0.1} value={p.speechRate} onChange={(e) => setP({ speechRate: Number(e.target.value) })} />{" "}
-        <span className="mono">{p.speechRate.toFixed(1)}×</span>
-      </Field>
       <Switch
         checked={settings.audio.stopTtsOnSpeech}
         onChange={(v) => void update((s) => ({ ...s, audio: { ...s.audio, stopTtsOnSpeech: v } }))}
@@ -457,7 +583,9 @@ function WordList({ id, words, onChange }: { id: string; words: string[]; onChan
 function Running({ settings, progress }: { settings: Settings; progress: PracticeProgress | null }) {
   const { t } = useTranslation();
   const paused = progress?.phase === "paused";
-  const control = (c: "pause" | "resume" | "skip" | "stop" | "answered") => void backend().invoke("practice_control", { control: c });
+  const control = (c: "pause" | "resume" | "skip" | "stop" | "answered" | "repeat") =>
+    void backend().invoke("practice_control", { control: c });
+  const next = progress ? t(`practice.next.${progress.phase}`, { seconds: seconds(settings.practice.answerPauseS * 1000) }) : "";
   return (
     <Section title={t("practice.runningTitle")} lead={t("practice.runningBody", { seconds: seconds(settings.practice.answerPauseS * 1000) })}>
       {progress && (
@@ -466,9 +594,13 @@ function Running({ settings, progress }: { settings: Settings; progress: Practic
           <span>{t(`practice.phase.${progress.phase}`)}</span>
           {progress.question && <p className="muted">{progress.question}</p>}
           {progress.nudge && <p className="note">{t("practice.phase.nudge")}</p>}
+          {next && <p className="practice-next">{next}</p>}
         </div>
       )}
       <div className="practice-actions">
+        <button className="btn" onClick={() => control("repeat")}>
+          {t("practice.repeat")}
+        </button>
         <button className="btn" onClick={() => control(paused ? "resume" : "pause")}>
           {paused ? t("practice.resume") : t("practice.pause")}
         </button>

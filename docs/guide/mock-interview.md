@@ -32,11 +32,19 @@ You can open it from any of these places:
 
 The window opens with **How it works** at the top, followed by the sample interviews, your own file, and past practice.
 
-## Step 2: Tell MeetCue about the role (optional) {#step-2}
+The window guides you through four steps, shown at the top: **Sound check**, **Questions**, **Review** and **Practise**. Each step ends with a line saying what comes next.
+
+## Step 2: Sound check and the asking voice {#step-2}
+
+The first step shows both level bars live. Say something: the microphone bar should move. Play any video, or press **Try it** below: the system sound bar should move. If one stays flat, **Open audio settings** takes you to the device list; see [Audio and devices](/troubleshooting/audio).
+
+Under **The voice that asks the questions**, pick the Windows voice for each language and press **Try it** to hear a sample sentence. **First voice Windows offers** keeps the old behaviour. Windows installs more voices under Settings › Time & language › Speech; a voice you add there appears here after restarting MeetCue. **Reading speed** is on the same step.
+
+## Step 3: Tell MeetCue about the role (optional) {#step-3}
 
 Hints are better when MeetCue knows who you are and what the interview is for. This step takes two minutes and is worth doing at least once.
 
-1. In the mock interview window, click **Open briefing material**. It opens **Settings › Hints**.
+1. In the sound check step, click **Open briefing material**. It opens **Settings › Hints**.
 2. Under **My role**, write one sentence about yourself, for example:
    - `Backend software engineer with 4 years of Go and PostgreSQL`
    - `Network security engineer moving into AI security, 5 years in a SOC`
@@ -48,7 +56,7 @@ Hints are better when MeetCue knows who you are and what the interview is for. T
 
 See [Briefing material](/guide/materials) for what is sent and how to keep it focused. Remove the job description afterwards if you don't want it in your real meetings.
 
-## Step 3: Choose an interview {#step-3}
+## Step 4: Choose an interview {#step-4}
 
 Under **Try a sample interview**, click **Use this** next to one of the built-in interviews. You don't need to download anything.
 
@@ -67,7 +75,7 @@ Every sample has a reference answer for each question, so the review can tell yo
 
 To use your own questions, click **Choose a file…** under **Use your own file**. See [Write your own interview](#own-interview).
 
-## Step 4: Check the questions {#step-4}
+## Step 5: Check the questions {#step-5}
 
 The preview lists every question or line. You can:
 
@@ -76,7 +84,7 @@ The preview lists every question or line. You can:
 - For a question list: **Shuffle**, or **Keep the first** few, for example 5 questions for a quick round.
 - For a transcript: check **Which speaker is you?** MeetCue picks the speaker who asks the fewest questions, which is **Candidate** in the samples. Your lines aren't read aloud; they become the reference answers.
 
-## Step 5: Choose how to practise {#step-5}
+## Step 6: Choose how to practise {#step-6}
 
 A mock interview works like a real meeting: every question is spoken aloud and comes to MeetCue as sound, and the first two switches decide whether your speech provider transcribes it. Leave both on to test the whole app; turn **Speech-to-text for the questions** off to prepare more cheaply.
 
@@ -93,7 +101,7 @@ For your first mock interview, use these settings:
 
 Then click **Start practice**. The panel comes to the front if it was hidden.
 
-## Step 6: Answer out loud {#step-6}
+## Step 7: Answer out loud {#step-7}
 
 For each question, this is what happens:
 
@@ -102,6 +110,10 @@ For each question, this is what happens:
 3. **You answer out loud**, as if the interviewer were listening. Use the points as cues, not as a script.
 4. **Points tick off** as you cover them, and the next uncovered point is marked **Next**.
 5. **A pause ends your answer.** After the pause you set (3 seconds by default), MeetCue sometimes asks a follow-up, then moves to the next question. If you don't start within 20 seconds, the panel shows a gentle reminder.
+
+The practice window and the panel both show what is expected of you right now, and both have **Ask again**, which reads the current question from the start. Use it when you missed the question or want a second run at the same answer; the answer you had started is discarded and nothing extra is sent to the model.
+
+MeetCue stops reading when you start to answer, but only for real speech: a cough, an "um" or a word misheard from the question itself doesn't cut the question short. You can turn interruption off entirely with **Stop reading when I start speaking** in the practice options.
 
 These shortcuts work while another window has focus:
 
@@ -114,7 +126,7 @@ These shortcuts work while another window has focus:
 
 The practice window has the same buttons, plus **End practice**.
 
-## Step 7: Read the review {#step-7}
+## Step 8: Read the review {#step-8}
 
 After the last question, or when you click **End practice**, the review opens in its own window. For each question and for the whole session it shows time to start, answer length, coverage, filler words, pace, and three short notes against the reference answer. See [Review report](/guide/practice#review-report) for what each figure means.
 
@@ -180,7 +192,10 @@ Check the questions and answers before you practise with them.
 | Points never tick | **Speech-to-text for my answers** is off, or the microphone bar doesn't move. Check **Settings › Audio** |
 | Points tick while the question is being read | The microphone hears the speakers. Use headphones, see [echo](/troubleshooting/audio#echo) |
 | MeetCue moves on while you're still thinking | Raise **Pause that ends an answer** to 4 or 5 seconds |
-| The voice reads too fast or too slowly | Change **Reading speed** |
+| The voice reads too fast or too slowly | Change **Reading speed** in the sound check step |
+| The question stops halfway | Something in the room interrupts it. Press **Ask again**, use headphones, and if it persists turn off **Stop reading when I start speaking** |
+| The voice is wrong or unpleasant | Choose another one under **The voice that asks the questions** and press **Try it** |
+| No voices are listed | Windows has no speech voice installed. Add one in Windows Settings › Time & language › Speech, then restart MeetCue |
 | Hints are generic | Add **My role** and a job description, see [Step 2](#step-2) |
 
 With both speech-to-text switches on, a mock interview uses your speech recognition and model providers just like a meeting, and costs about as much as a meeting of the same length. Turning off **Speech-to-text for the questions** skips recognition of the questions; the questions are still spoken aloud. Turning off **Speech-to-text for my answers** as well removes all recognition cost.

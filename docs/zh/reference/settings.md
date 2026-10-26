@@ -92,6 +92,8 @@
 | 追问概率 | `practice.followUpProbability` | `0.3` |
 | 朗读语速 | `practice.speechRate` | `1.0` |
 | 我的回答语音转文字 | `practice.recognizeMe` | `true` |
+| 英文语音 | `practice.voiceEn`：Windows 语音 id，留空表示第一个 | `""` |
+| 中文语音 | `practice.voiceZh`：Windows 语音 id，留空表示第一个 | `""` |
 | 我开口时停止朗读 | `audio.stopTtsOnSpeech` | `true` |
 | 口头禅词表 | `practice.fillersZh`、`practice.fillersEn` | 见[练习模式](/zh/guide/practice#review-report) |
 

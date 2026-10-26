@@ -32,6 +32,9 @@ When an item fails, note the error code if any, [export diagnostics](/troublesho
 ## Practice
 
 - [ ] **Mock interview…** in the tray menu, **Try a mock interview** on the idle panel, **Settings › General › Open mock interview** and **Finish and try a mock interview** in setup all open the mock interview window.
+- [ ] In the sound check step, both level bars move, each language's voice list is filled, and **Try it** speaks a sample in the chosen voice.
+- [ ] **Ask again** reads the current question from the start, in the practice window and on the panel.
+- [ ] A cough or an "um" while a question is read doesn't cut it short; answering properly does.
 - [ ] Each built-in sample loads with **Use this**; follow the [self-test plan](/guide/mock-interview#self-test-plan) for at least rounds 1 and 3.
 - [ ] Practice one round each with the sample subtitles and the sample question list.
 - [ ] Hints appear with **Speech-to-text for the questions** both on and off.

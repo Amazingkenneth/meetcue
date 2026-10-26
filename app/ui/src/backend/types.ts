@@ -24,11 +24,13 @@ import type { Settings } from "../bindings/Settings";
 import type { TimedEvent } from "../bindings/TimedEvent";
 import type { UsageSummary } from "../bindings/UsageSummary";
 import type { UserAction } from "../bindings/UserAction";
+import type { Voice } from "../bindings/Voice";
 import type { VerifyResult } from "../bindings/VerifyResult";
 
 export type ModelSlot = "asr" | "detect" | "hints";
 export type View = "overlay" | "settings" | "wizard" | "practice" | "review";
-export type PracticeControl = "pause" | "resume" | "skip" | "stop" | "answered";
+export type PracticeControl = "pause" | "resume" | "skip" | "stop" | "answered" | "repeat";
+
 
 export interface Commands {
   get_app_info: { args: undefined; result: AppInfo };
@@ -69,6 +71,8 @@ export interface Commands {
   import_material: { args: undefined; result: Material | null };
   practice_import: { args: undefined; result: PracticeScript | null };
   practice_sample: { args: { name: string }; result: PracticeScript };
+  list_voices: { args: undefined; result: Voice[] };
+  preview_voice: { args: { voice: string; lang: "zh" | "en" }; result: null };
   practice_classify: { args: { script: PracticeScript }; result: PracticeScript };
   practice_start: { args: { script: PracticeScript }; result: null };
   practice_control: { args: { control: PracticeControl }; result: null };

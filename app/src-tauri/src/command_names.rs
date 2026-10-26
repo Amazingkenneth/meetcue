@@ -38,6 +38,8 @@ pub const COMMANDS: &[&str] = &[
     "import_material",
     "practice_import",
     "practice_sample",
+    "list_voices",
+    "preview_voice",
     "practice_classify",
     "practice_start",
     "practice_control",

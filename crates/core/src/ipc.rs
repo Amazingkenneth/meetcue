@@ -38,6 +38,17 @@ pub struct DeviceInfo {
     pub is_bluetooth: bool,
 }
 
+/// A system text-to-speech voice offered for reading practice questions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct Voice {
+    pub id: String,
+    pub name: String,
+    /// Primary language, such as `en` or `zh`.
+    pub lang: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

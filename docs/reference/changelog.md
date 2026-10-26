@@ -4,6 +4,16 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- The mock interview window is a guided four-step flow: a sound check with live level bars, choosing the questions, reviewing them, and practising. Every step says what comes next, and the running step says what is expected of you right now.
+- **Ask again** reads the current question from the start, in the practice window and on the panel.
+- The voice that reads the questions can be chosen per language in the sound check step, with **Try it** to hear it. Reading speed moved there too.
+
+### Fixed
+
+- A question could stop halfway through: a cough, an "um" or a single word misheard from the question's own echo counted as the user answering. Interrupting now needs real speech, and filler words from the practice settings never count.
+
 ## 0.2.2 — 2026-10-26
 
 ### Added
