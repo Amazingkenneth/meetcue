@@ -91,7 +91,7 @@ pub fn run(opts: cli::Options) -> i32 {
         credentials,
         backend: Arc::new(LocalHintBackend::new()),
         audio: Mutex::new(None),
-        preview: Mutex::new(None),
+        preview: Mutex::new(Default::default()),
         session: Mutex::new(SessionState::Idle),
         demo: opts.demo,
         self_test: opts.self_test,

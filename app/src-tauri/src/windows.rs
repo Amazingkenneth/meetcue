@@ -70,6 +70,7 @@ pub fn create_overlay(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     place(&win, settings.overlay.x, settings.overlay.y);
     if !state.self_test {
         let _ = win.show();
+        show_levels(app, true);
     }
 
     let handle = app.clone();
@@ -144,6 +145,7 @@ pub fn set_mode(app: &AppHandle, mode: PanelMode) {
             let _ = win.show();
         }
     }
+    show_levels(app, mode != PanelMode::Hidden);
     {
         let state = app.state::<AppState>();
         state.settings.write().unwrap().overlay.mode = mode;
@@ -158,6 +160,17 @@ pub fn set_mode(app: &AppHandle, mode: PanelMode) {
             settings: Box::new(settings),
         },
     );
+}
+
+/// The visible panel shows live microphone and system sound levels even
+/// before a session starts; a hidden one doesn't keep the microphone open.
+fn show_levels(app: &AppHandle, on: bool) {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Err(e) = crate::session::audio_preview(&app, OVERLAY, on) {
+            tracing::warn!(code = %e.code, "panel level meters unavailable: {}", e.detail);
+        }
+    });
 }
 
 pub fn cycle_mode(app: &AppHandle) {
@@ -179,6 +192,7 @@ pub fn reset_position(app: &AppHandle) {
     if let Some(win) = app.get_webview_window(OVERLAY) {
         place(&win, None, None);
         let _ = win.show();
+        show_levels(app, true);
     }
 }
 

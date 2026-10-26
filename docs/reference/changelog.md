@@ -13,6 +13,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
   - Error messages now show what went wrong (for example `connection timed out`), connection errors disappear once recognition is back, and the panel marks a side whose recognition is reconnecting.
   - A setting the provider rejects is reported as `MC-ASR-004` instead of a network problem (`MC-ASR-002`), and isn't retried many times a second.
   - Connections no longer time out on networks where IPv6 is configured but doesn't work.
+- The panel's level meters stayed flat until a session started, so the microphone looked dead in the panel while it worked in **Settings › Audio**. The visible panel now shows both levels before you press **Start**; nothing is sent anywhere until you do.
 - A microphone that delivers only silence (blocked in Windows privacy settings, or muted) is now reported with `MC-AUD-002`.
 - Unexpected errors inside MeetCue are now written to the log.
 

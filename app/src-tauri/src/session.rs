@@ -358,10 +358,7 @@ pub async fn restart_audio(app: &AppHandle) {
             }
         }
     }
-    let previewing = state.preview.lock().unwrap().is_some();
-    if previewing {
-        let _ = audio_preview(app, true);
-    }
+    let _ = sync_preview(app, true);
 }
 
 fn build_without_asr(state: &AppState, s: &Settings) -> Result<SessionConfig, MeetCueError> {
@@ -416,15 +413,13 @@ pub async fn start(app: &AppHandle) -> Result<(), MeetCueError> {
         "starting session"
     );
     state.backend.start(cfg).await?;
-    // The session's capture replaces the level check; it shows the same levels.
-    let preview = state.preview.lock().unwrap().take();
-    if let Some(mut p) = preview {
-        p.stop();
-    }
+    // The session's capture replaces the level preview; it shows the same levels.
+    let _ = sync_preview(app, false);
     if !state.demo {
         if let Err(e) = start_audio(app) {
             // Without audio the session would look started but hear nothing.
             state.backend.stop().await;
+            let _ = sync_preview(app, false);
             return Err(e);
         }
     }
@@ -459,6 +454,10 @@ pub async fn stop(app: &AppHandle) {
     let state = app.state::<AppState>();
     stop_capture(&state);
     state.backend.stop().await;
+    // Back to idle: the meters keep showing what the microphone hears.
+    if let Err(e) = sync_preview(app, false) {
+        tracing::warn!(code = %e.code, "level preview not resumed: {}", e.detail);
+    }
 }
 
 /// Stops session capture. The lock is released before the capture threads
@@ -472,6 +471,8 @@ fn stop_capture(state: &AppState) {
 
 pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
     let state = app.state::<AppState>();
+    // Never two captures of the same microphone at once.
+    let _ = sync_preview(app, false);
     let s = state.settings();
     let (tx, mut rx) = mpsc::unbounded_channel::<SourceEvent>();
     let mut source = meetcue_audio::platform_source();
@@ -609,15 +610,37 @@ fn log_event(event: &MeetCueEvent) {
     }
 }
 
-/// Starts or stops capture without recognition, for the level check.
-/// Joins and starts capture threads, so it must not run on the main thread.
-pub fn audio_preview(app: &AppHandle, on: bool) -> Result<(), MeetCueError> {
-    let state = app.state::<AppState>();
-    let old = state.preview.lock().unwrap().take();
-    if let Some(mut p) = old {
-        p.stop();
+/// Turns the level meters of a window (by label) on or off. Joins and
+/// starts capture threads, so it must not run on the main thread.
+pub fn audio_preview(app: &AppHandle, owner: &str, on: bool) -> Result<(), MeetCueError> {
+    {
+        let state = app.state::<AppState>();
+        let mut p = state.preview.lock().unwrap();
+        if on {
+            p.owners.insert(owner.to_string());
+        } else {
+            p.owners.remove(owner);
+        }
     }
-    if !on || state.backend.is_running() {
+    sync_preview(app, false)
+}
+
+/// Runs capture without recognition while a window shows level meters and
+/// no session captures, so the idle panel shows what the microphone hears.
+/// `restart` reopens it with new audio settings. Joins and starts capture
+/// threads, so it must not run on the main thread.
+pub fn sync_preview(app: &AppHandle, restart: bool) -> Result<(), MeetCueError> {
+    let state = app.state::<AppState>();
+    // Held throughout, so concurrent calls never open two captures. The
+    // capture threads never take it, so joining them here is safe.
+    let mut p = state.preview.lock().unwrap();
+    let wanted = !p.owners.is_empty() && !state.backend.is_running();
+    if restart || !wanted {
+        if let Some(mut old) = p.source.take() {
+            old.stop();
+        }
+    }
+    if !wanted || p.source.is_some() {
         return Ok(());
     }
     let s = state.settings();
@@ -636,7 +659,7 @@ pub fn audio_preview(app: &AppHandle, on: bool) -> Result<(), MeetCueError> {
             }
         }),
     )?;
-    *state.preview.lock().unwrap() = Some(source);
+    p.source = Some(source);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let mut levels = [-100f32; 2];
@@ -686,6 +709,10 @@ pub fn spawn_forwarder(app: &AppHandle) {
                     // belongs to the old one and must not stop its capture.
                     if *s == SessionState::Stopped && !state.backend.is_running() {
                         stop_capture(&state);
+                        let app = app.clone();
+                        tauri::async_runtime::spawn_blocking(move || {
+                            let _ = sync_preview(&app, false);
+                        });
                     }
                 }
                 MeetCueEvent::Usage {

@@ -21,7 +21,7 @@ With **Early trigger** on (**Settings › Hints**), MeetCue starts generating as
 From top to bottom, the full panel shows:
 
 1. **Title bar**: status, elapsed time, pause, keep on top, and the switch to the mini bar.
-2. **Sources**: a level meter for your microphone and one for system sound.
+2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
 3. **Question queue**: the previous, current and next question, with their status. Click a card to scroll to that question.
 4. **Conversation**: one block per question. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
 5. **Footer**: shortcut reminders and the latency of the last hint.
