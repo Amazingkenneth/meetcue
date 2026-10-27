@@ -2,12 +2,15 @@
    wizard, practice and review windows follow the system light/dark mode. */
 
 :root {
-  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", -apple-system, BlinkMacSystemFont,
+  --font-system: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", -apple-system, BlinkMacSystemFont,
     "SF Pro Text", "PingFang SC", "Noto Sans", "Noto Sans CJK SC", system-ui, sans-serif;
+  /* The font chosen in the settings (set from settings), else the system font. */
+  --font-ui: var(--font-user, var(--font-system));
   --font-mono: "Cascadia Mono", "SF Mono", ui-monospace, "Noto Sans Mono", Menlo, Consolas, monospace;
 
   /* Overlay palette (dark). */
   --ov-bg: rgba(20, 22, 27, 0.95);
+  --ov-panel-solid: #14161b;
   --ov-card: #191c22;
   --ov-card-focus: #1e222b;
   --ov-line: #262a34;

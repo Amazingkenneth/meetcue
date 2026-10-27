@@ -11,4 +11,4 @@ export type AppEvent = { "type": "settingsChanged", settings: Settings, } | { "t
 /**
  * `speaking`, `waiting`, `answering`, `followUp`, `paused`, `done`.
  */
-phase: string, question: string, } | { "type": "practiceFinished", reportId: string, } | { "type": "pricingChanged", pricing: PriceTable, };
+phase: string, question: string, } | { "type": "practiceFinished", reportId: string, } | { "type": "pricingChanged", pricing: PriceTable, } | { "type": "panelSpot", slot: number, saved: boolean, };

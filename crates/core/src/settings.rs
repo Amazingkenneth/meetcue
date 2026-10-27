@@ -48,6 +48,7 @@ impl Settings {
     pub fn from_json(json: &str) -> serde_json::Result<Self> {
         let mut s: Settings = serde_json::from_str(json)?;
         s.version = SETTINGS_VERSION;
+        s.overlay.normalize();
         // Older files kept one base URL, for the OpenAI-compatible provider only.
         if let Some(url) = s.providers.openai_base_url.take() {
             s.providers
@@ -111,6 +112,8 @@ pub struct GeneralSettings {
     pub ui_language: UiLanguage,
     pub hint_language: HintLanguage,
     pub accent: String,
+    /// Font for every window; empty uses the system font.
+    pub font_family: String,
     pub autostart: bool,
     pub wizard_completed: bool,
 }
@@ -121,6 +124,7 @@ impl Default for GeneralSettings {
             ui_language: UiLanguage::System,
             hint_language: HintLanguage::FollowQuestion,
             accent: "#F5B841".into(),
+            font_family: String::new(),
             autostart: false,
             wizard_completed: false,
         }
@@ -314,6 +318,14 @@ pub struct Hotkeys {
     pub move_down: String,
     pub move_left: String,
     pub move_right: String,
+    /// Go to a saved panel spot; on an empty spot, save the current one.
+    pub spot1: String,
+    pub spot2: String,
+    pub spot3: String,
+    /// Hide the panel for a few seconds to reach what is behind it.
+    pub peek: String,
+    /// Let clicks pass through the panel, or stop them passing through.
+    pub click_through: String,
 }
 
 impl Default for Hotkeys {
@@ -330,6 +342,11 @@ impl Default for Hotkeys {
             move_down: "Ctrl+Alt+Shift+Down".into(),
             move_left: "Ctrl+Alt+Shift+Left".into(),
             move_right: "Ctrl+Alt+Shift+Right".into(),
+            spot1: "Ctrl+Alt+Shift+1".into(),
+            spot2: "Ctrl+Alt+Shift+2".into(),
+            spot3: "Ctrl+Alt+Shift+3".into(),
+            peek: "Ctrl+Alt+Shift+P".into(),
+            click_through: "Ctrl+Alt+Shift+T".into(),
         }
     }
 }
@@ -352,6 +369,17 @@ pub struct OverlaySettings {
     pub mode: PanelMode,
     pub x: Option<i32>,
     pub y: Option<i32>,
+    /// Panel size in logical pixels, kept when the user resizes it. Without a
+    /// width the default is used; without a height the full panel is nearly
+    /// as tall as the screen.
+    pub width: Option<f64>,
+    pub height: Option<f64>,
+    /// Panel opacity, from 0.3 to 1.
+    pub opacity: f32,
+    /// Text size in the panel, from 0.8 to 1.6 times the default.
+    pub text_scale: f32,
+    /// Saved panel spots, one per spot shortcut.
+    pub spots: Vec<Option<PanelSpot>>,
 }
 
 impl Default for OverlaySettings {
@@ -362,8 +390,91 @@ impl Default for OverlaySettings {
             mode: PanelMode::Full,
             x: None,
             y: None,
+            width: None,
+            height: None,
+            opacity: 1.0,
+            text_scale: 1.0,
+            spots: vec![None; PANEL_SPOTS],
         }
     }
+}
+
+pub const PANEL_SPOTS: usize = 3;
+pub const OPACITY_RANGE: (f32, f32) = (0.3, 1.0);
+pub const TEXT_SCALE_RANGE: (f32, f32) = (0.8, 1.6);
+
+impl OverlaySettings {
+    /// Brings hand-edited or older values back into range.
+    pub fn normalize(&mut self) {
+        let clamp = |v: f32, (lo, hi): (f32, f32), d: f32| {
+            if v.is_finite() {
+                v.clamp(lo, hi)
+            } else {
+                d
+            }
+        };
+        self.opacity = clamp(self.opacity, OPACITY_RANGE, 1.0);
+        self.text_scale = clamp(self.text_scale, TEXT_SCALE_RANGE, 1.0);
+        self.spots.resize(PANEL_SPOTS, None);
+    }
+}
+
+/// A remembered panel position, size and layout (physical pixels for the
+/// position, logical for the size, like the window itself).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PanelSpot {
+    pub x: i32,
+    pub y: i32,
+    pub width: f64,
+    pub height: f64,
+    pub mode: PanelMode,
+}
+
+/// Where a panel snaps to on its screen, inside the area the taskbar leaves free.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PanelPlace {
+    TopLeft,
+    Top,
+    TopRight,
+    Left,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight,
+}
+
+/// Panel width presets.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PanelWidth {
+    Narrow,
+    Normal,
+    Wide,
+}
+
+impl PanelWidth {
+    pub fn logical(self) -> f64 {
+        match self {
+            PanelWidth::Narrow => 360.0,
+            PanelWidth::Normal => 440.0,
+            PanelWidth::Wide => 540.0,
+        }
+    }
+}
+
+/// Full panel height presets, as a share of the free screen height.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum PanelHeight {
+    Third,
+    Half,
+    Tall,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -455,6 +566,20 @@ mod tests {
         assert_eq!(s.providers.asr.endpoint, EndpointChoice::Auto);
         assert_eq!(s.hotkeys.toggle_capture, "Ctrl+Alt+Space");
         assert_eq!(s.hotkeys.move_up, "Ctrl+Alt+Shift+Up");
+        assert_eq!(s.hotkeys.spot1, "Ctrl+Alt+Shift+1");
+        assert_eq!(s.overlay.spots.len(), PANEL_SPOTS);
+        assert_eq!(s.overlay.opacity, 1.0);
+    }
+
+    #[test]
+    fn overlay_values_are_brought_into_range() {
+        let s = Settings::from_json(
+            r#"{"overlay":{"opacity":0.01,"textScale":9,"spots":[null,null,null,null,null]}}"#,
+        )
+        .unwrap();
+        assert_eq!(s.overlay.opacity, OPACITY_RANGE.0);
+        assert_eq!(s.overlay.text_scale, TEXT_SCALE_RANGE.1);
+        assert_eq!(s.overlay.spots.len(), PANEL_SPOTS);
     }
 
     /// Writes the defaults for the UI's browser preview (next to the bindings).

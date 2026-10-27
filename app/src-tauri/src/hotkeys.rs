@@ -4,7 +4,7 @@
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-use meetcue_core::ipc::{AppEvent, HotkeyState};
+use meetcue_core::ipc::{AppEvent, HotkeyState, PanelChange};
 use meetcue_core::{codes, FocusTarget, UserAction};
 
 use crate::state::AppState;
@@ -19,6 +19,9 @@ enum Action {
     Next,
     Answered,
     Move(windows::Direction),
+    Spot(u8),
+    Peek,
+    ClickThrough,
 }
 
 fn run(app: &AppHandle, action: Action) {
@@ -50,6 +53,9 @@ fn run(app: &AppHandle, action: Action) {
             }
             // Handled in the shortcut callback, which also sees the release.
             Action::Move(_) => {}
+            Action::Spot(slot) => windows::change_panel(&app, PanelChange::GoSpot { slot }),
+            Action::Peek => windows::change_panel(&app, PanelChange::Peek),
+            Action::ClickThrough => windows::toggle_click_through(&app),
             Action::Answered => {
                 if state.practice.lock().unwrap().is_some() {
                     crate::practice::control(&app, crate::practice::Control::Answered);
@@ -83,6 +89,11 @@ pub fn register_all(app: &AppHandle) -> Vec<HotkeyState> {
         ("moveDown", keys.move_down, Action::Move(Direction::Down)),
         ("moveLeft", keys.move_left, Action::Move(Direction::Left)),
         ("moveRight", keys.move_right, Action::Move(Direction::Right)),
+        ("spot1", keys.spot1, Action::Spot(0)),
+        ("spot2", keys.spot2, Action::Spot(1)),
+        ("spot3", keys.spot3, Action::Spot(2)),
+        ("peek", keys.peek, Action::Peek),
+        ("clickThrough", keys.click_through, Action::ClickThrough),
     ];
     let mut status = Vec::new();
     for (name, accel, action) in list {

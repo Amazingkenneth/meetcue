@@ -4,6 +4,19 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- **Move** on the panel opens one-click placement for touchpads: snap to any edge or corner (clear of the taskbar), move to the next screen, narrow/normal/wide and ⅓, ½ or full height, opacity, text size, hide for 6 seconds, and let clicks pass through.
+- **Saved spots**: save up to three panel positions, each with its size and layout, and jump to them with `Ctrl+Alt+Shift+1`, `2` and `3`. On an empty spot the shortcut saves where the panel is now.
+- `Ctrl+Alt+Shift+P` hides the panel for 6 seconds so you can click what is behind it; `Ctrl+Alt+Shift+T` and a tray menu item turn click-through on and off.
+- **Font** (**Settings › General**) changes the font in every window, and the panel's text size and opacity can be set there too.
+
+### Fixed
+
+- A double tap and drag on a touchpad, or a double click on the title bar, blew the panel up to cover the whole screen. The panel can now be dragged from any empty part of it and never maximizes.
+- A size you drag the panel's edges to is kept instead of being reset on the next layout change.
+- Recording a shortcut with `Shift` and a digit stored the symbol (`!`) instead of the digit.
+
 ## 0.2.4 — 2026-10-27
 
 ### Added

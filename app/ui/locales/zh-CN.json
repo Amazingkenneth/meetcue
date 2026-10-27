@@ -107,14 +107,14 @@
     "hideInShare": "共享屏幕时隐藏面板",
     "hideInShareHint": "屏幕共享和大多数录屏软件拍不到面板；部分录制方式和硬件采集卡仍可能拍到。",
     "clickThrough": "鼠标穿透面板",
-    "clickThroughHint": "面板不再响应鼠标，请改用快捷键操作。",
+    "clickThroughHint": "面板变淡并不再拦截鼠标，可以直接点击面板后面的内容。用快捷键或托盘图标关闭。",
     "panelLayout": "面板形态",
     "panelLayoutHint": "也可以用 {{key}} 或面板上的按钮切换。",
     "panelFull": "完整",
     "panelMini": "迷你",
     "panelHidden": "隐藏",
     "panelPosition": "面板位置",
-    "panelPositionHint": "拖动面板标题栏即可移动。点此将面板放回主屏幕右上角。",
+    "panelPositionHint": "按住面板任意空白处即可拖动，也可以用面板上的「移动」贴靠到屏幕边缘或已保存的位置。点此将面板放回主屏幕右上角。",
     "setupTitle": "初始设置",
     "setupAgain": "设置向导",
     "setupAgainHint": "重新走一遍语言、音频、模型、密钥和延迟检测。会以当前设置为起点。",
@@ -122,7 +122,19 @@
     "practiceTitle": "模拟面试",
     "practiceOpen": "不开会也能练习",
     "practiceOpenHint": "程序朗读问题，你通过麦克风回答，全程有提示，结束后有复盘。内置示例面试。",
-    "practiceButton": "打开模拟面试"
+    "practiceButton": "打开模拟面试",
+    "font": "字体",
+    "fontHint": "用于面板和所有窗口。列表旁的示例文字展示实际效果。",
+    "fontSystem": "系统字体",
+    "fontOther": "其他字体…",
+    "fontName": "已安装的字体名称",
+    "fontSample": "Hints 提示要点 Aa 123",
+    "panelText": "面板文字大小",
+    "panelTextHint": "字大一些扫一眼就能看清；字小一些，矮面板里能放下更多内容。",
+    "panelOpacity": "面板不透明度",
+    "panelOpacityHint": "半透明的面板可以让你同时看到后面的内容。",
+    "panelSizeHint": "面板的宽度和高度。也可以直接拖动面板边缘，设定的大小会被记住。",
+    "spotsHint": "先把面板放到不挡任何东西的地方，再在这里或面板的「移动」里保存。按对应快捷键即可把面板以相同大小和布局放回该位置。"
   },
   "audio": {
     "microphone": "麦克风（我）",
@@ -299,7 +311,14 @@
     "change": "修改",
     "pressKeys": "请按下组合键…（Esc 取消）",
     "restoreDefaults": "恢复默认",
-    "why": "默认键位避开了常见会议软件、输入法和显卡驱动的快捷键。"
+    "why": "默认键位避开了常见会议软件、输入法和显卡驱动的快捷键。",
+    "spotsTitle": "面板位置与快速让开",
+    "spotsLead": "按位置快捷键会把面板移到保存的位置；如果该位置还没保存，则保存面板当前所在位置。",
+    "spot1": "移到位置 1",
+    "spot2": "移到位置 2",
+    "spot3": "移到位置 3",
+    "peek": "暂时隐藏面板几秒",
+    "clickThrough": "鼠标点击穿透面板（开/关）"
   },
   "diag": {
     "liveTitle": "实时状态",
@@ -563,7 +582,8 @@
     "exportDiagnostics": "导出诊断信息…",
     "help": "帮助",
     "quit": "退出 MeetCue",
-    "log": "运行日志…"
+    "log": "运行日志…",
+    "clickThrough": "鼠标点击穿透面板"
   },
   "wipe": {
     "title": "清除所有数据",
@@ -589,5 +609,59 @@
     "detectModel": "判断是不是问题这一步最慢。在 设置 › 供应商与费用 中为问题判断选一个小而快的模型，它只需回答是或否。",
     "hintModel": "生成提示这一步最慢。在 设置 › 供应商与费用 中换一个更快的提示模型，或精简背景资料。",
     "network": "没有哪一步特别慢。运行延迟探测，找出当前网络下最快的供应商和端点；如在使用 VPN，可先关闭。"
+  },
+  "placement": {
+    "title": "移动和调整面板",
+    "open": "移动、大小和透明选项",
+    "short": "移动",
+    "drag": "按住面板任意位置即可拖动",
+    "done": "完成",
+    "snap": "贴靠到边缘或角落",
+    "nextScreen": "移到下一个屏幕",
+    "place": {
+      "topLeft": "左上",
+      "top": "顶部",
+      "topRight": "右上",
+      "left": "左侧",
+      "right": "右侧",
+      "bottomLeft": "左下",
+      "bottom": "底部",
+      "bottomRight": "右下"
+    },
+    "spots": "已保存的位置",
+    "spotsLead": "为常用的布局各存一个位置，比如一个在共享屏幕旁边，一个在摄像头下方。",
+    "empty": "未保存",
+    "go": "前往",
+    "saveHere": "保存当前位置",
+    "replace": "改存当前位置",
+    "clear": "删除位置 {{n}}",
+    "clearShort": "删除",
+    "savedSpot": "已保存为位置 {{n}}",
+    "wentToSpot": "已移到位置 {{n}}",
+    "size": "大小",
+    "width": "宽度",
+    "height": "高度",
+    "widths": {
+      "narrow": "窄",
+      "normal": "标准",
+      "wide": "宽"
+    },
+    "heights": {
+      "third": "⅓ 屏",
+      "half": "½ 屏",
+      "tall": "全高"
+    },
+    "seeThrough": "看到并操作面板后面的内容",
+    "opacity": "不透明度",
+    "lessOpaque": "更透明",
+    "moreOpaque": "更不透明",
+    "textSize": "文字",
+    "smallerText": "缩小文字",
+    "largerText": "放大文字",
+    "peek": "隐藏 6 秒",
+    "peekHint": "用来点击面板后面的东西，之后自动回来。",
+    "through": "鼠标点击穿透",
+    "throughHint": "面板变淡并忽略鼠标。恢复请按",
+    "throughOn": "鼠标点击正在穿透面板。按 {{key}} 或用托盘图标关闭。"
   }
 }
