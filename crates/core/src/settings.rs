@@ -144,8 +144,14 @@ pub struct AudioSettings {
     /// Microphone device id; `None` uses the default device.
     pub mic_device: Option<String>,
     pub remote_source: RemoteSource,
-    /// Energy threshold for voice activity, in dBFS.
+    /// Energy threshold for voice activity on the microphone, in dBFS.
     pub vad_threshold_db: f32,
+    /// Energy threshold for voice activity in system sound, in dBFS. Lower
+    /// than the microphone's: meeting apps remove background noise, so soft
+    /// voices are the quietest thing in it.
+    pub remote_vad_threshold_db: f32,
+    /// Raise quiet voices in system sound before recognition.
+    pub boost_quiet_voices: bool,
     /// Silence that ends a sentence, in milliseconds.
     pub endpoint_silence_ms: u32,
     /// Stop interrupting practice playback when the user starts speaking.
@@ -160,6 +166,8 @@ impl Default for AudioSettings {
             mic_device: None,
             remote_source: RemoteSource::AllSystemSound,
             vad_threshold_db: -45.0,
+            remote_vad_threshold_db: -60.0,
+            boost_quiet_voices: true,
             endpoint_silence_ms: 700,
             stop_tts_on_speech: true,
             languages: vec!["zh".into(), "en".into()],
@@ -273,6 +281,9 @@ pub struct HintSettings {
     pub queue_interruptions: bool,
     pub track_coverage: bool,
     pub early_trigger: bool,
+    /// Write hints while detection is still checking the sentence, and
+    /// discard them if it isn't a question.
+    pub speculative_hints: bool,
 }
 
 impl Default for HintSettings {
@@ -284,6 +295,7 @@ impl Default for HintSettings {
             queue_interruptions: true,
             track_coverage: true,
             early_trigger: true,
+            speculative_hints: true,
         }
     }
 }

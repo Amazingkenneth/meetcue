@@ -69,6 +69,27 @@
 
 **仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
 
+## 说话轻的参会者的问题被漏掉 {#quiet-voices}
+
+**可能原因**
+
+1. 这位参会者的声音传到你电脑时比其他人轻得多，低于系统声音人声门限，因此没有被送去识别。
+2. **放大会议中轻声说话的人** 已关闭，识别服务收到的声音太轻，无法可靠转写。
+3. 会议软件里给这位参会者或整体输出设置的音量较低。
+
+**检查**
+
+1. 打开 **设置 › 音频**，点 **测试电平**，在这个人说话时观察系统声音电平条，记下 dB 数值。
+2. 与 **设置 › 音频 › 高级 › 系统声音人声门限** 对比。
+
+**解决**
+
+1. 打开 **放大会议中轻声说话的人**（默认开启）。它会在识别前把轻声提升到正常说话音量，不会改变你的麦克风。
+2. 把 **系统声音人声门限** 调到比你看到的电平低约 5 dB。默认值 −60 dBFS 几乎能拾取所有人声；只有会议里的音乐或背景噪声被转写时才需要调高。
+3. 在会议软件里调高这位参会者的音量。
+
+**仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
+
 ## 对方的话把我的要点勾掉了 {#echo}
 
 **可能原因**
@@ -84,7 +105,7 @@
 
 1. 戴耳机，这是最可靠的办法。
 2. 调低扬声器音量，或让麦克风远离扬声器。
-3. 把 **设置 › 音频 › 高级 › 人声检测门限** 调高一点。
+3. 把 **设置 › 音频 › 高级 › 麦克风人声门限** 调高一点。
 
 **仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
 

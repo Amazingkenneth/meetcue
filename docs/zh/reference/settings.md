@@ -37,7 +37,9 @@
 | 麦克风（我） | `audio.micDevice`；留空表示系统默认 | 空 |
 | 与会者声音 | `audio.remoteSource`：`allSystemSound` | `allSystemSound` |
 | 会议语言 | `audio.languages`，例如 `["zh", "en"]` | `["zh", "en"]` |
-| 人声检测门限 | `audio.vadThresholdDb`，单位 dBFS，−70 到 −10 | `-45` |
+| 麦克风人声门限 | `audio.vadThresholdDb`，单位 dBFS，−70 到 −10 | `-45` |
+| 系统声音人声门限 | `audio.remoteVadThresholdDb`，单位 dBFS，−70 到 −10 | `-60` |
+| 放大会议中轻声说话的人 | `audio.boostQuietVoices` | `true` |
 | 静音多久算一句结束 | `audio.endpointSilenceMs`，500 到 3000 毫秒 | `700` |
 
 ## 供应商与费用
@@ -65,6 +67,7 @@
 | 插话自动排队 | `hints.queueInterruptions` | `true` |
 | 跟踪已讲要点 | `hints.trackCoverage` | `true` |
 | 提前触发 | `hints.earlyTrigger` | `true` |
+| 边判断问题边生成提示 | `hints.speculativeHints` | `true` |
 
 ## 快捷键
 

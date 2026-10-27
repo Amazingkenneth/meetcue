@@ -113,6 +113,15 @@ describe("session reducer", () => {
     expect(s.errors.map((e) => e.code)).toEqual(["MC-ASR-001"]);
   });
 
+  it("keeps how the last hint's time was split", () => {
+    const s = run([
+      { type: "sessionState", state: "running", tMs: 0 },
+      { type: "latencySample", id: 1, asrMs: 400, detectMs: 700, generateMs: 900, totalMs: 1300, early: true },
+    ]);
+    expect(s.latencies).toEqual([1300]);
+    expect(s.lastLatency).toEqual({ asrMs: 400, detectMs: 700, generateMs: 900, totalMs: 1300, early: true });
+  });
+
   it("replays the recorded demo into a consistent state", () => {
     const s = (demo as TimedEvent[]).map((t) => t.event).reduce(reduce, emptySession());
     expect(s.order).toEqual([1, 2, 3]);

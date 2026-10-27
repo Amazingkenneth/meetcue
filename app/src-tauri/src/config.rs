@@ -3,6 +3,8 @@
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
 
 use meetcue_core::Settings;
 
@@ -32,14 +34,34 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    let tmp = path.with_extension("tmp");
+    // One temporary file per write: settings are saved from the interface
+    // and from the shell (panel position on exit), sometimes at once.
+    let n = TMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let tmp = path.with_extension(format!("{}.{n}.tmp", std::process::id()));
     {
         let mut f = fs::File::create(&tmp)?;
         f.write_all(bytes)?;
         f.sync_all()?;
     }
-    fs::rename(&tmp, path)
+    // On Windows the rename fails while a scanner or a sync tool has the
+    // target open; it is released within moments.
+    let mut attempt = 0;
+    loop {
+        match fs::rename(&tmp, path) {
+            Ok(()) => return Ok(()),
+            Err(_) if attempt < 4 => {
+                attempt += 1;
+                std::thread::sleep(Duration::from_millis(50 * attempt));
+            }
+            Err(e) => {
+                let _ = fs::remove_file(&tmp);
+                return Err(e);
+            }
+        }
+    }
 }
+
+static TMP_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[cfg(test)]
 mod tests {

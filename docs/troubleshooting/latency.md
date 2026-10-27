@@ -7,21 +7,23 @@ This page helps when hints take noticeably longer than about one and a half seco
 **Possible causes**
 
 1. The endpoint chosen earlier is no longer the fastest from your current network.
-2. The hint model is a large, slower model.
-3. Long briefing material makes every request larger.
-4. The sentence-end silence is long.
-5. A VPN or proxy adds a long detour.
+2. The hint model or the detection model is a large, slower model.
+3. **Write hints while checking the question** is off, so hints wait for detection to finish.
+4. Long briefing material makes every request larger.
+5. The sentence-end silence is long.
+6. A VPN or proxy adds a long detour.
 
 **Check**
 
-1. Hover over the latency figure in the panel footer to see the median.
-2. Open **Settings › Diagnostics**: each hint shows how long recognition, detection and hint generation took.
+1. Hover over the latency figure in the panel footer: it shows how the last hint's time split between recognition, detection and hints, and the median.
+2. When hints are slow several times in a row, the panel names the slowest stage and the one change that helps most, with a button to that setting.
+3. Open **Settings › Diagnostics**: each hint shows how long recognition, detection and hint generation took.
 
 **Fix**
 
-1. Run the [latency probe](/guide/latency) again and apply the fastest combination.
-2. Choose a faster hint model; the probe's combination table shows the difference.
-3. Keep **Early trigger** on in **Settings › Hints**.
+1. Keep **Write hints while checking the question** and **Early trigger** on in **Settings › Hints**. Together they save about a second on most questions.
+2. Run the [latency probe](/guide/latency) again and apply the fastest combination.
+3. Choose a faster hint model, and a small, fast detection model: detection only answers yes or no. The probe's combination table shows the difference.
 4. Shorten the briefing material to what this meeting needs.
 5. Lower **Sentence end after silence** in **Settings › Audio › Advanced** a little.
 

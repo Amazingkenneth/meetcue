@@ -9,6 +9,7 @@ use meetcue_core::audio::{FRAME_MS, FRAME_SAMPLES, SAMPLE_RATE};
 use meetcue_core::{AudioFrame, Channel};
 use rubato::{FftFixedInOut, Resampler};
 
+use crate::gain::Agc;
 use crate::vad::{level_db, Vad};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,6 +62,8 @@ pub struct FrameConverter {
     /// delivers its first data.
     started_at: Option<i64>,
     vad: Vad,
+    /// Raises quiet speech before it is sent; `None` leaves levels alone.
+    agc: Option<Agc>,
 }
 
 impl FrameConverter {
@@ -80,7 +83,14 @@ impl FrameConverter {
             next_ts: None,
             started_at: None,
             vad: Vad::new(vad_threshold_db),
+            agc: None,
         }
+    }
+
+    /// Turns automatic gain for quiet speech on or off. Levels and voice
+    /// detection keep using the level before gain.
+    pub fn set_boost(&mut self, on: bool) {
+        self.agc = on.then(Agc::new);
     }
 
     pub fn format(&self) -> InputFormat {
@@ -199,13 +209,14 @@ impl FrameConverter {
 
     fn emit(&mut self, out: &mut Vec<AudioFrame>) {
         while self.pending_out.len() >= FRAME_SAMPLES {
-            let samples: Vec<i16> = self
-                .pending_out
-                .drain(..FRAME_SAMPLES)
-                .map(|s| (s.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16)
-                .collect();
+            let mut raw: Vec<f32> = self.pending_out.drain(..FRAME_SAMPLES).collect();
+            let mut samples: Vec<i16> = raw.iter().map(|&s| to_i16(s)).collect();
             let level = level_db(&samples);
             let voiced = self.vad.process(level);
+            if let Some(agc) = self.agc.as_mut() {
+                agc.process(&mut raw, level, voiced);
+                samples = raw.iter().map(|&s| to_i16(s)).collect();
+            }
             let ts = self.next_ts.unwrap_or(0);
             out.push(AudioFrame {
                 channel: self.channel,
@@ -217,6 +228,10 @@ impl FrameConverter {
             self.next_ts = Some(ts + FRAME_MS as i64);
         }
     }
+}
+
+fn to_i16(s: f32) -> i16 {
+    (s.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16
 }
 
 fn decode(format: SampleFormat, b: &[u8]) -> f32 {
@@ -443,5 +458,33 @@ mod tests {
         c.push_mono(&vec![0.1; 320], 20, &mut out);
         let ts: Vec<i64> = out.iter().map(|f| f.capture_ts_ms).collect();
         assert_eq!(ts, [0, 20]);
+    }
+
+    #[test]
+    fn boost_raises_quiet_speech_but_keeps_the_measured_level() {
+        let fmt = InputFormat {
+            rate: 16_000,
+            channels: 1,
+            format: SampleFormat::F32,
+        };
+        // About −46 dBFS: below the old −45 dB threshold, a soft voice.
+        let quiet = sine(16_000, 300.0, 1000, 0.007);
+        let mut plain = FrameConverter::new(Channel::Remote, fmt, -60.0);
+        let mut boosted = FrameConverter::new(Channel::Remote, fmt, -60.0);
+        boosted.set_boost(true);
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        plain.push_mono(&quiet, 0, &mut a);
+        boosted.push_mono(&quiet, 0, &mut b);
+        assert!(b.iter().all(|f| f.voiced));
+        let last_a = a.last().unwrap();
+        let last_b = b.last().unwrap();
+        assert!((last_a.level_db - last_b.level_db).abs() < 0.01);
+        let peak = |f: &AudioFrame| f.samples.iter().map(|s| s.unsigned_abs()).max().unwrap();
+        assert!(
+            peak(last_b) > peak(last_a) * 8,
+            "boosted {} vs {}",
+            peak(last_b),
+            peak(last_a)
+        );
     }
 }

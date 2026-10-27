@@ -70,6 +70,9 @@
     "latency": "延迟 {{value}} s",
     "latencyNone": "延迟 —",
     "latencyMedian": "中位数 {{value}} s · 打开延迟探测",
+    "latencyBreakdown": "上一条提示 {{total}} 秒：识别 {{asr}} · 判断 {{detect}} · 生成 {{generate}}",
+    "slowHints": "提示较慢（中位数 {{value}} 秒）",
+    "openFix": "打开该设置",
     "probeAgain": "最近几个问题的提示都偏慢，要重新运行延迟探测吗？",
     "openProbe": "打开延迟探测",
     "pendingCount_other": "{{count}} 个排队",
@@ -132,8 +135,12 @@
     "startPreview": "测试电平",
     "stopPreview": "停止测试",
     "advanced": "高级",
-    "vadThreshold": "人声检测门限",
-    "vadHint": "调低能拾取更轻的说话声，调高能忽略更多背景噪声。",
+    "boostQuiet": "放大会议中轻声说话的人",
+    "boostQuietHint": "在识别前把说话轻的参会者提升到正常音量，避免漏掉他们的问题。不会改变你自己的麦克风。",
+    "remoteThreshold": "系统声音人声门限",
+    "remoteThresholdHint": "会议中低于此音量的声音不会送去识别。说话轻的参会者被漏掉时调低；会议里的音乐或噪声被转写时调高。",
+    "vadThreshold": "麦克风人声门限",
+    "vadHint": "调低能拾取你更轻的说话声，调高能忽略更多你身边的背景噪声。",
     "endpointSilence": "静音多久算一句结束",
     "endpointHint": "停顿多久算一句话结束。越短提示越快，但可能把一个问题切成两段；越长越能等完长问题中间的停顿。",
     "languages": "会议语言",
@@ -270,7 +277,9 @@
     "trackCoverage": "跟踪已讲要点",
     "trackCoverageHint": "讲到的要点会打勾，下一条高亮为“接下来”。",
     "earlyTrigger": "提前触发",
-    "earlyTriggerHint": "问题看起来说完就开始生成，不等识别判定句末。更快，偶尔需要重新生成。"
+    "earlyTriggerHint": "问题看起来说完就开始生成，不等识别判定句末。更快，偶尔需要重新生成。",
+    "speculativeHints": "边判断问题边生成提示",
+    "speculativeHintsHint": "在判断一句话是不是问题的同时就开始生成提示，而不是等判断结束。大约快一秒；如果最后不是问题，会多花一次用不上的提示请求。"
   },
   "shortcuts": {
     "lead": "其他程序在前台时快捷键同样有效。",
@@ -553,5 +562,13 @@
     "help": "帮助",
     "quit": "退出 MeetCue",
     "log": "运行日志…"
+  },
+  "latencyTips": {
+    "speculative": "在 设置 › 提示 中打开“边判断问题边生成提示”，可省掉一次模型往返，通常快一秒左右。",
+    "earlyTrigger": "大部分时间花在等一句话结束上。在 设置 › 提示 中打开“提前触发”。",
+    "endpoint": "大部分时间花在等一句话结束上。在 设置 › 音频 › 高级 中调低“静音多久算一句结束”（当前 {{value}} 秒）。",
+    "detectModel": "判断是不是问题这一步最慢。在 设置 › 供应商与费用 中为问题判断选一个小而快的模型，它只需回答是或否。",
+    "hintModel": "生成提示这一步最慢。在 设置 › 供应商与费用 中换一个更快的提示模型，或精简背景资料。",
+    "network": "没有哪一步特别慢。运行延迟探测，找出当前网络下最快的供应商和端点；如在使用 VPN，可先关闭。"
   }
 }

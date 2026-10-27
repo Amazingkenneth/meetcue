@@ -69,6 +69,27 @@ When you test with speakers, the microphone picks up the sound and its bar moves
 
 **Still not solved?** [Export diagnostics](/troubleshooting/diagnostics) and [open an issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml).
 
+## Questions from soft-spoken participants are missed {#quiet-voices}
+
+**Possible causes**
+
+1. The participant's voice reaches your computer much quieter than the others, below the system sound voice threshold, so it isn't sent for recognition.
+2. **Boost quiet voices from the meeting** is off, so the recognizer gets the voice too quiet to transcribe reliably.
+3. The meeting app's own volume for that participant, or its output volume, is turned down.
+
+**Check**
+
+1. Open **Settings › Audio**, click **Test levels**, and watch the system sound bar while that person speaks. Note the level in dB.
+2. Compare it with **Settings › Audio › Advanced › System sound voice threshold**.
+
+**Fix**
+
+1. Turn on **Boost quiet voices from the meeting** (on by default). It raises soft voices to a normal speaking level before recognition and never changes your microphone.
+2. Lower **System sound voice threshold** to about 5 dB below the level you saw. The default, −60 dBFS, catches almost every voice; raise it only if music or background noise in the meeting gets transcribed.
+3. Turn the participant's volume up in the meeting app.
+
+**Still not solved?** [Export diagnostics](/troubleshooting/diagnostics) and [open an issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml).
+
 ## The other side's words tick off my points {#echo}
 
 **Possible causes**
@@ -84,7 +105,7 @@ When you test with speakers, the microphone picks up the sound and its bar moves
 
 1. Use headphones. This is the most reliable fix.
 2. Turn the speaker volume down, or move the microphone away from the speakers.
-3. Raise **Settings › Audio › Advanced › Voice detection threshold** a little.
+3. Raise **Settings › Audio › Advanced › Microphone voice threshold** a little.
 
 **Still not solved?** [Export diagnostics](/troubleshooting/diagnostics) and [open an issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml).
 
