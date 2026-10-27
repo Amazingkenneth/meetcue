@@ -36,6 +36,8 @@
     "allow-set-panel-mode",
     "allow-set-always-on-top",
     "allow-reset-panel-position",
+    "allow-change-panel",
+    "allow-panel-screens",
     "allow-open-window",
     "allow-open-url",
     "allow-hotkey-status",

@@ -2,4 +2,8 @@
 import type { HintLanguage } from "./HintLanguage";
 import type { UiLanguage } from "./UiLanguage";
 
-export type GeneralSettings = { uiLanguage: UiLanguage, hintLanguage: HintLanguage, accent: string, autostart: boolean, wizardCompleted: boolean, };
+export type GeneralSettings = { uiLanguage: UiLanguage, hintLanguage: HintLanguage, accent: string, 
+/**
+ * Font for every window; empty uses the system font.
+ */
+fontFamily: string, autostart: boolean, wizardCompleted: boolean, };

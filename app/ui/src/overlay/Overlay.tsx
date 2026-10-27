@@ -22,6 +22,7 @@ import { latencyTip } from "../state/latency";
 import { jumpTo, usePracticeOutline, usePracticeProgress, type PracticeProgress } from "../state/practice";
 import { boldSegments, clock, seconds } from "../util/format";
 import { errorDocsUrl, errorFix, errorTitle } from "../util/errors";
+import { ClickThroughBar, dragHandle, panelStyle, PlacementMenu, useSpotFlash } from "./Placement";
 import "./overlay.css";
 
 const SLOW_MS = 2500;
@@ -49,21 +50,53 @@ export function Overlay() {
   const display: HintDisplay =
     practice && settings ? { level: settings.practice.hintLevel, delayS: settings.practice.hintDelayS } : FULL;
   const docsUrl = info?.docsUrl ?? "";
-  if (mode === "mini") {
-    return <MiniBar view={view} display={display} onExpand={() => void backend().invoke("set_panel_mode", { mode: "full" })} />;
-  }
   return (
-    <FullPanel
-      view={view}
-      wallStart={wallStart}
-      pauses={pauses}
-      settings={settings}
-      demo={!!info?.demo}
-      docsUrl={docsUrl}
-      practice={practice}
-      display={display}
-    />
+    <div className="ov-frame" style={panelStyle(settings)}>
+      {mode === "mini" ? (
+        <MiniBar
+          view={view}
+          display={display}
+          settings={settings}
+          onExpand={() => void backend().invoke("set_panel_mode", { mode: "full" })}
+        />
+      ) : (
+        <FullPanel
+          view={view}
+          wallStart={wallStart}
+          pauses={pauses}
+          settings={settings}
+          demo={!!info?.demo}
+          docsUrl={docsUrl}
+          practice={practice}
+          display={display}
+        />
+      )}
+    </div>
   );
+}
+
+/** The grip, placement button and placement menu shared by both layouts. */
+function usePlacement(settings: Settings | null) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const flash = useSpotFlash();
+  const button = (
+    <button className="ov-icon" aria-expanded={open} title={t("placement.open")} onClick={() => setOpen(!open)}>
+      {t("placement.short")}
+    </button>
+  );
+  const grip = (
+    <span className="ov-grip" title={t("placement.drag")} aria-hidden>
+      ⠿
+    </span>
+  );
+  const menu = open && settings ? <PlacementMenu settings={settings} onClose={() => setOpen(false)} /> : null;
+  const flashLine = flash ? (
+    <div className="ov-flash" role="status">
+      {flash}
+    </div>
+  ) : null;
+  return { button, grip, menu, flashLine };
 }
 
 function PracticeBar({ p }: { p: PracticeProgress }) {
@@ -142,16 +175,16 @@ function FullPanel({
         ? t("overlay.paused", { time: elapsed })
         : t("overlay.idle");
   const toggleKey = settings?.hotkeys.toggleCapture ?? "Ctrl+Alt+Space";
+  const placement = usePlacement(settings);
 
   return (
-    <div className="ov" role="application" aria-label={t("overlay.title")}>
-      <div className="ov-title" data-tauri-drag-region>
+    <div className="ov" role="application" aria-label={t("overlay.title")} onMouseDown={dragHandle}>
+      <div className="ov-title">
+        {placement.grip}
         <span className="ov-dot" data-on={running} aria-hidden />
-        <h1 data-tauri-drag-region>{t("overlay.title")}</h1>
+        <h1>{t("overlay.title")}</h1>
         {demo && <span className="ov-demo-badge">{t("overlay.demo")}</span>}
-        <span className="ov-state" data-tauri-drag-region>
-          {stateText}
-        </span>
+        <span className="ov-state">{stateText}</span>
         <button className="ov-icon" onClick={() => void backend().invoke("toggle_capture")} title={toggleKey}>
           {running ? t("overlay.pause") : view.state === "paused" ? t("overlay.resume") : t("overlay.start")}
         </button>
@@ -174,7 +207,12 @@ function FullPanel({
         >
           {t("overlay.miniShort")}
         </button>
+        {placement.button}
       </div>
+
+      <ClickThroughBar settings={settings} />
+      {placement.flashLine}
+      {placement.menu}
 
       {practice && <PracticeBar p={practice} />}
 
@@ -546,8 +584,19 @@ export function footerKeys(toggle = "Ctrl+Alt+Space", prev = "Ctrl+Alt+[", next 
   };
 }
 
-export function MiniBar({ view, display = FULL, onExpand }: { view: SessionView; display?: HintDisplay; onExpand: () => void }) {
+export function MiniBar({
+  view,
+  display = FULL,
+  settings = null,
+  onExpand,
+}: {
+  view: SessionView;
+  display?: HintDisplay;
+  settings?: Settings | null;
+  onExpand: () => void;
+}) {
   const { t } = useTranslation();
+  const placement = usePlacement(settings);
   const { current, next } = neighbours(view);
   // The mini bar has no per-question timer, so "delayed" behaves like "off" here.
   const hidden = display.level === "off" || display.level === "delayed";
@@ -555,17 +604,20 @@ export function MiniBar({ view, display = FULL, onExpand }: { view: SessionView;
   const cov = current ? coverageCount(current) : null;
   const pending = view.order.filter((id) => view.questions[id]?.status === "pending").length;
   return (
-    <div className="ov ov-mini" role="application" aria-label={t("overlay.title")}>
-      <div className="top" data-tauri-drag-region>
+    <div className="ov ov-mini" role="application" aria-label={t("overlay.title")} onMouseDown={dragHandle}>
+      <div className="top">
+        {placement.grip}
         <span className="ov-dot" data-on={view.state === "running"} aria-hidden />
-        <span className="short" data-tauri-drag-region>
-          {current?.short ?? t("overlay.emptyTitle")}
-        </span>
+        <span className="short">{current?.short ?? t("overlay.emptyTitle")}</span>
         {cov && cov.total > 0 && <span className="ov-muted">{t("overlay.covered", { done: cov.done, total: cov.total })}</span>}
         <button className="ov-icon" onClick={onExpand} title={t("overlay.toFull")}>
           {t("overlay.expand")}
         </button>
+        {placement.button}
       </div>
+      <ClickThroughBar settings={settings} />
+      {placement.flashLine}
+      {placement.menu}
       <div className="big" aria-live="polite">
         {point ? (
           <>

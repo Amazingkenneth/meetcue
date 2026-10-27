@@ -9,7 +9,8 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use meetcue_core::ipc::{
-    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, UsageSummary, VerifyResult, Voice,
+    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, PanelChange, UsageSummary, VerifyResult,
+    Voice,
 };
 use meetcue_core::pricing::{
     estimate_hourly, CostAssumptions, HourlyEstimate, PriceEntry, PriceTable,
@@ -67,6 +68,15 @@ pub fn save_settings(
     settings: Settings,
 ) -> Res<Settings> {
     let old = state.settings();
+    // The panel's place, size and saved spots belong to the panel: a window
+    // that loaded the settings earlier must not move it back.
+    let mut settings = settings;
+    settings.overlay.x = old.overlay.x;
+    settings.overlay.y = old.overlay.y;
+    settings.overlay.width = old.overlay.width;
+    settings.overlay.height = old.overlay.height;
+    settings.overlay.spots = old.overlay.spots.clone();
+    settings.overlay.normalize();
     config::save(&state.paths.settings_file(), &settings).map_err(|e| {
         tracing::warn!("could not save settings: {e}");
         MeetCueError::new(codes::SYS_SETTINGS_SAVE, e.to_string())
@@ -94,7 +104,9 @@ pub fn save_settings(
     if old.hotkeys != settings.hotkeys {
         hotkeys::register_all(&app);
     }
-    if old.general.ui_language != settings.general.ui_language {
+    if old.general.ui_language != settings.general.ui_language
+        || old.overlay.click_through != settings.overlay.click_through
+    {
         tray::refresh(&app);
     }
     if old.overlay.click_through != settings.overlay.click_through
@@ -347,6 +359,20 @@ pub fn set_panel_mode(app: AppHandle, mode: PanelMode) {
 #[tauri::command]
 pub fn reset_panel_position(app: AppHandle) {
     windows::reset_position(&app);
+}
+
+#[tauri::command]
+pub fn change_panel(app: AppHandle, change: PanelChange) {
+    windows::change_panel(&app, change);
+}
+
+/// How many screens are connected, so the panel offers "next screen" only
+/// when there is one.
+#[tauri::command]
+pub fn panel_screens(app: AppHandle) -> u32 {
+    app.available_monitors()
+        .map(|m| m.len() as u32)
+        .unwrap_or(1)
 }
 
 #[tauri::command]
@@ -661,6 +687,8 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         set_panel_mode,
         set_always_on_top,
         reset_panel_position,
+        change_panel,
+        panel_screens,
         open_window,
         open_url,
         hotkey_status,

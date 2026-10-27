@@ -334,6 +334,38 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     },
     set_always_on_top: () => null,
     reset_panel_position: () => null,
+    change_panel: ({ change }) => {
+      const overlay = { ...settings.overlay, spots: [...settings.overlay.spots] };
+      switch (change.type) {
+        case "saveSpot":
+        case "goSpot":
+          if (change.type === "saveSpot" || !overlay.spots[change.slot]) {
+            overlay.spots[change.slot] = { x: 100, y: 40, width: 440, height: 700, mode: "full" };
+            emitApp({ type: "panelSpot", slot: change.slot, saved: true });
+          } else {
+            emitApp({ type: "panelSpot", slot: change.slot, saved: false });
+          }
+          break;
+        case "clearSpot":
+          overlay.spots[change.slot] = null;
+          break;
+        case "clickThrough":
+          overlay.clickThrough = change.on;
+          break;
+        case "opacity":
+          overlay.opacity = Math.min(1, Math.max(0.3, change.value));
+          break;
+        case "textScale":
+          overlay.textScale = Math.min(1.6, Math.max(0.8, change.value));
+          break;
+        default:
+          return null;
+      }
+      settings = { ...settings, overlay };
+      emitApp({ type: "settingsChanged", settings: structuredClone(settings) });
+      return null;
+    },
+    panel_screens: () => 1,
     open_window: ({ view: v, section }) => {
       window.open(`?view=${v}${section ? `#${section}` : ""}`, "_blank");
       return null;
@@ -442,6 +474,8 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     async closeWindow() {
       window.close();
     },
+    // The browser preview has no window to move.
+    async startDragging() {},
   };
 }
 

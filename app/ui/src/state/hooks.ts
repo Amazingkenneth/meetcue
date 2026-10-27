@@ -21,10 +21,20 @@ export function useAppInfo(): AppInfo | null {
   return info;
 }
 
-/** Applies the language and accent color from settings to the document. */
+/** Applies the language, accent color and font from settings to the document. */
 export function applyAppearance(settings: Settings, systemLocale: string): void {
   setLanguage(resolveLanguage(settings.general.uiLanguage === "system" ? null : settings.general.uiLanguage, systemLocale));
-  document.documentElement.style.setProperty("--accent", settings.general.accent || "#F5B841");
+  const root = document.documentElement.style;
+  root.setProperty("--accent", settings.general.accent || "#F5B841");
+  const font = fontStack(settings.general.fontFamily);
+  if (font) root.setProperty("--font-user", font);
+  else root.removeProperty("--font-user");
+}
+
+/** A CSS font-family value that tries the chosen font first; empty for the system font. */
+export function fontStack(family: string): string {
+  const name = family.trim().replace(/["\\;{}]/g, "");
+  return name ? `"${name}", var(--font-system)` : "";
 }
 
 /** Current settings, kept in sync across windows. */

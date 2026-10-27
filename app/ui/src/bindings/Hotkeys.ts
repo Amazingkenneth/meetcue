@@ -4,4 +4,16 @@ export type Hotkeys = { toggleCapture: string, cyclePanel: string, focusPrev: st
 /**
  * Move the panel; holding the keys keeps it moving.
  */
-moveUp: string, moveDown: string, moveLeft: string, moveRight: string, };
+moveUp: string, moveDown: string, moveLeft: string, moveRight: string, 
+/**
+ * Go to a saved panel spot; on an empty spot, save the current one.
+ */
+spot1: string, spot2: string, spot3: string, 
+/**
+ * Hide the panel for a few seconds to reach what is behind it.
+ */
+peek: string, 
+/**
+ * Let clicks pass through the panel, or stop them passing through.
+ */
+clickThrough: string, };

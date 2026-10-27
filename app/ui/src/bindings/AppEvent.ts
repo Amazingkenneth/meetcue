@@ -16,4 +16,4 @@ turn: number,
 /**
  * `speaking`, `waiting`, `answering`, `followUp`, `paused`, `done`.
  */
-phase: string, question: string, } | { "type": "practiceFinished", reportId: string, } | { "type": "pricingChanged", pricing: PriceTable, };
+phase: string, question: string, } | { "type": "practiceFinished", reportId: string, } | { "type": "pricingChanged", pricing: PriceTable, } | { "type": "panelSpot", slot: number, saved: boolean, };
