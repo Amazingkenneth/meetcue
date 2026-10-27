@@ -12,6 +12,7 @@ import type { CostAssumptions } from "../bindings/CostAssumptions";
 import type { Material } from "../bindings/Material";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
 import type { ModelInfo } from "../bindings/ModelInfo";
+import type { PanelChange } from "../bindings/PanelChange";
 import type { PanelMode } from "../bindings/PanelMode";
 import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
@@ -59,6 +60,8 @@ export interface Commands {
   set_panel_mode: { args: { mode: PanelMode }; result: null };
   set_always_on_top: { args: { on: boolean }; result: null };
   reset_panel_position: { args: undefined; result: null };
+  change_panel: { args: { change: PanelChange }; result: null };
+  panel_screens: { args: undefined; result: number };
   open_window: { args: { view: View; section?: string }; result: null };
   open_url: { args: { url: string }; result: null };
   hotkey_status: { args: undefined; result: HotkeyState[] };
@@ -95,4 +98,6 @@ export interface Backend {
   onAppEvent(cb: (e: AppEvent) => void): Promise<Unlisten>;
   /** Closes the window this view runs in. */
   closeWindow(): Promise<void>;
+  /** Moves the window with the pointer until the button is released. */
+  startDragging(): Promise<void>;
 }

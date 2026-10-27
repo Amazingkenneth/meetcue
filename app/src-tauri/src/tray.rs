@@ -1,6 +1,6 @@
 //! Tray icon and its localized menu.
 
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Manager, Wry};
 
@@ -21,11 +21,21 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         _ => t(lang, "tray.start"),
     };
     let item = |id: &str, key: &str| MenuItem::with_id(app, id, t(lang, key), true, None::<&str>);
+    // The way back when clicks pass through and the shortcut is forgotten.
+    let click_through = CheckMenuItem::with_id(
+        app,
+        "clickThrough",
+        t(lang, "tray.clickThrough"),
+        true,
+        state.settings().overlay.click_through,
+        None::<&str>,
+    )?;
     Menu::with_items(
         app,
         &[
             &MenuItem::with_id(app, "toggle", toggle_label, true, None::<&str>)?,
             &item("panel", "tray.panel")?,
+            &click_through,
             &item("practice", "tray.practice")?,
             &PredefinedMenuItem::separator(app)?,
             &item("settings", "tray.settings")?,
@@ -53,6 +63,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
                     });
                 }
                 "panel" => windows::cycle_mode(&app),
+                "clickThrough" => windows::toggle_click_through(&app),
                 "settings" => {
                     let _ = windows::open_view(&app, "settings", None);
                 }

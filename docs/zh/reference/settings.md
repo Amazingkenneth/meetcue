@@ -21,11 +21,16 @@
 | 界面语言 | `general.uiLanguage`：`system`、`en`、`zh-CN` | `system` |
 | 提示语言 | `general.hintLanguage`：`followQuestion`、`en`、`zh-CN` | `followQuestion` |
 | 强调色 | `general.accent` | `#F5B841` |
+| 字体（为空：系统字体） | `general.fontFamily` | 空 |
 | 登录系统时启动 MeetCue | `general.autostart` | `false` |
 | 共享屏幕时隐藏面板 | `overlay.hideInScreenShare` | `true` |
 | 鼠标穿透面板 | `overlay.clickThrough` | `false` |
 | 面板形态 | `overlay.mode`：`full`、`mini`、`hidden` | `full` |
 | 面板位置（拖动面板移动；**重置面板位置** 可放回原处） | `overlay.x`、`overlay.y` | 右上角 |
+| 面板大小，逻辑像素（为空：宽 440，高度接近整个屏幕） | `overlay.width`、`overlay.height` | 空 |
+| 面板文字大小，0.8 到 1.6 | `overlay.textScale` | `1` |
+| 面板不透明度，0.3 到 1 | `overlay.opacity` | `1` |
+| 保存的位置：每个位置快捷键对应的位置、大小和形态 | `overlay.spots` | 三个空位置 |
 | 重新运行设置向导 | `general.wizardCompleted` | 完成设置前为 `false` |
 
 通用页底部的 **清除所有数据** 在你输入确认词后删除 API 密钥、设置和所有本地记录，然后重启 MeetCue。见[删除你的数据](/zh/reference/privacy#delete-your-data)。
@@ -84,6 +89,9 @@
 | 面板下移 | `hotkeys.moveDown` | `Ctrl+Alt+Shift+Down` |
 | 面板左移 | `hotkeys.moveLeft` | `Ctrl+Alt+Shift+Left` |
 | 面板右移 | `hotkeys.moveRight` | `Ctrl+Alt+Shift+Right` |
+| 移到保存的位置 1、2、3 | `hotkeys.spot1`、`spot2`、`spot3` | `Ctrl+Alt+Shift+1`、`2`、`3` |
+| 暂时隐藏面板几秒 | `hotkeys.peek` | `Ctrl+Alt+Shift+P` |
+| 鼠标点击穿透面板（开/关） | `hotkeys.clickThrough` | `Ctrl+Alt+Shift+T` |
 
 ## 练习
 

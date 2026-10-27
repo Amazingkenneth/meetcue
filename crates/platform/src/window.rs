@@ -1,5 +1,6 @@
 //! Native window adjustments for the overlay panel.
 
+use meetcue_core::settings::PanelPlace;
 use meetcue_core::MeetCueError;
 
 /// Makes the overlay never take focus and hides it from Alt+Tab
@@ -153,6 +154,69 @@ pub fn nudge_target(screens: &[Rect], win: Rect, dx: i32, dy: i32, keep: i32) ->
     (x, y)
 }
 
+/// Where a `w` by `h` panel goes for `place` inside a screen's free `area`,
+/// `margin` pixels from its edges. A panel larger than the area keeps its
+/// top left corner on screen.
+pub fn snap_target(area: Rect, w: i32, h: i32, place: PanelPlace, margin: i32) -> (i32, i32) {
+    use PanelPlace::*;
+    let left = area.x + margin;
+    let centre_x = area.x + (area.w - w) / 2;
+    let right = area.x + area.w - w - margin;
+    let top = area.y + margin;
+    let middle = area.y + (area.h - h) / 2;
+    let bottom = area.y + area.h - h - margin;
+    let (x, y) = match place {
+        TopLeft => (left, top),
+        Top => (centre_x, top),
+        TopRight => (right, top),
+        Left => (left, middle),
+        Right => (right, middle),
+        BottomLeft => (left, bottom),
+        Bottom => (centre_x, bottom),
+        BottomRight => (right, bottom),
+    };
+    (x.max(area.x), y.max(area.y))
+}
+
+/// The screen a window is on: the one under its top centre, otherwise the
+/// one it overlaps most, otherwise the first.
+pub fn screen_of(screens: &[Rect], win: Rect) -> Option<usize> {
+    if let Some(i) = screens
+        .iter()
+        .position(|s| s.contains(win.x + win.w / 2, win.y))
+    {
+        return Some(i);
+    }
+    let overlap = |s: &Rect| {
+        let w = (s.x + s.w).min(win.x + win.w) - s.x.max(win.x);
+        let h = (s.y + s.h).min(win.y + win.h) - s.y.max(win.y);
+        i64::from(w.max(0)) * i64::from(h.max(0))
+    };
+    screens
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, s)| overlap(s))
+        .map(|(i, _)| i)
+}
+
+/// Where a window at `win` on the area `from` goes on the area `to`, so it
+/// keeps the same relative spot (a panel at the right edge stays at the
+/// right edge).
+pub fn same_spot_on(from: Rect, to: Rect, win: Rect) -> (i32, i32) {
+    let share = |pos: i32, start: i32, room: i32| {
+        if room <= 0 {
+            0.0
+        } else {
+            (f64::from(pos - start) / f64::from(room)).clamp(0.0, 1.0)
+        }
+    };
+    let fx = share(win.x, from.x, from.w - win.w);
+    let fy = share(win.y, from.y, from.h - win.h);
+    let x = to.x + (fx * f64::from((to.w - win.w).max(0))).round() as i32;
+    let y = to.y + (fy * f64::from((to.h - win.h).max(0))).round() as i32;
+    (x, y)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,6 +280,62 @@ mod tests {
     fn nudge_from_off_screen_comes_back() {
         assert_eq!(nudge_target(&[LEFT], panel(-900, -50), 10, 0, 120), (0, 0));
         assert_eq!(nudge_target(&[], panel(5, 5), 10, 0, 120), (15, 5));
+    }
+
+    #[test]
+    fn snap_places_inside_the_free_area() {
+        // A 1920x1080 screen with a 48 px taskbar at the bottom.
+        let area = Rect {
+            x: 0,
+            y: 0,
+            w: 1920,
+            h: 1032,
+        };
+        let snap = |p| snap_target(area, 440, 500, p, 16);
+        assert_eq!(snap(PanelPlace::TopLeft), (16, 16));
+        assert_eq!(snap(PanelPlace::TopRight), (1464, 16));
+        assert_eq!(snap(PanelPlace::BottomRight), (1464, 516));
+        assert_eq!(snap(PanelPlace::Bottom), (740, 516));
+        assert_eq!(snap(PanelPlace::Left), (16, 266));
+        // Taller than the screen: the top stays visible.
+        assert_eq!(
+            snap_target(area, 440, 1200, PanelPlace::Bottom, 16),
+            (740, 0)
+        );
+    }
+
+    #[test]
+    fn screen_of_finds_the_panel() {
+        let screens = [LEFT, RIGHT];
+        assert_eq!(screen_of(&screens, panel(2000, 40)), Some(1));
+        assert_eq!(screen_of(&screens, panel(100, 40)), Some(0));
+        // Top centre above every screen: the one it overlaps most.
+        assert_eq!(screen_of(&screens, panel(1800, -20)), Some(1));
+        assert_eq!(screen_of(&[], panel(0, 0)), None);
+    }
+
+    #[test]
+    fn next_screen_keeps_the_relative_spot() {
+        let small = Rect {
+            x: 1920,
+            y: 0,
+            w: 1280,
+            h: 720,
+        };
+        let win = Rect {
+            x: 1480,
+            y: 0,
+            w: 440,
+            h: 300,
+        };
+        // Right edge stays at the right edge.
+        assert_eq!(same_spot_on(LEFT, small, win), (2760, 0));
+        let bottom_left = Rect {
+            x: 0,
+            y: 780,
+            ..win
+        };
+        assert_eq!(same_spot_on(LEFT, small, bottom_left), (1920, 420));
     }
 
     #[test]

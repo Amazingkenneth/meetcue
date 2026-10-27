@@ -32,6 +32,21 @@ The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, t
 
 To keep your eyes near the camera, move the panel right under it with `Ctrl+Alt+Shift` and the arrow keys. See [Move the panel](/guide/shortcuts#move-the-panel).
 
+## Keep the panel out of the way
+
+The panel shouldn't cover the meeting's **Join** button, other participants or a shared screen. Everything below works with a touchpad:
+
+- **Drag it from anywhere.** Press on any empty part of the panel, not only the title bar, and drag. A double tap and drag on a touchpad moves it too.
+- **Move** in the title bar opens one-click options:
+  - **Snap to an edge or corner**: eight arrows place the panel at that edge of the screen, clear of the taskbar. With more than one screen, the middle button moves it to the next screen.
+  - **Saved spots**: save up to three places, each with its own size and layout, and come back to them with `Ctrl+Alt+Shift+1`, `2` or `3`. See [Saved spots](/guide/shortcuts#saved-spots).
+  - **Size**: narrow, normal or wide, and a third, half or the full height of the screen. You can also drag the panel's edges; the size is kept.
+  - **Opacity** and **Text** size, so a smaller, see-through panel stays readable.
+  - **Hide for 6 seconds** (`Ctrl+Alt+Shift+P`) to click something behind the panel.
+  - **Let clicks pass through** (`Ctrl+Alt+Shift+T`): the panel fades and the mouse reaches the window behind it. Press the shortcut again, or use the tray menu, to stop.
+
+The font for every window, the panel's text size and opacity can also be set in **Settings › General**.
+
 ## Coverage ticks
 
 With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough.

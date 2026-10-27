@@ -4,6 +4,7 @@
     "uiLanguage": "system",
     "hintLanguage": "followQuestion",
     "accent": "#F5B841",
+    "fontFamily": "",
     "autostart": false,
     "wizardCompleted": false
   },
@@ -79,14 +80,28 @@
     "moveUp": "Ctrl+Alt+Shift+Up",
     "moveDown": "Ctrl+Alt+Shift+Down",
     "moveLeft": "Ctrl+Alt+Shift+Left",
-    "moveRight": "Ctrl+Alt+Shift+Right"
+    "moveRight": "Ctrl+Alt+Shift+Right",
+    "spot1": "Ctrl+Alt+Shift+1",
+    "spot2": "Ctrl+Alt+Shift+2",
+    "spot3": "Ctrl+Alt+Shift+3",
+    "peek": "Ctrl+Alt+Shift+P",
+    "clickThrough": "Ctrl+Alt+Shift+T"
   },
   "overlay": {
     "clickThrough": false,
     "hideInScreenShare": true,
     "mode": "full",
     "x": null,
-    "y": null
+    "y": null,
+    "width": null,
+    "height": null,
+    "opacity": 1.0,
+    "textScale": 1.0,
+    "spots": [
+      null,
+      null,
+      null
+    ]
   },
   "practice": {
     "playback": "realPipeline",

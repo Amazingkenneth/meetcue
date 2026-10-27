@@ -1,23 +1,32 @@
 //! Window management: the overlay panel (full, mini, hidden) and the normal
 //! settings, wizard, practice and review windows.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 
-use meetcue_core::ipc::AppEvent;
-use meetcue_core::settings::PanelMode;
+use meetcue_core::ipc::{AppEvent, PanelChange};
+use meetcue_core::settings::{
+    OverlaySettings, PanelHeight, PanelMode, PanelSpot, OPACITY_RANGE, TEXT_SCALE_RANGE,
+};
+use meetcue_platform::window::Rect;
 
 use crate::state::AppState;
 use crate::{config, APP_EVENT};
 
 pub const OVERLAY: &str = "overlay";
 const WIDTH: f64 = 440.0;
+const MIN_WIDTH: f64 = 300.0;
+const MIN_HEIGHT: f64 = 160.0;
 const MINI_HEIGHT: f64 = 200.0;
 const MARGIN: f64 = 20.0;
+/// Gap between a snapped panel and the screen edge, in logical pixels.
+const SNAP_MARGIN: f64 = 12.0;
+/// How long the panel stays out of sight when hidden for a moment.
+const PEEK: Duration = Duration::from_secs(6);
 /// Logical pixels per press of a move shortcut, and per frame while held.
 const NUDGE_STEP: f64 = 10.0;
 const GLIDE_STEP: f64 = 6.0;
@@ -28,7 +37,7 @@ const GLIDE_MAX: Duration = Duration::from_secs(15);
 /// How much of the panel stays on screen when it is moved down.
 const KEEP_VISIBLE: f64 = 120.0;
 
-fn full_height(win: &WebviewWindow) -> f64 {
+fn default_full_height(win: &WebviewWindow) -> f64 {
     win.current_monitor()
         .ok()
         .flatten()
@@ -36,6 +45,19 @@ fn full_height(win: &WebviewWindow) -> f64 {
         .map(|m| m.size().height as f64 / m.scale_factor() - 80.0)
         .unwrap_or(800.0)
         .max(400.0)
+}
+
+/// The logical size the panel has in `mode`.
+fn panel_size(win: &WebviewWindow, mode: PanelMode, o: &OverlaySettings) -> (f64, f64) {
+    let w = o.width.unwrap_or(WIDTH).max(MIN_WIDTH);
+    let h = match mode {
+        PanelMode::Mini => MINI_HEIGHT,
+        _ => o
+            .height
+            .unwrap_or_else(|| default_full_height(win))
+            .max(MIN_HEIGHT),
+    };
+    (w, h)
 }
 
 /// Creates the overlay without ever taking focus from the meeting app.
@@ -53,13 +75,17 @@ pub fn create_overlay(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     .skip_taskbar(true)
     .shadow(false)
     .resizable(true)
+    // A double click (or a touchpad double tap) on the panel must never
+    // blow it up to cover the whole screen.
+    .maximizable(false)
+    .min_inner_size(MIN_WIDTH, MIN_HEIGHT)
     // Created unfocusable and unfocused (not changed after creation), so
     // even the first frame does not steal focus.
     .focused(false)
     .focusable(false)
     .visible(false)
     .content_protected(settings.overlay.hide_in_screen_share)
-    .inner_size(WIDTH, 700.0)
+    .inner_size(settings.overlay.width.unwrap_or(WIDTH), 700.0)
     .transparent(true);
     let win = builder.build()?;
 
@@ -78,7 +104,7 @@ pub fn create_overlay(app: &AppHandle) -> tauri::Result<WebviewWindow> {
         PanelMode::Hidden => PanelMode::Full,
         m => m,
     };
-    apply_size(&win, mode);
+    apply_size(&win, mode, &settings.overlay);
     place(&win, settings.overlay.x, settings.overlay.y);
     if !state.self_test {
         let _ = win.show();
@@ -86,20 +112,41 @@ pub fn create_overlay(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     }
 
     let handle = app.clone();
-    win.on_window_event(move |e| {
-        if let tauri::WindowEvent::Moved(pos) = e {
-            remember_position(&handle, *pos);
-        }
+    win.on_window_event(move |e| match e {
+        tauri::WindowEvent::Moved(pos) => remember_position(&handle, *pos),
+        tauri::WindowEvent::Resized(size) => remember_size(&handle, *size),
+        _ => {}
     });
     Ok(win)
 }
 
-fn apply_size(win: &WebviewWindow, mode: PanelMode) {
-    let h = match mode {
-        PanelMode::Mini => MINI_HEIGHT,
-        _ => full_height(win),
+fn apply_size(win: &WebviewWindow, mode: PanelMode, o: &OverlaySettings) {
+    let (w, h) = panel_size(win, mode, o);
+    let _ = win.set_size(tauri::LogicalSize::new(w, h));
+}
+
+/// Keeps a size the user dragged the panel edges to. Sizes the app set
+/// itself match what `panel_size` gives and are not stored, so the default
+/// full height keeps following the screen.
+fn remember_size(app: &AppHandle, size: tauri::PhysicalSize<u32>) {
+    let Some(win) = app.get_webview_window(OVERLAY) else {
+        return;
     };
-    let _ = win.set_size(tauri::LogicalSize::new(WIDTH, h));
+    if size.width == 0 || size.height == 0 || !win.is_visible().unwrap_or(false) {
+        return;
+    }
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let (w, h) = (size.width as f64 / scale, size.height as f64 / scale);
+    let state = app.state::<AppState>();
+    let mut s = state.settings.write().unwrap();
+    let mode = s.overlay.mode;
+    let (ew, eh) = panel_size(&win, mode, &s.overlay);
+    if (w - ew).abs() > 2.0 {
+        s.overlay.width = Some(w.round());
+    }
+    if mode == PanelMode::Full && (h - eh).abs() > 2.0 {
+        s.overlay.height = Some(h.round());
+    }
 }
 
 /// Puts the panel at the saved position if that is on a connected screen,
@@ -148,20 +195,25 @@ pub fn set_mode(app: &AppHandle, mode: PanelMode) {
     let Some(win) = app.get_webview_window(OVERLAY) else {
         return;
     };
+    // Stored first: the resize below reports back, and must be judged
+    // against the new layout's size.
+    {
+        let state = app.state::<AppState>();
+        state.settings.write().unwrap().overlay.mode = mode;
+    }
     match mode {
         PanelMode::Hidden => {
             let _ = win.hide();
         }
         m => {
-            apply_size(&win, m);
+            let overlay = app.state::<AppState>().settings().overlay;
+            apply_size(&win, m, &overlay);
+            keep_on_screen(&win);
+            PEEKING.store(false, Ordering::SeqCst);
             let _ = win.show();
         }
     }
     show_levels(app, mode != PanelMode::Hidden);
-    {
-        let state = app.state::<AppState>();
-        state.settings.write().unwrap().overlay.mode = mode;
-    }
     persist(app);
     let _ = app.emit(APP_EVENT, AppEvent::PanelMode { mode });
     // Keeps the layout choice in the settings window in step.
@@ -281,6 +333,248 @@ fn nudge(app: &AppHandle, dir: Direction, step: f64) -> bool {
         return false;
     }
     win.set_position(PhysicalPosition::new(x, y)).is_ok()
+}
+
+/// The screens' free areas (without the taskbar) and the panel's rectangle,
+/// in physical pixels.
+fn layout(win: &WebviewWindow) -> Option<(Vec<Rect>, Rect)> {
+    let (pos, size) = (win.outer_position().ok()?, win.outer_size().ok()?);
+    let mut areas: Vec<Rect> = win
+        .available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| {
+            let a = m.work_area();
+            Rect {
+                x: a.position.x,
+                y: a.position.y,
+                w: a.size.width as i32,
+                h: a.size.height as i32,
+            }
+        })
+        .collect();
+    // Left to right, so "next screen" walks across the desk.
+    areas.sort_by_key(|a| (a.x, a.y));
+    let panel = Rect {
+        x: pos.x,
+        y: pos.y,
+        w: size.width as i32,
+        h: size.height as i32,
+    };
+    Some((areas, panel))
+}
+
+/// Pulls the panel back inside the free area of its screen after it grew.
+fn keep_on_screen(win: &WebviewWindow) {
+    use meetcue_platform::window::screen_of;
+    let Some((areas, p)) = layout(win) else {
+        return;
+    };
+    let Some(a) = screen_of(&areas, p).map(|i| areas[i]) else {
+        return;
+    };
+    let x = p.x.min(a.x + a.w - p.w).max(a.x);
+    let y = p.y.min(a.y + a.h - p.h).max(a.y);
+    if (x, y) != (p.x, p.y) {
+        let _ = win.set_position(PhysicalPosition::new(x, y));
+    }
+}
+
+/// Saves the settings and tells every window about them.
+fn settings_changed(app: &AppHandle) {
+    persist(app);
+    let settings = app.state::<AppState>().settings();
+    let _ = app.emit(
+        APP_EVENT,
+        AppEvent::SettingsChanged {
+            settings: Box::new(settings),
+        },
+    );
+}
+
+/// Bumped by every peek, so an older peek's timer doesn't bring the panel
+/// back early.
+static PEEK_ROUND: AtomicU64 = AtomicU64::new(0);
+static PEEKING: AtomicBool = AtomicBool::new(false);
+
+/// Hides the visible panel for a few seconds so the user can click what is
+/// behind it; a second peek brings it back at once.
+fn peek(app: &AppHandle) {
+    let Some(win) = app.get_webview_window(OVERLAY) else {
+        return;
+    };
+    let round = PEEK_ROUND.fetch_add(1, Ordering::SeqCst) + 1;
+    if PEEKING.swap(false, Ordering::SeqCst) {
+        let _ = win.show();
+        return;
+    }
+    if !win.is_visible().unwrap_or(false) {
+        return;
+    }
+    PEEKING.store(true, Ordering::SeqCst);
+    let _ = win.hide();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(PEEK).await;
+        if PEEK_ROUND.load(Ordering::SeqCst) == round && PEEKING.swap(false, Ordering::SeqCst) {
+            let _ = win.show();
+        }
+    });
+}
+
+/// Applies a placement, size or visibility change to the panel.
+pub fn change_panel(app: &AppHandle, change: PanelChange) {
+    use meetcue_platform::window::{same_spot_on, screen_of, snap_target};
+    let Some(win) = app.get_webview_window(OVERLAY) else {
+        return;
+    };
+    let state = app.state::<AppState>();
+    let scale = win.scale_factor().unwrap_or(1.0);
+    match change {
+        PanelChange::Snap { place } => {
+            let Some((areas, p)) = layout(&win) else {
+                return;
+            };
+            let Some(area) = screen_of(&areas, p).map(|i| areas[i]) else {
+                return;
+            };
+            let margin = (SNAP_MARGIN * scale).round() as i32;
+            let (x, y) = snap_target(area, p.w, p.h, place, margin);
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+            persist(app);
+        }
+        PanelChange::NextScreen => {
+            let Some((areas, p)) = layout(&win) else {
+                return;
+            };
+            let Some(i) = screen_of(&areas, p) else {
+                return;
+            };
+            if areas.len() < 2 {
+                return;
+            }
+            let to = areas[(i + 1) % areas.len()];
+            let (x, y) = same_spot_on(areas[i], to, p);
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+            keep_on_screen(&win);
+            persist(app);
+        }
+        PanelChange::Width { width } => {
+            state.settings.write().unwrap().overlay.width = Some(width.logical());
+            resize_in_place(app, &win, None);
+        }
+        PanelChange::Height { height } => {
+            let free = layout(&win)
+                .and_then(|(areas, p)| screen_of(&areas, p).map(|i| areas[i].h as f64 / scale));
+            let h = match (height, free) {
+                (PanelHeight::Tall, _) | (_, None) => None,
+                (PanelHeight::Half, Some(f)) => Some((f / 2.0).round()),
+                (PanelHeight::Third, Some(f)) => Some((f / 3.0).round()),
+            };
+            state.settings.write().unwrap().overlay.height = h;
+            // A height only means something for the full panel.
+            resize_in_place(app, &win, Some(PanelMode::Full));
+        }
+        PanelChange::GoSpot { slot } => {
+            let spot = state
+                .settings()
+                .overlay
+                .spots
+                .get(slot as usize)
+                .cloned()
+                .flatten();
+            match spot {
+                Some(spot) => {
+                    {
+                        let mut s = state.settings.write().unwrap();
+                        s.overlay.width = Some(spot.width);
+                        if spot.mode == PanelMode::Full {
+                            s.overlay.height = Some(spot.height);
+                        }
+                    }
+                    set_mode(app, spot.mode);
+                    place(&win, Some(spot.x), Some(spot.y));
+                    keep_on_screen(&win);
+                    persist(app);
+                    let _ = app.emit(APP_EVENT, AppEvent::PanelSpot { slot, saved: false });
+                }
+                None => change_panel(app, PanelChange::SaveSpot { slot }),
+            }
+        }
+        PanelChange::SaveSpot { slot } => {
+            let (Ok(pos), Ok(size)) = (win.outer_position(), win.inner_size()) else {
+                return;
+            };
+            {
+                let mut s = state.settings.write().unwrap();
+                let mode = match s.overlay.mode {
+                    PanelMode::Hidden => PanelMode::Full,
+                    m => m,
+                };
+                if let Some(entry) = s.overlay.spots.get_mut(slot as usize) {
+                    *entry = Some(PanelSpot {
+                        x: pos.x,
+                        y: pos.y,
+                        width: (size.width as f64 / scale).round(),
+                        height: (size.height as f64 / scale).round(),
+                        mode,
+                    });
+                }
+            }
+            settings_changed(app);
+            let _ = app.emit(APP_EVENT, AppEvent::PanelSpot { slot, saved: true });
+        }
+        PanelChange::ClearSpot { slot } => {
+            if let Some(entry) = state
+                .settings
+                .write()
+                .unwrap()
+                .overlay
+                .spots
+                .get_mut(slot as usize)
+            {
+                *entry = None;
+            }
+            settings_changed(app);
+        }
+        PanelChange::Peek => peek(app),
+        PanelChange::ClickThrough { on } => {
+            state.settings.write().unwrap().overlay.click_through = on;
+            apply_overlay_settings(app);
+            settings_changed(app);
+            crate::tray::refresh(app);
+        }
+        PanelChange::Opacity { value } => {
+            let (lo, hi) = OPACITY_RANGE;
+            state.settings.write().unwrap().overlay.opacity = value.clamp(lo, hi);
+            settings_changed(app);
+        }
+        PanelChange::TextScale { value } => {
+            let (lo, hi) = TEXT_SCALE_RANGE;
+            state.settings.write().unwrap().overlay.text_scale = value.clamp(lo, hi);
+            settings_changed(app);
+        }
+    }
+}
+
+/// Applies the stored size, keeping the panel's top left corner where it is
+/// unless that would push it off screen.
+fn resize_in_place(app: &AppHandle, win: &WebviewWindow, mode: Option<PanelMode>) {
+    let current = app.state::<AppState>().settings().overlay.mode;
+    match mode {
+        Some(m) if m != current => set_mode(app, m),
+        _ => {
+            let overlay = app.state::<AppState>().settings().overlay;
+            apply_size(win, current, &overlay);
+            keep_on_screen(win);
+            settings_changed(app);
+        }
+    }
+}
+
+/// Toggles click-through, from the shortcut or the tray.
+pub fn toggle_click_through(app: &AppHandle) {
+    let on = !app.state::<AppState>().settings().overlay.click_through;
+    change_panel(app, PanelChange::ClickThrough { on });
 }
 
 pub fn reset_position(app: &AppHandle) {

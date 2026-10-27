@@ -7,8 +7,13 @@ html.overlay-view body {
   background: transparent;
 }
 
+.ov-frame {
+  height: 100%;
+}
+
 .ov {
   --pad: 12px;
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -17,7 +22,7 @@ html.overlay-view body {
   border: 1px solid var(--ov-line);
   border-radius: 12px;
   overflow: hidden;
-  font-size: 13px;
+  font-size: calc(13px * var(--ov-scale, 1));
   user-select: none;
 }
 
@@ -53,13 +58,13 @@ html.overlay-view body {
 
 .ov-title h1 {
   margin: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ov-scale, 1));
   font-weight: 600;
 }
 
 .ov-title .ov-state {
   color: var(--ov-text-2);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -71,7 +76,7 @@ html.overlay-view body {
   height: 26px;
   padding: 0 8px;
   color: var(--ov-text-2) !important;
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-icon:hover,
@@ -97,7 +102,7 @@ html.overlay-view body {
 
 .ov-detail {
   margin: 4px 0 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   opacity: 0.75;
   overflow-wrap: anywhere;
 }
@@ -112,7 +117,7 @@ html.overlay-view body {
   border: 1px solid var(--ov-line);
   border-radius: var(--radius);
   color: var(--ov-text-2);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-meter {
@@ -156,7 +161,7 @@ html.overlay-view body {
 
 .ov-qcard .label {
   display: block;
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   color: var(--ov-text-3);
 }
 
@@ -169,7 +174,7 @@ html.overlay-view body {
 }
 
 .ov-qcard .st {
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
 }
 
 .st-answered { color: var(--done); }
@@ -218,7 +223,7 @@ html.overlay-view body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   color: var(--ov-text-3);
 }
 
@@ -240,7 +245,7 @@ html.overlay-view body {
   margin: 0 0 8px;
   padding: 8px;
   border-left: 2px solid var(--ov-line);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
   color: var(--ov-text-3);
 }
 
@@ -252,7 +257,7 @@ html.overlay-view body {
 }
 
 .ov-tag {
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   padding: 1px 6px;
   border-radius: 999px;
   border: 1px solid var(--ov-line);
@@ -265,7 +270,7 @@ html.overlay-view body {
 .ov-hints-label {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   color: var(--ov-text-3);
   margin-bottom: 4px;
 }
@@ -303,7 +308,7 @@ html.overlay-view body {
   flex: none;
   color: var(--ov-text-3);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 /* Highlighting stays gentle: on camera, a bright jump between words or rows
@@ -322,7 +327,7 @@ html.overlay-view body {
 
 .ov-point .next-tag {
   flex: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   padding: 0 6px;
   border-radius: 999px;
   border: 1px solid var(--ov-accent-soft);
@@ -338,7 +343,7 @@ html.overlay-view body {
   border-radius: 50%;
   background: var(--done);
   color: var(--done-bg);
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
   font-weight: 700;
   transform: translateY(2px);
 }
@@ -347,7 +352,7 @@ html.overlay-view body {
   margin-top: 6px;
   padding: 2px 0 !important;
   color: var(--link) !important;
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-answer {
@@ -359,8 +364,8 @@ html.overlay-view body {
 
 .ov-answer strong { color: var(--ov-text); font-weight: 600; }
 
-.ov-muted { color: var(--ov-text-3); font-size: 12px; }
-.ov-fail { color: var(--danger); font-size: 12px; }
+.ov-muted { color: var(--ov-text-3); font-size: calc(12px * var(--ov-scale, 1)); }
+.ov-fail { color: var(--danger); font-size: calc(12px * var(--ov-scale, 1)); }
 
 .ov-footer {
   display: flex;
@@ -369,7 +374,7 @@ html.overlay-view body {
   padding: 8px var(--pad);
   border-top: 1px solid var(--ov-line);
   color: var(--ov-text-3);
-  font-size: 11px;
+  font-size: calc(11px * var(--ov-scale, 1));
 }
 
 .ov-footer .keys { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; min-width: 0; }
@@ -383,7 +388,7 @@ html.overlay-view body {
   border: 1px solid rgba(255, 138, 122, 0.5);
   border-radius: var(--radius);
   background: rgba(255, 138, 122, 0.08);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-toast strong { display: block; color: var(--ov-text); }
@@ -412,7 +417,7 @@ html.overlay-view body {
 }
 
 .ov-mini .big {
-  font-size: 22px;
+  font-size: calc(22px * var(--ov-scale, 1));
   font-weight: 600;
   line-height: 1.25;
   color: var(--ov-text);
@@ -420,7 +425,7 @@ html.overlay-view body {
 
 .ov-mini .big small {
   display: block;
-  font-size: 13px;
+  font-size: calc(13px * var(--ov-scale, 1));
   font-weight: 400;
   color: var(--ov-text-body);
 }
@@ -429,11 +434,11 @@ html.overlay-view body {
   display: flex;
   gap: 8px;
   color: var(--ov-text-3);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-demo-badge {
-  font-size: 10px;
+  font-size: calc(10px * var(--ov-scale, 1));
   padding: 0 6px;
   border-radius: 999px;
   border: 1px solid var(--accent);
@@ -447,7 +452,7 @@ html.overlay-view body {
   gap: 8px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--ov-line);
-  font-size: 12px;
+  font-size: calc(12px * var(--ov-scale, 1));
 }
 
 .ov-practice strong {
@@ -457,4 +462,171 @@ html.overlay-view body {
 
 .ov-practice .grow {
   flex: 1;
+}
+
+/* Moving the panel: the whole panel is a handle (except controls); the grip
+   just shows it. */
+.ov-grip {
+  color: var(--ov-text-3);
+  cursor: grab;
+  font-size: calc(14px * var(--ov-scale, 1));
+  line-height: 1;
+}
+
+.ov-through,
+.ov-flash {
+  padding: 5px var(--pad);
+  font-size: calc(12px * var(--ov-scale, 1));
+  border-bottom: 1px solid var(--ov-line);
+}
+
+.ov-through {
+  color: var(--accent);
+  background: rgba(245, 184, 65, 0.08);
+}
+
+.ov-flash {
+  color: var(--done);
+}
+
+.ov-mini .ov-through,
+.ov-mini .ov-flash {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+}
+
+/* Placement menu: covers the panel below the title bar, large targets for
+   a touchpad. */
+.ov-place {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow-y: auto;
+  padding: 0 var(--pad) var(--pad);
+  /* Opaque, so the panel underneath doesn't show through. */
+  background: var(--ov-panel-solid);
+  user-select: none;
+}
+
+.ov-place-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+  background: var(--ov-panel-solid);
+}
+
+.ov-place .grow {
+  flex: 1;
+}
+
+.ov-place section {
+  padding: 8px 0;
+  border-top: 1px solid var(--ov-line);
+}
+
+.ov-place h2 {
+  margin: 0 0 6px;
+  font-size: calc(12px * var(--ov-scale, 1));
+  font-weight: 600;
+  color: var(--ov-text-2);
+}
+
+.ov-place-lead {
+  margin: 0 0 6px;
+  font-size: calc(12px * var(--ov-scale, 1));
+}
+
+.ov-snap {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-width: 260px;
+}
+
+.ov-snap-cell {
+  height: 40px;
+  font-size: calc(18px * var(--ov-scale, 1));
+  background: var(--ov-card) !important;
+  border: 1px solid var(--ov-line) !important;
+}
+
+.ov-snap-cell:hover {
+  background: var(--ov-card-focus) !important;
+  border-color: var(--ov-accent-soft) !important;
+}
+
+span.ov-snap-cell {
+  border-style: dashed !important;
+  border-radius: var(--radius-sm);
+  opacity: 0.5;
+}
+
+.ov-spot,
+.ov-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.ov-spot-n {
+  width: 18px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ov-place kbd {
+  font-family: var(--font-mono);
+  font-size: calc(11px * var(--ov-scale, 1));
+  color: var(--ov-text-2);
+}
+
+.ov-chip {
+  min-height: 30px;
+  padding: 0 10px;
+  background: var(--ov-card) !important;
+  border: 1px solid var(--ov-line) !important;
+}
+
+.ov-chip:hover {
+  background: var(--ov-card-focus) !important;
+}
+
+.ov-val {
+  min-width: 3.5em;
+  text-align: center;
+}
+
+.ov-wide {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--ov-card) !important;
+  border: 1px solid var(--ov-line) !important;
+}
+
+.ov-wide:hover {
+  background: var(--ov-card-focus) !important;
+}
+
+.ov-wide .ov-muted {
+  font-size: calc(12px * var(--ov-scale, 1));
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }

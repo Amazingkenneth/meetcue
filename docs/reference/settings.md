@@ -21,11 +21,16 @@ If `settings.json` can't be read, MeetCue renames it to `settings.json.bad` and 
 | Interface language | `general.uiLanguage`: `system`, `en`, `zh-CN` | `system` |
 | Hint language | `general.hintLanguage`: `followQuestion`, `en`, `zh-CN` | `followQuestion` |
 | Accent color | `general.accent` | `#F5B841` |
+| Font (empty: the system font) | `general.fontFamily` | empty |
 | Start MeetCue when I sign in | `general.autostart` | `false` |
 | Hide the panel when sharing the screen | `overlay.hideInScreenShare` | `true` |
 | Let clicks pass through the panel | `overlay.clickThrough` | `false` |
 | Panel layout | `overlay.mode`: `full`, `mini`, `hidden` | `full` |
 | Panel position (drag the panel; **Reset panel position** puts it back) | `overlay.x`, `overlay.y` | top right |
+| Panel size in logical pixels (empty: 440 wide, nearly the screen's height) | `overlay.width`, `overlay.height` | empty |
+| Panel text size, 0.8 to 1.6 | `overlay.textScale` | `1` |
+| Panel opacity, 0.3 to 1 | `overlay.opacity` | `1` |
+| Saved spots: position, size and layout for each spot shortcut | `overlay.spots` | three empty spots |
 | Run setup again | `general.wizardCompleted` | `false` until setup is finished |
 
 **Erase all data**, at the bottom of the General tab, deletes API keys, settings and every local record after you type the confirmation word, then restarts MeetCue. See [Delete your data](/reference/privacy#delete-your-data).
@@ -84,6 +89,9 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Move the panel down | `hotkeys.moveDown` | `Ctrl+Alt+Shift+Down` |
 | Move the panel left | `hotkeys.moveLeft` | `Ctrl+Alt+Shift+Left` |
 | Move the panel right | `hotkeys.moveRight` | `Ctrl+Alt+Shift+Right` |
+| Go to saved spot 1, 2, 3 | `hotkeys.spot1`, `spot2`, `spot3` | `Ctrl+Alt+Shift+1`, `2`, `3` |
+| Hide the panel for a few seconds | `hotkeys.peek` | `Ctrl+Alt+Shift+P` |
+| Let clicks pass through the panel (on/off) | `hotkeys.clickThrough` | `Ctrl+Alt+Shift+T` |
 
 ## Practice
 

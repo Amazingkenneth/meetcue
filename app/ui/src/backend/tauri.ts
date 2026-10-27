@@ -24,4 +24,7 @@ export const tauriBackend: Backend = {
   closeWindow() {
     return getCurrentWindow().close();
   },
+  startDragging() {
+    return getCurrentWindow().startDragging();
+  },
 };

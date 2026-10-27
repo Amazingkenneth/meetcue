@@ -108,14 +108,14 @@
     "hideInShare": "Hide the panel when sharing the screen",
     "hideInShareHint": "Screen sharing and most recorders won't capture the panel. Some recording methods and capture hardware still can.",
     "clickThrough": "Let clicks pass through the panel",
-    "clickThroughHint": "The panel stops reacting to the mouse; use the shortcuts instead.",
+    "clickThroughHint": "The panel fades and stops catching the mouse, so you can click what is behind it. Turn it off with the shortcut or from the tray icon.",
     "panelLayout": "Panel layout",
     "panelLayoutHint": "Also switches with {{key}} and the buttons on the panel.",
     "panelFull": "Full",
     "panelMini": "Mini",
     "panelHidden": "Hidden",
     "panelPosition": "Panel position",
-    "panelPositionHint": "Drag the panel by its title bar to move it. This puts it back at the top right of the main screen.",
+    "panelPositionHint": "Drag the panel from any empty spot to move it, or use Move on the panel to snap it to an edge or a saved spot. This puts it back at the top right of the main screen.",
     "setupTitle": "Setup",
     "setupAgain": "Setup assistant",
     "setupAgainHint": "Walk through languages, audio, models, keys and the latency check again. Your current settings are kept as the starting point.",
@@ -123,7 +123,19 @@
     "practiceTitle": "Mock interview",
     "practiceOpen": "Practise without a meeting",
     "practiceOpenHint": "Questions are read aloud and you answer over your microphone, with hints and a review. Sample interviews are included.",
-    "practiceButton": "Open mock interview"
+    "practiceButton": "Open mock interview",
+    "font": "Font",
+    "fontHint": "Used in the panel and every window. The sample beside the list shows how it looks.",
+    "fontSystem": "System font",
+    "fontOther": "Another font…",
+    "fontName": "Font name, as installed",
+    "fontSample": "Hints 提示要点 Aa 123",
+    "panelText": "Panel text size",
+    "panelTextHint": "Larger text is easier to read at a glance; smaller text fits more in a short panel.",
+    "panelOpacity": "Panel opacity",
+    "panelOpacityHint": "A see-through panel lets you keep an eye on what is behind it.",
+    "panelSizeHint": "Width and height of the panel. You can also drag its edges; the size you set is kept.",
+    "spotsHint": "Put the panel where it hides nothing, then save the spot here or from Move on the panel. Its shortcut brings the panel back there, with the same size and layout."
   },
   "audio": {
     "microphone": "Microphone (you)",
@@ -301,7 +313,14 @@
     "change": "Change",
     "pressKeys": "Press keys… (Esc to cancel)",
     "restoreDefaults": "Restore defaults",
-    "why": "The defaults avoid common shortcuts of meeting apps, input methods and graphics drivers."
+    "why": "The defaults avoid common shortcuts of meeting apps, input methods and graphics drivers.",
+    "spotsTitle": "Panel spots and getting it out of the way",
+    "spotsLead": "Pressing a spot shortcut moves the panel to that saved spot. On an empty spot it saves where the panel is now.",
+    "spot1": "Go to spot 1",
+    "spot2": "Go to spot 2",
+    "spot3": "Go to spot 3",
+    "peek": "Hide the panel for a few seconds",
+    "clickThrough": "Let clicks pass through the panel (on/off)"
   },
   "diag": {
     "liveTitle": "Live status",
@@ -565,7 +584,8 @@
     "exportDiagnostics": "Export diagnostics…",
     "help": "Help",
     "quit": "Quit MeetCue",
-    "log": "Activity log…"
+    "log": "Activity log…",
+    "clickThrough": "Let clicks pass through the panel"
   },
   "wipe": {
     "title": "Erase all data",
@@ -591,5 +611,59 @@
     "detectModel": "The question check is the slow part. Pick a small, fast model for detection in Settings › Providers & cost: it only answers yes or no.",
     "hintModel": "Writing the hints is the slow part. Pick a faster hint model in Settings › Providers & cost, or shorten the briefing material.",
     "network": "No single stage stands out. Run the latency probe to find the fastest providers and endpoints from this network, and turn off a VPN if you use one."
+  },
+  "placement": {
+    "title": "Move and size the panel",
+    "open": "Move, size and see-through options",
+    "short": "Move",
+    "drag": "Drag anywhere on the panel to move it",
+    "done": "Done",
+    "snap": "Snap to an edge or corner",
+    "nextScreen": "Move to the next screen",
+    "place": {
+      "topLeft": "Top left",
+      "top": "Top",
+      "topRight": "Top right",
+      "left": "Left",
+      "right": "Right",
+      "bottomLeft": "Bottom left",
+      "bottom": "Bottom",
+      "bottomRight": "Bottom right"
+    },
+    "spots": "Saved spots",
+    "spotsLead": "Save a spot for each layout you use, such as one beside the shared screen and one under the camera.",
+    "empty": "Empty",
+    "go": "Go",
+    "saveHere": "Save here",
+    "replace": "Save here instead",
+    "clear": "Forget spot {{n}}",
+    "clearShort": "Forget",
+    "savedSpot": "Saved this spot as {{n}}",
+    "wentToSpot": "Moved to spot {{n}}",
+    "size": "Size",
+    "width": "Width",
+    "height": "Height",
+    "widths": {
+      "narrow": "Narrow",
+      "normal": "Normal",
+      "wide": "Wide"
+    },
+    "heights": {
+      "third": "⅓ screen",
+      "half": "½ screen",
+      "tall": "Full height"
+    },
+    "seeThrough": "See and reach what is behind it",
+    "opacity": "Opacity",
+    "lessOpaque": "More see-through",
+    "moreOpaque": "Less see-through",
+    "textSize": "Text",
+    "smallerText": "Smaller text",
+    "largerText": "Larger text",
+    "peek": "Hide for 6 seconds",
+    "peekHint": "To click something behind the panel. Comes back on its own.",
+    "through": "Let clicks pass through",
+    "throughHint": "The panel fades and ignores the mouse. To undo, press",
+    "throughOn": "Clicks pass through the panel. Press {{key}} or use the tray icon to stop."
   }
 }

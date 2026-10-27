@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::pricing::PriceTable;
-use crate::settings::{PanelMode, Settings};
+use crate::settings::{PanelHeight, PanelMode, PanelPlace, PanelWidth, Settings};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -175,5 +175,54 @@ pub enum AppEvent {
     /// A newer price list was loaded.
     PricingChanged {
         pricing: Box<PriceTable>,
+    },
+    /// The panel went to a saved spot, or the current one was saved.
+    PanelSpot {
+        slot: u8,
+        saved: bool,
+    },
+}
+
+/// A change to where the panel is, how big it is or how it lets the meeting
+/// through, from the panel's placement menu or the settings window.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+#[ts(export)]
+pub enum PanelChange {
+    Snap {
+        place: PanelPlace,
+    },
+    /// Same place on the next screen.
+    NextScreen,
+    Width {
+        width: PanelWidth,
+    },
+    Height {
+        height: PanelHeight,
+    },
+    /// Go to a saved spot (`slot` counts from 0); an empty one saves the current spot.
+    GoSpot {
+        slot: u8,
+    },
+    SaveSpot {
+        slot: u8,
+    },
+    ClearSpot {
+        slot: u8,
+    },
+    /// Hide for a few seconds; again to come back at once.
+    Peek,
+    ClickThrough {
+        on: bool,
+    },
+    Opacity {
+        value: f32,
+    },
+    TextScale {
+        value: f32,
     },
 }

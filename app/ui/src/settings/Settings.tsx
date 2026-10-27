@@ -6,6 +6,7 @@ import type { DeviceList } from "../bindings/DeviceList";
 import type { HotkeyState } from "../bindings/HotkeyState";
 import type { Hotkeys } from "../bindings/Hotkeys";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
+import type { PanelChange } from "../bindings/PanelChange";
 import type { ProbeReport } from "../bindings/ProbeReport";
 import type { Settings } from "../bindings/Settings";
 import type { UsageSummary } from "../bindings/UsageSummary";
@@ -142,6 +143,7 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
             {t("common.reset")}
           </button>
         </Field>
+        <FontField settings={settings} update={update} />
         <Field label={t("settings.startup")}>
           <Switch
             checked={settings.general.autostart}
@@ -194,6 +196,8 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
             {t("tray.resetPanel")}
           </button>
         </Field>
+        <PanelLookFields settings={settings} update={update} />
+        <PanelSpotsField settings={settings} />
       </Section>
       <Section title={t("settings.practiceTitle")}>
         <Field label={t("settings.practiceOpen")} hint={t("settings.practiceOpenHint")}>
@@ -211,6 +215,152 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
       </Section>
       <WipeData />
     </>
+  );
+}
+
+/** Fonts offered in the font list; any other installed font can be typed in. */
+export const FONT_CHOICES = [
+  "Microsoft YaHei UI",
+  "DengXian",
+  "SimHei",
+  "KaiTi",
+  "FangSong",
+  "Segoe UI",
+  "Calibri",
+  "Arial",
+  "Verdana",
+  "Georgia",
+];
+const CUSTOM_FONT = "__custom";
+
+function FontField({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const family = settings.general.fontFamily;
+  const [custom, setCustom] = useState(family !== "" && !FONT_CHOICES.includes(family));
+  const setFamily = (v: string) =>
+    void update((s) => {
+      s.general.fontFamily = v;
+      return s;
+    });
+  return (
+    <Field label={t("settings.font")} htmlFor="font-family" hint={t("settings.fontHint")}>
+      <select
+        id="font-family"
+        value={custom ? CUSTOM_FONT : family}
+        onChange={(e) => {
+          const v = e.target.value;
+          setCustom(v === CUSTOM_FONT);
+          if (v !== CUSTOM_FONT) setFamily(v);
+        }}
+      >
+        <option value="">{t("settings.fontSystem")}</option>
+        {FONT_CHOICES.map((f) => (
+          <option key={f} value={f} style={{ fontFamily: `"${f}"` }}>
+            {f}
+          </option>
+        ))}
+        <option value={CUSTOM_FONT}>{t("settings.fontOther")}</option>
+      </select>
+      {custom && (
+        <input
+          aria-label={t("settings.fontName")}
+          placeholder={t("settings.fontName")}
+          defaultValue={family}
+          onBlur={(e) => setFamily(e.target.value.trim())}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setFamily((e.target as HTMLInputElement).value.trim());
+          }}
+        />
+      )}
+      <span className="muted" style={{ fontSize: 13 }}>
+        {t("settings.fontSample")}
+      </span>
+    </Field>
+  );
+}
+
+function PanelLookFields({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const o = settings.overlay;
+  return (
+    <>
+      <Field label={t("settings.panelText")} htmlFor="panel-text" hint={t("settings.panelTextHint")}>
+        <input
+          id="panel-text"
+          type="range"
+          min={80}
+          max={160}
+          step={10}
+          value={Math.round(o.textScale * 100)}
+          onChange={(e) =>
+            void update((s) => {
+              s.overlay.textScale = Number(e.target.value) / 100;
+              return s;
+            })
+          }
+        />
+        <span className="mono">{Math.round(o.textScale * 100)}%</span>
+      </Field>
+      <Field label={t("settings.panelOpacity")} htmlFor="panel-opacity" hint={t("settings.panelOpacityHint")}>
+        <input
+          id="panel-opacity"
+          type="range"
+          min={30}
+          max={100}
+          step={5}
+          value={Math.round(o.opacity * 100)}
+          onChange={(e) =>
+            void update((s) => {
+              s.overlay.opacity = Number(e.target.value) / 100;
+              return s;
+            })
+          }
+        />
+        <span className="mono">{Math.round(o.opacity * 100)}%</span>
+      </Field>
+      <Field label={t("placement.size")} hint={t("settings.panelSizeHint")}>
+        {(["narrow", "normal", "wide"] as const).map((w) => (
+          <button key={w} className="btn btn-small" onClick={() => void backend().invoke("change_panel", { change: { type: "width", width: w } })}>
+            {t(`placement.widths.${w}`)}
+          </button>
+        ))}
+        {(["third", "half", "tall"] as const).map((h) => (
+          <button key={h} className="btn btn-small" onClick={() => void backend().invoke("change_panel", { change: { type: "height", height: h } })}>
+            {t(`placement.heights.${h}`)}
+          </button>
+        ))}
+      </Field>
+    </>
+  );
+}
+
+/** The saved panel spots, with their shortcuts. Spots are saved from the panel itself. */
+function PanelSpotsField({ settings }: { settings: Settings }) {
+  const { t } = useTranslation();
+  const keys = [settings.hotkeys.spot1, settings.hotkeys.spot2, settings.hotkeys.spot3];
+  const change = (c: PanelChange) => void backend().invoke("change_panel", { change: c });
+  return (
+    <Field label={t("placement.spots")} hint={t("settings.spotsHint")}>
+      <div style={{ display: "grid", gap: 6, width: "100%" }}>
+        {settings.overlay.spots.map((spot, slot) => (
+          <div className="row" key={slot} style={{ gap: 8 }}>
+            <strong>{slot + 1}</strong>
+            <span className="kbd">{keys[slot]}</span>
+            <span className="muted" style={{ flex: 1 }}>
+              {spot ? t(`settings.panel${spot.mode === "mini" ? "Mini" : "Full"}`) : t("placement.empty")}
+            </span>
+            <button className="btn btn-small" onClick={() => change({ type: spot ? "goSpot" : "saveSpot", slot })}>
+              {spot ? t("placement.go") : t("placement.saveHere")}
+            </button>
+            {spot && (
+              <button className="btn btn-small" onClick={() => change({ type: "clearSpot", slot })}>
+                {t("placement.clearShort")}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Field>
   );
 }
 
@@ -923,6 +1073,7 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
 
 const HOTKEY_ORDER: (keyof Hotkeys)[] = ["toggleCapture", "cyclePanel", "focusPrev", "focusNext", "markAnswered"];
 const MOVE_ORDER: (keyof Hotkeys)[] = ["moveUp", "moveDown", "moveLeft", "moveRight"];
+const SPOT_ORDER: (keyof Hotkeys)[] = ["spot1", "spot2", "spot3", "peek", "clickThrough"];
 const ARROWS: Record<string, string> = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
 
 /** Builds an accelerator such as `Ctrl+Alt+K` from a key event. */
@@ -930,7 +1081,10 @@ export function acceleratorFromEvent(e: Pick<KeyboardEvent, "ctrlKey" | "altKey"
   const mods = [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Super"].filter(Boolean) as string[];
   if (["Control", "Alt", "Shift", "Meta"].includes(e.key)) return null;
   let key = e.key;
+  const digit = /^(?:Digit|Numpad)(\d)$/.exec(e.code);
   if (e.code === "Space") key = "Space";
+  // Shift turns 1 into ! on the key itself; the shortcut wants the digit.
+  else if (digit) key = digit[1];
   else if (key === "Enter") key = "Enter";
   else if (ARROWS[key]) key = ARROWS[key];
   else if (key.length === 1) key = key.toUpperCase();
@@ -987,6 +1141,9 @@ function ShortcutsTab({ settings, update }: { settings: Settings; update: Update
       <h2 className="page">{t("settings.tab.shortcuts")}</h2>
       <Section lead={t("shortcuts.lead")}>
         {HOTKEY_ORDER.map(row)}
+      </Section>
+      <Section title={t("shortcuts.spotsTitle")} lead={t("shortcuts.spotsLead")}>
+        {SPOT_ORDER.map(row)}
       </Section>
       <Section title={t("shortcuts.moveTitle")} lead={t("shortcuts.moveLead")}>
         {MOVE_ORDER.map(row)}
