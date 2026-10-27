@@ -409,6 +409,30 @@ export function AudioFields({ settings, update }: { settings: Settings; update: 
   );
 }
 
+function ThresholdField(props: { id: string; label: string; hint: string; value: number; fallback: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation();
+  return (
+    <Field label={props.label} htmlFor={props.id} hint={props.hint}>
+      <input
+        id={props.id}
+        className="slider"
+        type="range"
+        min={-70}
+        max={-10}
+        step={1}
+        value={props.value}
+        onChange={(e) => props.onChange(Number(e.target.value))}
+      />
+      <span className="mono">{props.value} dBFS</span>
+      {props.value !== props.fallback && (
+        <button className="btn-link" onClick={() => props.onChange(props.fallback)}>
+          {t("common.reset")}
+        </button>
+      )}
+    </Field>
+  );
+}
+
 function AudioTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   return (
@@ -418,37 +442,43 @@ function AudioTab({ settings, update }: { settings: Settings; update: Update }) 
         <AudioFields settings={settings} update={update} />
       </Section>
       <Section title={t("audio.advanced")}>
-        <Field label={t("audio.vadThreshold")} htmlFor="vad" hint={t("audio.vadHint")}>
-          <input
-            id="vad"
-            className="slider"
-            type="range"
-            min={-70}
-            max={-10}
-            step={1}
-            value={settings.audio.vadThresholdDb}
-            onChange={(e) =>
-              void update((s) => {
-                s.audio.vadThresholdDb = Number(e.target.value);
-                return s;
-              })
-            }
-          />
-          <span className="mono">{settings.audio.vadThresholdDb} dBFS</span>
-          {settings.audio.vadThresholdDb !== -45 && (
-            <button
-              className="btn-link"
-              onClick={() =>
-                void update((s) => {
-                  s.audio.vadThresholdDb = -45;
-                  return s;
-                })
-              }
-            >
-              {t("common.reset")}
-            </button>
-          )}
-        </Field>
+        <Switch
+          checked={settings.audio.boostQuietVoices}
+          label={t("audio.boostQuiet")}
+          description={t("audio.boostQuietHint")}
+          onChange={(v) =>
+            void update((s) => {
+              s.audio.boostQuietVoices = v;
+              return s;
+            })
+          }
+        />
+        <ThresholdField
+          id="vad-remote"
+          label={t("audio.remoteThreshold")}
+          hint={t("audio.remoteThresholdHint")}
+          value={settings.audio.remoteVadThresholdDb}
+          fallback={-60}
+          onChange={(v) =>
+            void update((s) => {
+              s.audio.remoteVadThresholdDb = v;
+              return s;
+            })
+          }
+        />
+        <ThresholdField
+          id="vad"
+          label={t("audio.vadThreshold")}
+          hint={t("audio.vadHint")}
+          value={settings.audio.vadThresholdDb}
+          fallback={-45}
+          onChange={(v) =>
+            void update((s) => {
+              s.audio.vadThresholdDb = v;
+              return s;
+            })
+          }
+        />
         <Field label={t("audio.endpointSilence")} htmlFor="endpoint" hint={t("audio.endpointHint")}>
           <input
             id="endpoint"
@@ -809,7 +839,7 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
 
 function HintsTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
-  const rule = (key: "onlyDirectedToMe" | "queueInterruptions" | "trackCoverage" | "earlyTrigger") => (
+  const rule = (key: "onlyDirectedToMe" | "queueInterruptions" | "trackCoverage" | "earlyTrigger" | "speculativeHints") => (
     <Switch
       checked={settings.hints[key]}
       label={t(`hints.${key}`)}
@@ -885,6 +915,7 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
         {rule("queueInterruptions")}
         {rule("trackCoverage")}
         {rule("earlyTrigger")}
+        {rule("speculativeHints")}
       </Section>
     </>
   );

@@ -6,6 +6,7 @@
 
 import type { AppEvent } from "../bindings/AppEvent";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
+import type { PointStatus } from "../bindings/PointStatus";
 import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
 import type { ProbeReport } from "../bindings/ProbeReport";
@@ -199,6 +200,15 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
           queue();
         }
         break;
+      case "togglePoint": {
+        const points = view.questions[a.id]?.points ?? [];
+        if (!points[a.index]) break;
+        const done = points.map((p, i) => (i === a.index ? p.status !== "done" : p.status === "done"));
+        const next = done.indexOf(false);
+        const statuses = done.map((d, i) => (d ? "done" : i === next ? "next" : "todo") as PointStatus);
+        emit({ type: "coverage", id: a.id, statuses });
+        break;
+      }
       case "pause":
       case "resume":
         toggle();

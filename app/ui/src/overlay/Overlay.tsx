@@ -9,6 +9,7 @@ import {
   contextAround,
   coverageCount,
   currentId,
+  displayOrder,
   medianLatency,
   neighbours,
   nextPoint,
@@ -17,6 +18,7 @@ import {
   type SessionView,
 } from "../state/session";
 import { activeMs, useAppEvents, useAppInfo, useNow, useSession, useSettings, type PauseClock } from "../state/hooks";
+import { latencyTip } from "../state/latency";
 import { usePracticeProgress, type PracticeProgress } from "../state/practice";
 import { boldSegments, clock, seconds } from "../util/format";
 import { errorDocsUrl, errorFix, errorTitle } from "../util/errors";
@@ -177,17 +179,7 @@ function FullPanel({
 
       <QueueCards view={view} />
 
-      {view.latencyWarning !== null && (
-        <div className="ov-toast" role="status" style={{ borderColor: "rgba(245,184,65,.5)", background: "rgba(245,184,65,.08)" }}>
-          <p style={{ margin: 0 }}>{t("overlay.probeAgain")}</p>
-          <div className="row">
-            <span className="code" />
-            <button className="ov-link" onClick={() => void backend().invoke("open_window", { view: "settings", section: "probe" })}>
-              {t("overlay.openProbe")}
-            </button>
-          </div>
-        </div>
-      )}
+      {view.latencyWarning !== null && <SlowToast view={view} settings={settings} />}
 
       <ErrorToast errors={problems} docsUrl={docsUrl} />
 
@@ -242,12 +234,11 @@ function QueueCards({ view }: { view: SessionView }) {
 function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
   const { t } = useTranslation();
   const current = currentId(view);
-  const refs = useRef(new Map<number, HTMLElement>());
-  const currentPoints = current === null ? 0 : (view.questions[current]?.points.length ?? 0);
+  const listRef = useRef<HTMLDivElement>(null);
+  // The current question is first in the list, so a new one scrolls to the top.
   useEffect(() => {
-    if (current === null) return;
-    refs.current.get(current)?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, [current, currentPoints]);
+    listRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
+  }, [current]);
 
   if (!view.order.length) {
     return (
@@ -273,8 +264,8 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
     );
   }
   return (
-    <div className="ov-chat" aria-live="polite">
-      {view.order.map((id) => {
+    <div className="ov-chat" aria-live="polite" ref={listRef}>
+      {displayOrder(view).map((id) => {
         const q = view.questions[id];
         if (!q) return null;
         return (
@@ -284,10 +275,6 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
             view={view}
             display={display}
             isCurrent={id === current}
-            ref={(el: HTMLElement | null) => {
-              if (el) refs.current.set(id, el);
-              else refs.current.delete(id);
-            }}
           />
         );
       })}
@@ -310,13 +297,11 @@ function ChatBlock({
   view,
   display,
   isCurrent,
-  ref,
 }: {
   q: QuestionView;
   view: SessionView;
   display: HintDisplay;
   isCurrent: boolean;
-  ref: (el: HTMLElement | null) => void;
 }) {
   const { t } = useTranslation();
   const [shownAt] = useState(() => Date.now());
@@ -329,7 +314,7 @@ function ChatBlock({
   const at = view.startedAt !== null ? clock(q.tMs - view.startedAt) : "";
   const context = useMemo(() => (showContext ? contextAround(view, q) : []), [showContext, view, q]);
   return (
-    <article className="ov-block" data-current={isCurrent} ref={ref} aria-current={isCurrent ? "true" : undefined}>
+    <article className="ov-block" data-current={isCurrent} aria-current={isCurrent ? "true" : undefined}>
       <header>
         <span className="mono">{at}</span>
         <span>{t("overlay.them")}</span>
@@ -382,21 +367,28 @@ function ChatBlock({
         </p>
       )}
       <ol className="ov-points" hidden={vis.hidden}>
-        {(vis.hidden ? [] : q.points).map((p) => (
+        {(vis.hidden ? [] : q.points).map((p, index) => (
           <li className="ov-point" key={p.n} data-status={p.status}>
-            <span className="num">
-              {p.status === "done" ? (
-                <span className="ov-check" aria-label={t("overlay.doneLabel")}>
-                  ✓
-                </span>
-              ) : (
-                p.n
-              )}
-            </span>
-            <span className="body">
-              <span className="head">{p.head}</span> {!headsOnly && <span className="rest">{p.rest}</span>}
-            </span>
-            {p.status === "next" && <span className="next-tag">{t("overlay.nextTag")}</span>}
+            {/* Ticks come from what you say; a click fixes one that was missed or wrong. */}
+            <button
+              aria-pressed={p.status === "done"}
+              title={t(p.status === "done" ? "overlay.untickHint" : "overlay.tickHint")}
+              onClick={() => void backend().invoke("user_action", { action: { type: "togglePoint", id: q.id, index } })}
+            >
+              <span className="num">
+                {p.status === "done" ? (
+                  <span className="ov-check" aria-label={t("overlay.doneLabel")}>
+                    ✓
+                  </span>
+                ) : (
+                  p.n
+                )}
+              </span>
+              <span className="body">
+                <span className="head">{p.head}</span> {!headsOnly && <span className="rest">{p.rest}</span>}
+              </span>
+              {p.status === "next" && <span className="next-tag">{t("overlay.nextTag")}</span>}
+            </button>
           </li>
         ))}
       </ol>
@@ -453,6 +445,40 @@ function ErrorToast({ errors, docsUrl }: { errors: SessionErrorView[]; docsUrl: 
   );
 }
 
+/** Hints were slow several times in a row: say which stage and what to change. */
+function SlowToast({ view, settings }: { view: SessionView; settings: Settings | null }) {
+  const { t } = useTranslation();
+  const tip = view.lastLatency && settings ? latencyTip(view.lastLatency, settings) : null;
+  const open = (section: string) => void backend().invoke("open_window", { view: "settings", section });
+  return (
+    <div className="ov-toast" role="status" style={{ borderColor: "rgba(245,184,65,.5)", background: "rgba(245,184,65,.08)" }}>
+      <strong>{t("overlay.slowHints", { value: seconds(view.latencyWarning ?? 0) })}</strong>
+      {view.lastLatency && <p>{breakdownText(t, view.lastLatency)}</p>}
+      <p>{tip ? t(`latencyTips.${tip.key}`, { value: seconds(settings?.audio.endpointSilenceMs ?? 700) }) : t("overlay.probeAgain")}</p>
+      <div className="row">
+        <span className="code" />
+        {tip && tip.section !== "probe" && (
+          <button className="ov-link" onClick={() => open(tip.section)}>
+            {t("overlay.openFix")}
+          </button>
+        )}
+        <button className="ov-link" onClick={() => open("probe")}>
+          {t("overlay.openProbe")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function breakdownText(t: (key: string, values?: Record<string, string>) => string, b: NonNullable<SessionView["lastLatency"]>): string {
+  return t("overlay.latencyBreakdown", {
+    total: seconds(b.totalMs),
+    asr: seconds(b.asrMs),
+    detect: seconds(b.detectMs),
+    generate: seconds(b.generateMs),
+  });
+}
+
 function Footer({ view, settings }: { view: SessionView; settings: Settings | null }) {
   const { t } = useTranslation();
   const last = view.latencies.length ? view.latencies[view.latencies.length - 1] : null;
@@ -476,7 +502,11 @@ function Footer({ view, settings }: { view: SessionView; settings: Settings | nu
       <button
         className="ov-icon latency mono"
         data-slow={median !== null && median > SLOW_MS}
-        title={median !== null ? t("overlay.latencyMedian", { value: seconds(median) }) : undefined}
+        title={
+          median !== null
+            ? [view.lastLatency && breakdownText(t, view.lastLatency), t("overlay.latencyMedian", { value: seconds(median) })].filter(Boolean).join("\n")
+            : undefined
+        }
         onClick={() => void backend().invoke("open_window", { view: "settings", section: "probe" })}
       >
         {last !== null ? t("overlay.latency", { value: seconds(last) }) : t("overlay.latencyNone")}

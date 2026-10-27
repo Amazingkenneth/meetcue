@@ -29,8 +29,12 @@ use crate::{config, diagnostics, hotkeys, practice, prices, session, tray, windo
 
 type Res<T> = Result<T, MeetCueError>;
 
+/// A failure inside the app (a window, a dialog, a worker thread). These
+/// used to carry MC-SYS-002, which tells the user their settings folder is
+/// read-only: misleading, since none of them involve that folder.
 fn io_err(e: impl std::fmt::Display) -> MeetCueError {
-    MeetCueError::new(codes::SYS_CONFIG_DIR, e.to_string())
+    tracing::warn!("command failed: {e}");
+    MeetCueError::new(codes::SYS_INTERNAL, e.to_string())
 }
 
 /// Provider ids whose credentials the interface may ask about.
@@ -63,11 +67,16 @@ pub fn save_settings(
     settings: Settings,
 ) -> Res<Settings> {
     let old = state.settings();
-    config::save(&state.paths.settings_file(), &settings).map_err(io_err)?;
+    config::save(&state.paths.settings_file(), &settings).map_err(|e| {
+        tracing::warn!("could not save settings: {e}");
+        MeetCueError::new(codes::SYS_SETTINGS_SAVE, e.to_string())
+    })?;
     *state.settings.write().unwrap() = settings.clone();
     // A new microphone or voice threshold: restart capture if it's running.
     if old.audio.mic_device != settings.audio.mic_device
         || old.audio.vad_threshold_db != settings.audio.vad_threshold_db
+        || old.audio.remote_vad_threshold_db != settings.audio.remote_vad_threshold_db
+        || old.audio.boost_quiet_voices != settings.audio.boost_quiet_voices
     {
         let app = app.clone();
         tauri::async_runtime::spawn(async move { session::restart_audio(&app).await });

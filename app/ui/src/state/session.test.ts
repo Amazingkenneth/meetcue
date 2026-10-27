@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
 import demo from "../mock/sdn-demo.json";
 import type { TimedEvent } from "../bindings/TimedEvent";
-import { coverageCount, currentId, emptySession, neighbours, nextPoint, reduce } from "./session";
+import { coverageCount, currentId, displayOrder, emptySession, neighbours, nextPoint, reduce } from "./session";
 
 const q = (id: number, version = 1, status: "active" | "pending" = "active"): MeetCueEvent => ({
   type: "questionNew",
@@ -84,6 +84,23 @@ describe("session reducer", () => {
     expect(s.questions[1].status).toBe("answered");
   });
 
+  it("lists the current question first, then waiting ones, then earlier ones newest first", () => {
+    let s = run([q(1), q(2), q(3), q(4, 1, "pending")]);
+    s = reduce(s, {
+      type: "queueChanged",
+      questions: [
+        { id: 1, short: "Q1", status: "answered" },
+        { id: 2, short: "Q2", status: "answered" },
+        { id: 3, short: "Q3", status: "active" },
+        { id: 4, short: "Q4", status: "pending" },
+      ],
+      active: 3,
+      focus: null,
+    });
+    expect(displayOrder(s)).toEqual([3, 4, 2, 1]);
+    expect(displayOrder(emptySession())).toEqual([]);
+  });
+
   it("keeps partial and final transcript lines apart", () => {
     let s = run([{ type: "transcript", channel: "me", utterance: 1, isFinal: false, text: "我们", t0Ms: 0, t1Ms: 100 }]);
     expect(s.partial.me?.text).toBe("我们");
@@ -111,6 +128,15 @@ describe("session reducer", () => {
     expect(s.errors).toHaveLength(2);
     s = reduce(s, { type: "recognition", channel: "remote", connected: true });
     expect(s.errors.map((e) => e.code)).toEqual(["MC-ASR-001"]);
+  });
+
+  it("keeps how the last hint's time was split", () => {
+    const s = run([
+      { type: "sessionState", state: "running", tMs: 0 },
+      { type: "latencySample", id: 1, asrMs: 400, detectMs: 700, generateMs: 900, totalMs: 1300, early: true },
+    ]);
+    expect(s.latencies).toEqual([1300]);
+    expect(s.lastLatency).toEqual({ asrMs: 400, detectMs: 700, generateMs: 900, totalMs: 1300, early: true });
   });
 
   it("replays the recorded demo into a consistent state", () => {

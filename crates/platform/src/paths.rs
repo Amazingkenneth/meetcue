@@ -6,7 +6,10 @@
 //! shows `MC-SYS-002` once. macOS and Linux use the standard per-user folders.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use directories::ProjectDirs;
 
@@ -16,6 +19,8 @@ pub struct AppPaths {
     pub portable: bool,
     /// Set when portable mode was wanted but the folder was not writable.
     pub fell_back: bool,
+    /// The portable folder and the error that made it unusable.
+    pub fallback_reason: Option<String>,
 }
 
 impl AppPaths {
@@ -42,6 +47,22 @@ impl AppPaths {
 
     pub fn usage_ledger(&self) -> PathBuf {
         self.config_dir.join("usage.jsonl")
+    }
+
+    /// Whether the fallback notice still has to be shown. It is shown once
+    /// per settings folder: the fallback is harmless, and a notice on every
+    /// start reads like something keeps going wrong.
+    pub fn fallback_notice_due(&self) -> bool {
+        if !self.fell_back {
+            return false;
+        }
+        let marker = self.config_dir.join(".portable-fallback-noticed");
+        if marker.exists() {
+            return false;
+        }
+        let _ = fs::create_dir_all(&self.config_dir);
+        let _ = fs::write(&marker, self.fallback_reason.as_deref().unwrap_or_default());
+        true
     }
 
     /// Creates the directory tree.
@@ -78,13 +99,47 @@ impl AppPaths {
 
 /// Whether a directory can be created and written to.
 pub fn is_writable(dir: &Path) -> bool {
-    if fs::create_dir_all(dir).is_err() {
-        return false;
+    write_error(dir).is_none()
+}
+
+/// Why a directory can't be created and written to, or `None` if it can.
+///
+/// Tries three times: right after sign-in or an update, antivirus scanners
+/// and the search indexer briefly hold newly created files, and a single
+/// failed probe used to move all settings to the fallback folder.
+pub fn write_error(dir: &Path) -> Option<String> {
+    let mut last = None;
+    for attempt in 0..3 {
+        if attempt > 0 {
+            thread::sleep(Duration::from_millis(150));
+        }
+        match probe(dir) {
+            Ok(()) => return None,
+            Err(e) => last = Some(e.to_string()),
+        }
     }
-    let probe = dir.join(".meetcue-write-test");
-    let ok = fs::write(&probe, b"ok").is_ok();
-    let _ = fs::remove_file(&probe);
-    ok
+    last
+}
+
+fn probe(dir: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(dir)?;
+    // A name of its own, so two copies starting at once (autostart and a
+    // click on the shortcut) never trip over each other's probe file.
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or_default();
+    let path = dir.join(format!(
+        ".meetcue-write-test-{}-{nanos}",
+        std::process::id()
+    ));
+    let written = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .and_then(|mut f| f.write_all(b"ok"));
+    let _ = fs::remove_file(&path);
+    written
 }
 
 /// Pure resolution logic, testable with temporary directories.
@@ -96,17 +151,19 @@ pub fn resolve_with(
     if prefer_portable {
         if let Some(exe_dir) = exe_dir {
             let portable = exe_dir.join("config");
-            if is_writable(&portable) {
+            let Some(error) = write_error(&portable) else {
                 return AppPaths {
                     config_dir: portable,
                     portable: true,
                     fell_back: false,
+                    fallback_reason: None,
                 };
-            }
+            };
             return AppPaths {
                 config_dir: user_config_dir,
                 portable: false,
                 fell_back: true,
+                fallback_reason: Some(format!("{}: {error}", portable.display())),
             };
         }
     }
@@ -114,6 +171,7 @@ pub fn resolve_with(
         config_dir: user_config_dir,
         portable: false,
         fell_back: false,
+        fallback_reason: None,
     }
 }
 
@@ -125,6 +183,7 @@ pub fn resolve() -> AppPaths {
             config_dir: PathBuf::from(dir),
             portable: false,
             fell_back: false,
+            fallback_reason: None,
         };
     }
     let user = ProjectDirs::from("", "", "MeetCue")
@@ -174,6 +233,10 @@ mod tests {
         if !p.portable {
             assert!(p.fell_back);
             assert_eq!(p.config_dir, user.path());
+            assert!(p.fallback_reason.is_some());
+            // Shown once, not on every start.
+            assert!(p.fallback_notice_due());
+            assert!(!p.fallback_notice_due());
         }
     }
 
@@ -189,6 +252,21 @@ mod tests {
         assert!(p.wipe().is_empty());
         assert!(p.config_dir.is_dir());
         assert_eq!(fs::read_dir(&p.config_dir).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn probe_leaves_no_files_behind() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(is_writable(dir.path()));
+        assert!(is_writable(dir.path()));
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn notice_only_when_fallen_back() {
+        let user = tempfile::tempdir().unwrap();
+        let p = resolve_with(None, user.path().to_path_buf(), true);
+        assert!(!p.fallback_notice_due());
     }
 
     #[test]

@@ -139,6 +139,7 @@ struct ChannelCtx {
     channel: Channel,
     mic: Option<String>,
     vad_threshold_db: f32,
+    boost: bool,
     stop: Arc<AtomicBool>,
     restart: Arc<AtomicBool>,
     sink: Arc<Sink>,
@@ -201,9 +202,9 @@ fn capture_loop(ctx: &ChannelCtx, opened: Opened) {
     let processor = {
         let done = done.clone();
         let sink = ctx.sink.clone();
-        let channel = ctx.channel;
-        let vad = ctx.vad_threshold_db;
-        thread::spawn(move || process_loop(channel, format, vad, bytes_out, meta_out, done, sink))
+        let mut converter = FrameConverter::new(ctx.channel, format, ctx.vad_threshold_db);
+        converter.set_boost(ctx.boost);
+        thread::spawn(move || process_loop(converter, bytes_out, meta_out, done, sink))
     };
 
     loop {
@@ -255,15 +256,12 @@ fn capture_loop(ctx: &ChannelCtx, opened: Opened) {
 }
 
 fn process_loop(
-    channel: Channel,
-    format: InputFormat,
-    vad_threshold_db: f32,
+    mut converter: FrameConverter,
     mut bytes: ringbuf::HeapCons<u8>,
     mut meta: ringbuf::HeapCons<Meta>,
     done: Arc<AtomicBool>,
     sink: Arc<Sink>,
 ) {
-    let mut converter = FrameConverter::new(channel, format, vad_threshold_db);
     converter.start_clock(clock::mono_ms());
     let mut chunk = Vec::new();
     let mut frames = Vec::new();
@@ -355,9 +353,21 @@ impl AudioSource for WasapiSource {
             }));
         }
 
-        for (channel, enabled, restart) in [
-            (Channel::Me, cfg.capture_me, restart_me),
-            (Channel::Remote, cfg.capture_remote, restart_remote),
+        for (channel, enabled, restart, vad_threshold_db, boost) in [
+            (
+                Channel::Me,
+                cfg.capture_me,
+                restart_me,
+                cfg.vad_threshold_db,
+                false,
+            ),
+            (
+                Channel::Remote,
+                cfg.capture_remote,
+                restart_remote,
+                cfg.remote_vad_threshold_db,
+                cfg.boost_remote,
+            ),
         ] {
             if !enabled {
                 continue;
@@ -365,7 +375,8 @@ impl AudioSource for WasapiSource {
             let ctx = ChannelCtx {
                 channel,
                 mic: cfg.mic_device.clone(),
-                vad_threshold_db: cfg.vad_threshold_db,
+                vad_threshold_db,
+                boost,
                 stop: self.stop.clone(),
                 restart,
                 sink: sink.clone(),

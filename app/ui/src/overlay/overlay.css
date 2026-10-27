@@ -280,11 +280,22 @@ html.overlay-view body {
 }
 
 .ov-point {
+  border-radius: var(--radius-sm);
+}
+
+/* The whole row is a button that ticks or unticks the point. */
+.ov-point > button {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  width: 100%;
   padding: 4px 6px;
-  border-radius: var(--radius-sm);
+  text-align: left;
+  line-height: 1.45;
+}
+
+.ov-point > button:hover {
+  background: var(--ov-accent-wash);
 }
 
 .ov-point .num {
@@ -301,12 +312,8 @@ html.overlay-view body {
 .ov-point .rest { color: var(--ov-text-body); }
 .ov-point .body { flex: 1; min-width: 0; }
 
-.ov-point[data-status="done"] { opacity: 0.6; }
-.ov-point[data-status="done"] .head { font-weight: 500; }
-
-.ov-point[data-status="done"] .num {
-  color: var(--done);
-}
+/* A covered point keeps its full text and gains a check: nothing fades, so
+   it can still be read back if needed. */
 
 .ov-point[data-status="next"] {
   background: var(--ov-accent-wash);
@@ -329,9 +336,11 @@ html.overlay-view body {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--done-bg);
-  color: var(--done);
+  background: var(--done);
+  color: var(--done-bg);
   font-size: 11px;
+  font-weight: 700;
+  transform: translateY(2px);
 }
 
 .ov-link {

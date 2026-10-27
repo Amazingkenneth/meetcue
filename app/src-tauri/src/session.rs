@@ -92,6 +92,7 @@ fn engine_config(settings: &Settings, detect: ModelRef, hints: ModelRef) -> Engi
         queue_interruptions: settings.hints.queue_interruptions,
         track_coverage: settings.hints.track_coverage,
         early_trigger: settings.hints.early_trigger,
+        speculative_hints: settings.hints.speculative_hints,
     }
 }
 
@@ -485,6 +486,8 @@ pub fn start_audio(app: &AppHandle) -> Result<(), MeetCueError> {
             capture_me: true,
             capture_remote: true,
             vad_threshold_db: s.audio.vad_threshold_db,
+            remote_vad_threshold_db: s.audio.remote_vad_threshold_db,
+            boost_remote: s.audio.boost_quiet_voices,
         },
         Box::new(move |e| {
             let _ = tx.send(e);
@@ -655,6 +658,8 @@ pub fn sync_preview(app: &AppHandle, restart: bool) -> Result<(), MeetCueError> 
             capture_me: true,
             capture_remote: true,
             vad_threshold_db: s.audio.vad_threshold_db,
+            remote_vad_threshold_db: s.audio.remote_vad_threshold_db,
+            boost_remote: s.audio.boost_quiet_voices,
         },
         Box::new(move |e| {
             if let SourceEvent::Frame(f) = e {

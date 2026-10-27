@@ -67,6 +67,11 @@ pub struct EngineConfig {
     pub queue_interruptions: bool,
     pub track_coverage: bool,
     pub early_trigger: bool,
+    /// Start hint generation together with detection instead of after it,
+    /// and keep the result only if detection confirms a question. Saves a
+    /// whole model round trip per question; sentences that pass the
+    /// pre-filter but aren't questions cost one unused hint call.
+    pub speculative_hints: bool,
 }
 
 impl Default for EngineConfig {
@@ -81,6 +86,7 @@ impl Default for EngineConfig {
             queue_interruptions: true,
             track_coverage: true,
             early_trigger: true,
+            speculative_hints: false,
         }
     }
 }
@@ -224,6 +230,8 @@ struct Question {
     statuses: Vec<PointStatus>,
     hints: HintsState,
     answer: AnswerText,
+    /// Points ticked (true) or unticked (false) by hand, by index.
+    manual: HashMap<usize, bool>,
     user_spoke: bool,
     latency: Latency,
 }
@@ -231,7 +239,25 @@ struct Question {
 #[derive(Debug, Clone, Copy)]
 enum Req {
     Detect,
-    Hints { id: QuestionId, version: u32 },
+    Hints {
+        id: QuestionId,
+        version: u32,
+    },
+    /// Hints started alongside the detection request `detect`.
+    Speculative {
+        detect: ReqId,
+    },
+}
+
+/// Hint generation started before detection confirmed the question. What it
+/// produces is held until detection decides whether to keep it.
+#[derive(Debug)]
+struct Speculation {
+    req: ReqId,
+    started_at: i64,
+    items: Vec<HintItem>,
+    /// Set once the request has ended: `true` if it completed.
+    finished: Option<bool>,
 }
 
 pub struct Engine {
@@ -243,6 +269,8 @@ pub struct Engine {
     last_me_activity: i64,
     early: Option<EarlyLink>,
     candidates: HashMap<ReqId, Candidate>,
+    /// Speculative hint requests, by the detection request they belong to.
+    speculative: HashMap<ReqId, Speculation>,
     reqs: HashMap<ReqId, Req>,
     next_req: ReqId,
     questions: Vec<Question>,
@@ -273,6 +301,7 @@ impl Engine {
             last_me_activity: i64::MIN / 2,
             early: None,
             candidates: HashMap::new(),
+            speculative: HashMap::new(),
             reqs: HashMap::new(),
             next_req: 1,
             questions: Vec::new(),
@@ -324,6 +353,7 @@ impl Engine {
             out.push(Output::Cancel { req });
         }
         self.candidates.clear();
+        self.speculative.clear();
         self.state = SessionState::Stopped;
         out.push(Output::Emit(MeetCueEvent::SessionState {
             state: self.state,
@@ -379,6 +409,7 @@ impl Engine {
                     self.last_me_activity = now;
                 }
                 self.emit_partial(ch, now, false, out);
+                self.live_coverage(ch, out);
             }
             AsrResult::Final { text, t0_ms, t1_ms } => {
                 u.finals.push_str(&text);
@@ -390,6 +421,7 @@ impl Engine {
                     self.last_me_activity = now;
                 }
                 self.emit_partial(ch, now, true, out);
+                self.live_coverage(ch, out);
             }
             AsrResult::Endpoint { t_ms } => {
                 u.t1 = u.t1.max(t_ms);
@@ -399,6 +431,15 @@ impl Engine {
                 code: e.code,
                 detail: e.detail,
             })),
+        }
+    }
+
+    fn live_coverage(&mut self, ch: Channel, out: &mut Vec<Output>) {
+        if ch != Channel::Me || !self.cfg.track_coverage {
+            return;
+        }
+        if let Some(id) = self.queue.active() {
+            self.update_coverage(id, out);
         }
     }
 
@@ -485,7 +526,7 @@ impl Engine {
                 early: false,
                 target: Target::New,
             };
-            self.accept_detection(cand, det, now, out);
+            self.accept_detection(cand, det, None, now, out);
         } else {
             self.on_remote_sentence(line, utterance, now, out);
         }
@@ -517,7 +558,7 @@ impl Engine {
                     return;
                 }
                 (EarlyState::Detecting(req), true) => {
-                    self.cancel_req(req, out);
+                    self.cancel_req(req, now, out);
                 }
                 (EarlyState::Created(id), true) => {
                     // The sentence changed a lot: re-run detection for the same card.
@@ -610,6 +651,25 @@ impl Engine {
             },
         );
         out.push(Output::Detect { req, request });
+        if self.cfg.speculative_hints
+            && target == Target::New
+            && !self.hints_paused
+            && self.hints_running < MAX_CONCURRENT_HINTS
+        {
+            let request = self.hints_request(&line.text, lang, now);
+            let spec = self.alloc_req(Req::Speculative { detect: req });
+            self.hints_running += 1;
+            self.speculative.insert(
+                req,
+                Speculation {
+                    req: spec,
+                    started_at: now,
+                    items: Vec::new(),
+                    finished: None,
+                },
+            );
+            out.push(Output::Hints { req: spec, request });
+        }
         req
     }
 
@@ -621,8 +681,19 @@ impl Engine {
         out: &mut Vec<Output>,
     ) {
         self.reqs.remove(&req);
+        let spec = self.speculative.remove(&req);
         let Some(cand) = self.candidates.remove(&req) else {
+            if let Some(spec) = spec {
+                self.speculative.insert(req, spec);
+                self.drop_speculation(req, now, out);
+            }
             return;
+        };
+        let discard = |e: &mut Self, spec: Option<Speculation>, out: &mut Vec<Output>| {
+            if let Some(spec) = spec {
+                e.speculative.insert(req, spec);
+                e.drop_speculation(req, now, out);
+            }
         };
         let det = match reply {
             Ok(text) => match detect::parse(&text) {
@@ -637,6 +708,7 @@ impl Engine {
                 }
             },
             Err(e) => {
+                discard(self, spec, out);
                 out.push(Output::Emit(MeetCueEvent::Error {
                     code: e.code,
                     detail: e.detail,
@@ -653,6 +725,7 @@ impl Engine {
         };
         let keep = det.is_question && (det.directed_to_me || !self.cfg.only_directed_to_me);
         if !keep {
+            discard(self, spec, out);
             if let Some(link) = self
                 .early
                 .as_mut()
@@ -665,7 +738,7 @@ impl Engine {
             }
             return;
         }
-        let created = self.accept_detection(cand, det, now, out);
+        let created = self.accept_detection(cand, det, spec, now, out);
         if let Some(link) = self
             .early
             .as_mut()
@@ -683,6 +756,7 @@ impl Engine {
         &mut self,
         cand: Candidate,
         det: Detection,
+        spec: Option<Speculation>,
         now: i64,
         out: &mut Vec<Output>,
     ) -> Option<QuestionId> {
@@ -696,6 +770,9 @@ impl Engine {
             early: cand.early,
         };
         let short = detect::short_title(&det.short, &cand.text);
+        // Speculative hints answer the sentence alone: not a merged question
+        // or one detection split into several parts.
+        let usable = !det.merged && det.sub_questions.len() <= 1;
 
         // An updated version of an existing card.
         let existing = match cand.target {
@@ -719,13 +796,14 @@ impl Engine {
                 }
                 q.vocab.clear();
                 q.statuses.clear();
+                q.manual.clear();
                 q.latency = latency;
             }
             self.cancel_hints(id, out);
             if let Some(ev) = self.question_event(id) {
                 out.push(Output::Emit(ev));
             }
-            self.request_hints(id, now, out);
+            self.start_hints(id, spec, usable, now, out);
             return Some(id);
         }
 
@@ -760,6 +838,7 @@ impl Engine {
             statuses: Vec::new(),
             hints: HintsState::Idle,
             answer: AnswerText::default(),
+            manual: HashMap::new(),
             user_spoke: false,
             latency,
         });
@@ -769,7 +848,7 @@ impl Engine {
         }
         self.apply_status_changes(changes, out);
         self.trim_questions();
-        self.request_hints(id, now, out);
+        self.start_hints(id, spec, usable, now, out);
         Some(id)
     }
 
@@ -808,6 +887,18 @@ impl Engine {
             }
         }
         let lang = self.output_language(&q.text);
+        let request = self.hints_request(&question, lang, now);
+        let req = self.alloc_req(Req::Hints { id, version });
+        self.hints_running += 1;
+        if let Some(q) = self.question_mut(id) {
+            q.hints = HintsState::Running(req);
+            q.latency.hint_start = now;
+        }
+        out.push(Output::Hints { req, request });
+    }
+
+    /// The hint generation request for a question (with its numbered parts).
+    fn hints_request(&self, question: &str, lang: &str, now: i64) -> LlmRequest {
         let role = if self.cfg.role.trim().is_empty() {
             "not specified".to_string()
         } else {
@@ -831,24 +922,65 @@ impl Engine {
             prompts::HINTS_USER,
             &[
                 ("transcript", transcript.trim_end()),
-                ("question", &question),
+                ("question", question),
             ],
         );
-        let request = LlmRequest::new(&self.cfg.hints.model, UsagePurpose::Hints)
+        LlmRequest::new(&self.cfg.hints.model, UsagePurpose::Hints)
             .system(system, true)
             .user(user)
             .max_tokens(prompts::HINTS_MAX_TOKENS)
-            .temperature(0.3);
-        let req = self.alloc_req(Req::Hints { id, version });
-        self.hints_running += 1;
+            .temperature(0.3)
+    }
+
+    /// Gives a confirmed question its hints: the speculative ones started
+    /// with detection when they fit, otherwise a new request.
+    fn start_hints(
+        &mut self,
+        id: QuestionId,
+        spec: Option<Speculation>,
+        usable: bool,
+        now: i64,
+        out: &mut Vec<Output>,
+    ) {
+        let Some(spec) = spec else {
+            self.request_hints(id, now, out);
+            return;
+        };
+        let fits = usable && !self.hints_paused && spec.finished != Some(false);
+        let Some(version) = self.question(id).map(|q| q.version).filter(|_| fits) else {
+            if spec.finished.is_none() {
+                self.reqs.remove(&spec.req);
+                self.hints_running = self.hints_running.saturating_sub(1);
+                out.push(Output::Cancel { req: spec.req });
+            }
+            self.request_hints(id, now, out);
+            return;
+        };
+        let req = spec.req;
+        if spec.finished.is_some() {
+            // Ended already: count it as running until its items are replayed.
+            self.hints_running += 1;
+        }
+        self.reqs.insert(req, Req::Hints { id, version });
         if let Some(q) = self.question_mut(id) {
             q.hints = HintsState::Running(req);
-            q.latency.hint_start = now;
+            q.latency.hint_start = spec.started_at;
         }
-        out.push(Output::Hints { req, request });
+        for item in spec.items {
+            self.on_hint(req, item, now, out);
+        }
+        if spec.finished == Some(true) {
+            self.on_hints_done(req, now, out);
+        }
     }
 
     fn on_hint(&mut self, req: ReqId, item: HintItem, now: i64, out: &mut Vec<Output>) {
+        if let Some(Req::Speculative { detect }) = self.reqs.get(&req).copied() {
+            if let Some(spec) = self.speculative.get_mut(&detect) {
+                spec.items.push(item);
+            }
+            return;
+        }
         let Some(Req::Hints { id, version }) = self.reqs.get(&req).copied() else {
             return;
         };
@@ -906,7 +1038,25 @@ impl Engine {
         }
     }
 
+    /// A speculative request ended before detection decided: free its slot
+    /// and keep what it produced.
+    fn speculation_ended(&mut self, req: ReqId, ok: bool, now: i64, out: &mut Vec<Output>) -> bool {
+        let Some(Req::Speculative { detect }) = self.reqs.get(&req).copied() else {
+            return false;
+        };
+        self.reqs.remove(&req);
+        self.hints_running = self.hints_running.saturating_sub(1);
+        if let Some(spec) = self.speculative.get_mut(&detect) {
+            spec.finished = Some(ok);
+        }
+        self.start_waiting_hints(now, out);
+        true
+    }
+
     fn on_hints_done(&mut self, req: ReqId, now: i64, out: &mut Vec<Output>) {
+        if self.speculation_ended(req, true, now, out) {
+            return;
+        }
         let Some(Req::Hints { id, version }) = self.reqs.remove(&req) else {
             return;
         };
@@ -925,6 +1075,11 @@ impl Engine {
         now: i64,
         out: &mut Vec<Output>,
     ) {
+        if self.speculation_ended(req, false, now, out) {
+            // Detection decides; a confirmed question gets a fresh request.
+            tracing::debug!("speculative hints failed: {}", error.detail);
+            return;
+        }
         let Some(Req::Hints { id, version }) = self.reqs.remove(&req) else {
             return;
         };
@@ -973,27 +1128,75 @@ impl Engine {
         }
     }
 
-    fn cancel_req(&mut self, req: ReqId, out: &mut Vec<Output>) {
+    fn cancel_req(&mut self, req: ReqId, now: i64, out: &mut Vec<Output>) {
         self.candidates.remove(&req);
         if self.reqs.remove(&req).is_some() {
             out.push(Output::Cancel { req });
+        }
+        self.drop_speculation(req, now, out);
+    }
+
+    /// Discards the hints started alongside detection request `detect`.
+    fn drop_speculation(&mut self, detect: ReqId, now: i64, out: &mut Vec<Output>) {
+        let Some(spec) = self.speculative.remove(&detect) else {
+            return;
+        };
+        if spec.finished.is_none() {
+            self.reqs.remove(&spec.req);
+            self.hints_running = self.hints_running.saturating_sub(1);
+            out.push(Output::Cancel { req: spec.req });
+            self.start_waiting_hints(now, out);
         }
     }
 
     // ---- coverage and queue -----------------------------------------------
 
+    /// Recomputes the ticks of a question. The active question also counts the
+    /// sentence the user is still saying, so points tick while they talk
+    /// rather than only after they pause.
     fn update_coverage(&mut self, id: QuestionId, out: &mut Vec<Output>) {
+        let track = self.cfg.track_coverage;
+        let live = if track && self.queue.active() == Some(id) {
+            self.live_answer()
+        } else {
+            None
+        };
         let Some(q) = self.question_mut(id) else {
             return;
         };
         if q.vocab.is_empty() {
             return;
         }
-        let next = coverage::statuses(&q.vocab, &q.statuses, &q.answer);
+        let mut answer = if track {
+            q.answer.clone()
+        } else {
+            AnswerText::default()
+        };
+        if let Some(text) = live {
+            answer.push(&text);
+        }
+        let next = coverage::statuses(&q.vocab, &q.statuses, &answer, &q.manual);
         if next != q.statuses {
             q.statuses = next.clone();
             out.push(Output::Emit(MeetCueEvent::Coverage { id, statuses: next }));
         }
+    }
+
+    /// The microphone sentence in progress, unless it is the other side
+    /// leaking through the speakers.
+    fn live_answer(&self) -> Option<String> {
+        let u = &self.utterances[idx(Channel::Me)];
+        if u.is_empty() {
+            return None;
+        }
+        let text = u.text();
+        let remote_partial = self.utterances[idx(Channel::Remote)].text();
+        let nearby = self
+            .transcript
+            .remote_near(u.t0.unwrap_or(u.t1), u.t1, ECHO_WINDOW_MS)
+            .map(|l| l.text.as_str())
+            .chain(Some(remote_partial.as_str()).filter(|t| !t.is_empty()));
+        (!coverage::is_echo(&text, nearby)).then_some(text)
     }
 
     fn apply_status_changes(
@@ -1110,6 +1313,18 @@ impl Engine {
                 if self.queue.step_focus(target) {
                     out.push(Output::Emit(self.queue_event()));
                 }
+            }
+            UserAction::TogglePoint { id, index } => {
+                let index = index as usize;
+                let Some(q) = self.question_mut(id) else {
+                    return;
+                };
+                let Some(status) = q.statuses.get(index) else {
+                    return;
+                };
+                let done = *status != PointStatus::Done;
+                q.manual.insert(index, done);
+                self.update_coverage(id, out);
             }
             UserAction::Pause if self.state == SessionState::Running => {
                 self.state = SessionState::Paused;
@@ -1432,6 +1647,71 @@ mod tests {
         assert_eq!(h.statuses().last(), Some(&(1, QuestionStatus::Answered)));
     }
 
+    fn asked_and_active(h: &mut Harness) -> ReqId {
+        h.say(Channel::Remote, 1000, 3000, "你们是怎么做高可用的？");
+        h.at(3400).detect_reply(YES);
+        h.hints[0].0
+    }
+
+    #[test]
+    fn points_tick_while_the_user_is_still_talking() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        // One long sentence with no pause: the first point ticks before it ends.
+        h.at(5000).input(Input::Asr {
+            channel: Channel::Me,
+            result: AsrResult::Partial {
+                text: "我们做了两地双活，然后".into(),
+                t0_ms: 5000,
+                t1_ms: 6000,
+            },
+        });
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Done, PointStatus::Next])
+        );
+    }
+
+    #[test]
+    fn points_already_said_tick_when_they_arrive() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.say(Channel::Me, 3500, 4500, "我们做了两地双活");
+        h.at(4700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        // Ticked as soon as it arrives; the second point then arrives as next.
+        assert_eq!(h.last_coverage(1), Some(vec![PointStatus::Done]));
+        let second = h.events.iter().rev().find_map(|e| match e {
+            MeetCueEvent::QuestionPoint { n: 2, status, .. } => Some(*status),
+            _ => None,
+        });
+        assert_eq!(second, Some(PointStatus::Next));
+    }
+
+    #[test]
+    fn points_can_be_ticked_by_hand() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 1 }));
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Next, PointStatus::Done])
+        );
+        // Unticked by hand: saying it again does not tick it back.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 1 }));
+        h.say(Channel::Me, 5000, 6000, "核心交换机堆叠，双电源");
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Next, PointStatus::Todo])
+        );
+        // Out of range does nothing.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 9 }));
+    }
+
     #[test]
     fn non_questions_never_reach_the_model() {
         let mut h = Harness::new(no_early());
@@ -1558,6 +1838,90 @@ mod tests {
             .events
             .iter()
             .any(|e| matches!(e, MeetCueEvent::QuestionPoint { head, .. } if head == "旧")));
+    }
+
+    fn speculative() -> EngineConfig {
+        EngineConfig {
+            speculative_hints: true,
+            ..no_early()
+        }
+    }
+
+    fn points(h: &Harness) -> usize {
+        h.events
+            .iter()
+            .filter(|e| matches!(e, MeetCueEvent::QuestionPoint { .. }))
+            .count()
+    }
+
+    #[test]
+    fn speculative_hints_start_with_detection_and_wait_for_it() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 1000, 3000, "你们是怎么做高可用的？");
+        assert_eq!(h.detects.len(), 1);
+        assert_eq!(h.hints.len(), 1, "hints start together with detection");
+        let spec = h.hints[0].0;
+        // Points that arrive before detection answers are held back.
+        h.at(3300)
+            .hint_points(spec, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        assert_eq!(points(&h), 0);
+        assert!(h.statuses().is_empty());
+        h.at(3500).detect_reply(YES);
+        assert_eq!(points(&h), 2);
+        assert_eq!(h.hints.len(), 1, "no second hint request");
+        assert!(h
+            .events
+            .iter()
+            .any(|e| matches!(e, MeetCueEvent::AnswerDone { id: 1, .. })));
+        let total = h.events.iter().find_map(|e| match e {
+            MeetCueEvent::LatencySample { total_ms, .. } => Some(*total_ms),
+            _ => None,
+        });
+        assert_eq!(total, Some(500), "one model round trip instead of two");
+    }
+
+    #[test]
+    fn speculative_hints_keep_streaming_after_detection() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 1000, 3000, "你们是怎么做高可用的？");
+        let spec = h.hints[0].0;
+        h.at(3300).detect_reply(YES);
+        assert_eq!(h.statuses(), vec![(1, QuestionStatus::Active)]);
+        h.at(3600).hint_points(spec, &[("双活", "两地 分担")]);
+        assert_eq!(points(&h), 1);
+        assert_eq!(h.hints.len(), 1);
+    }
+
+    #[test]
+    fn speculative_hints_are_cancelled_for_non_questions() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 0, 1000, "为什么呢，我也不知道");
+        let spec = h.hints[0].0;
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        assert!(h.cancelled.contains(&spec));
+        h.hint_points(spec, &[("x", "y")]);
+        assert_eq!(points(&h), 0);
+        assert!(h.statuses().is_empty());
+        // The slot is free again for the next question.
+        h.say(Channel::Remote, 2000, 3000, "你们是怎么做高可用的？");
+        assert_eq!(h.hints.len(), 2);
+    }
+
+    #[test]
+    fn failed_speculation_is_retried_once_confirmed() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 1000, 3000, "你们是怎么做高可用的？");
+        let spec = h.hints[0].0;
+        h.input(Input::HintsFailed {
+            req: spec,
+            error: MeetCueError::new(codes::LLM_TIMEOUT, "slow"),
+        });
+        h.at(3400).detect_reply(YES);
+        assert_eq!(h.hints.len(), 2, "a fresh request after the failure");
+        assert!(!h
+            .events
+            .iter()
+            .any(|e| matches!(e, MeetCueEvent::HintsFailed { .. })));
     }
 
     #[test]

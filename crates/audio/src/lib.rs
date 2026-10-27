@@ -8,6 +8,7 @@
 //! platform-independent and unit-tested; only device access is per platform.
 
 pub mod convert;
+pub mod gain;
 pub mod vad;
 
 #[cfg(not(windows))]
@@ -25,6 +26,11 @@ pub struct CaptureConfig {
     pub capture_me: bool,
     pub capture_remote: bool,
     pub vad_threshold_db: f32,
+    /// Voice threshold for system sound, which is usually quieter and
+    /// cleaner than a microphone.
+    pub remote_vad_threshold_db: f32,
+    /// Raise quiet voices in system sound before recognition.
+    pub boost_remote: bool,
 }
 
 impl Default for CaptureConfig {
@@ -34,6 +40,8 @@ impl Default for CaptureConfig {
             capture_me: true,
             capture_remote: true,
             vad_threshold_db: -45.0,
+            remote_vad_threshold_db: -60.0,
+            boost_remote: true,
         }
     }
 }

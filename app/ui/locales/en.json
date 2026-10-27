@@ -55,6 +55,8 @@
     "queued": "Queued",
     "nextTag": "Next",
     "doneLabel": "Covered",
+    "tickHint": "Mark as said",
+    "untickHint": "Mark as not said yet",
     "fullAnswer": "Show full answer →",
     "hideAnswer": "Hide full answer",
     "generating": "Generating hints…",
@@ -70,6 +72,9 @@
     "latency": "Latency {{value}} s",
     "latencyNone": "Latency —",
     "latencyMedian": "Median {{value}} s · open the latency probe",
+    "latencyBreakdown": "Last hint {{total}} s: recognition {{asr}} · detection {{detect}} · hints {{generate}}",
+    "slowHints": "Hints are slow (median {{value}} s)",
+    "openFix": "Open the setting",
     "probeAgain": "Hints have been slow for several questions. Run the latency probe again?",
     "openProbe": "Open latency probe",
     "pendingCount_one": "{{count}} waiting",
@@ -133,8 +138,12 @@
     "startPreview": "Test levels",
     "stopPreview": "Stop test",
     "advanced": "Advanced",
-    "vadThreshold": "Voice detection threshold",
-    "vadHint": "Lower picks up quieter speech; higher ignores more background noise.",
+    "boostQuiet": "Boost quiet voices from the meeting",
+    "boostQuietHint": "Raises soft-spoken participants to a normal speaking level before recognition, so their questions are caught. Your own microphone is not changed.",
+    "remoteThreshold": "System sound voice threshold",
+    "remoteThresholdHint": "Sound from the meeting quieter than this is not sent for recognition. Lower it if soft-spoken participants are missed; raise it if music or noise in the meeting is transcribed.",
+    "vadThreshold": "Microphone voice threshold",
+    "vadHint": "Lower picks up quieter speech from you; higher ignores more background noise in your room.",
     "endpointSilence": "Sentence end after silence",
     "endpointHint": "How long a pause ends a sentence. Shorter shows hints sooner but may split a question in two; longer waits through pauses in long questions.",
     "languages": "Meeting languages",
@@ -272,7 +281,9 @@
     "trackCoverage": "Track what I've said",
     "trackCoverageHint": "Points you have covered are ticked and the next one is highlighted.",
     "earlyTrigger": "Start hints early",
-    "earlyTriggerHint": "Start as soon as a question looks finished instead of waiting for the end of the sentence. Faster, but occasionally redone."
+    "earlyTriggerHint": "Start as soon as a question looks finished instead of waiting for the end of the sentence. Faster, but occasionally redone.",
+    "speculativeHints": "Write hints while checking the question",
+    "speculativeHintsHint": "Starts the hints at the same time as the check whether a sentence is a question, instead of after it. About a second faster; a sentence that turns out not to be a question costs one unused hint request."
   },
   "shortcuts": {
     "lead": "Shortcuts work while other apps have focus.",
@@ -572,5 +583,13 @@
     "confirmButton": "Erase and restart",
     "working": "Erasing…",
     "failed": "Some data could not be erased: {{detail}}"
+  },
+  "latencyTips": {
+    "speculative": "Turn on “Write hints while checking the question” in Settings › Hints. It saves one model round trip, usually about a second.",
+    "earlyTrigger": "Most of the time goes into waiting for the sentence to end. Turn on “Start hints early” in Settings › Hints.",
+    "endpoint": "Most of the time goes into waiting for the sentence to end. Lower “Sentence end after silence” (now {{value}} s) in Settings › Audio › Advanced.",
+    "detectModel": "The question check is the slow part. Pick a small, fast model for detection in Settings › Providers & cost: it only answers yes or no.",
+    "hintModel": "Writing the hints is the slow part. Pick a faster hint model in Settings › Providers & cost, or shorten the briefing material.",
+    "network": "No single stage stands out. Run the latency probe to find the fastest providers and endpoints from this network, and turn off a VPN if you use one."
   }
 }

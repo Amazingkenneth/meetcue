@@ -1,7 +1,7 @@
 //! Local progress tracking ("which points has the user already said") and
 //! echo filtering. Both use text overlap only; no model is called.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use meetcue_core::PointStatus;
 
@@ -70,17 +70,23 @@ impl AnswerText {
 }
 
 /// Status of every point: covered points are `Done`, the first remaining one is
-/// `Next`, the rest `Todo`. Once a point is done it stays done.
+/// `Next`, the rest `Todo`. Once a point is done it stays done. Points the
+/// user ticked or unticked by hand (`manual`, by index) keep that choice.
 pub fn statuses(
     points: &[PointVocab],
     previous: &[PointStatus],
     answer: &AnswerText,
+    manual: &HashMap<usize, bool>,
 ) -> Vec<PointStatus> {
     let mut out: Vec<PointStatus> = points
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            if previous.get(i) == Some(&PointStatus::Done) || p.is_covered(answer) {
+            let done = match manual.get(&i) {
+                Some(&done) => done,
+                None => previous.get(i) == Some(&PointStatus::Done) || p.is_covered(answer),
+            };
+            if done {
                 PointStatus::Done
             } else {
                 PointStatus::Todo
@@ -138,6 +144,11 @@ mod tests {
             "For the southbound side we use OpenFlow 1.3 and NETCONF"
         )));
         assert!(!p.is_covered(&answer("The northbound API is REST")));
+        // Plurals and tenses still count.
+        let p = PointVocab::new("Multi-region", "deploy services in two regions");
+        assert!(p.is_covered(&answer(
+            "Each service is deployed in a second region as well"
+        )));
     }
 
     #[test]
@@ -147,16 +158,29 @@ mod tests {
             PointVocab::new("跨机房", "节点分布"),
             PointVocab::new("南向协议", "OpenFlow"),
         ];
-        let s = statuses(&points, &[], &AnswerText::default());
+        let none = HashMap::new();
+        let s = statuses(&points, &[], &AnswerText::default(), &none);
         assert_eq!(s, [PointStatus::Next, PointStatus::Todo, PointStatus::Todo]);
-        let s = statuses(&points, &s, &answer("我们是三节点集群部署，用 Raft"));
+        let s = statuses(&points, &s, &answer("我们是三节点集群部署，用 Raft"), &none);
         assert_eq!(s, [PointStatus::Done, PointStatus::Next, PointStatus::Todo]);
         // Saying point 3 first skips point 2.
-        let s2 = statuses(&points, &s, &answer("南向协议是 OpenFlow"));
+        let s2 = statuses(&points, &s, &answer("南向协议是 OpenFlow"), &none);
         assert_eq!(
             s2,
             [PointStatus::Done, PointStatus::Next, PointStatus::Done]
         );
+    }
+
+    #[test]
+    fn manual_ticks_win_over_tracking() {
+        let points = vec![
+            PointVocab::new("集群部署", "三节点 Raft"),
+            PointVocab::new("跨机房", "节点分布"),
+        ];
+        let said = answer("我们是三节点集群部署，用 Raft");
+        let manual = HashMap::from([(0, false), (1, true)]);
+        let s = statuses(&points, &[PointStatus::Done], &said, &manual);
+        assert_eq!(s, [PointStatus::Next, PointStatus::Done]);
     }
 
     #[test]

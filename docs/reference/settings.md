@@ -39,7 +39,9 @@ Every setting applies as soon as it's changed, including during a meeting: model
 | Microphone (you) | `audio.micDevice`; empty uses the system default | empty |
 | Other participants | `audio.remoteSource`: `allSystemSound` | `allSystemSound` |
 | Meeting languages | `audio.languages`, e.g. `["zh", "en"]` | `["zh", "en"]` |
-| Voice detection threshold | `audio.vadThresholdDb`, in dBFS, −70 to −10 | `-45` |
+| Microphone voice threshold | `audio.vadThresholdDb`, in dBFS, −70 to −10 | `-45` |
+| System sound voice threshold | `audio.remoteVadThresholdDb`, in dBFS, −70 to −10 | `-60` |
+| Boost quiet voices from the meeting | `audio.boostQuietVoices` | `true` |
 | Sentence end after silence | `audio.endpointSilenceMs`, 500 to 3000 ms | `700` |
 
 ## Providers and cost
@@ -67,6 +69,7 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Queue interruptions | `hints.queueInterruptions` | `true` |
 | Track what I've said | `hints.trackCoverage` | `true` |
 | Early trigger | `hints.earlyTrigger` | `true` |
+| Write hints while checking the question | `hints.speculativeHints` | `true` |
 
 ## Shortcuts
 

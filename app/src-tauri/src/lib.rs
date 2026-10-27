@@ -82,7 +82,16 @@ pub fn run(opts: cli::Options) -> i32 {
     } else {
         Arc::new(SystemCredentials)
     };
-    let fell_back = paths.fell_back;
+    if let Some(reason) = &paths.fallback_reason {
+        tracing::warn!(
+            "settings folder not writable, using {}: {reason}",
+            paths.config_dir.display()
+        );
+    }
+    // The detail names the folder and the error, for the log and the toast.
+    let fallback_notice = paths
+        .fallback_notice_due()
+        .then(|| paths.fallback_reason.clone().unwrap_or_default());
     let wizard_needed = !settings.general.wizard_completed && !opts.demo && !opts.self_test;
     let state = AppState {
         probes: Mutex::new(load_probes(&paths.latency_history())),
@@ -136,7 +145,7 @@ pub fn run(opts: cli::Options) -> i32 {
             if wizard_needed {
                 windows::open_view(&handle, "wizard", None)?;
             }
-            if fell_back {
+            if let Some(reason) = fallback_notice {
                 let h = handle.clone();
                 tauri::async_runtime::spawn(async move {
                     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -144,7 +153,7 @@ pub fn run(opts: cli::Options) -> i32 {
                         APP_EVENT,
                         AppEvent::Notice {
                             code: codes::SYS_CONFIG_DIR.into(),
-                            detail: String::new(),
+                            detail: reason,
                         },
                     );
                 });
