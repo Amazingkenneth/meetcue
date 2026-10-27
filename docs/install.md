@@ -49,7 +49,7 @@ Your settings, latency history and practice records are kept in Scoop's `persist
 scoop uninstall meetcue
 ```
 
-To also remove your settings, add `--purge`. API keys remain in Windows Credential Manager under entries named `MeetCue`; remove them there if you want.
+To also remove your settings, add `--purge`. API keys remain in Windows Credential Manager under entries named `MeetCue`; remove them there if you want, or run **Settings › General › Erase all data** before uninstalling to remove keys and settings together.
 
 ## If something goes wrong
 

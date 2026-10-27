@@ -20,6 +20,7 @@
     "allow-credential-status",
     "allow-set-credential",
     "allow-delete-credential",
+    "allow-wipe-all-data",
     "allow-verify-provider",
     "allow-list-models",
     "allow-get-pricing",

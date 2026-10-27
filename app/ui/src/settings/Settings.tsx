@@ -209,7 +209,77 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
           </button>
         </Field>
       </Section>
+      <WipeData />
     </>
+  );
+}
+
+/** Erases keys, settings and every local record, after the user types the confirmation word. */
+function WipeData() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const word = t("wipe.confirmWord");
+  const close = () => {
+    setOpen(false);
+    setTyped("");
+    setError(null);
+  };
+  const wipe = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      // The desktop shell restarts the app when this succeeds.
+      await backend().invoke("wipe_all_data");
+      close();
+    } catch (e) {
+      setError(String((e as { detail?: string })?.detail ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Section title={t("wipe.title")}>
+      <Field label={t("wipe.label")} hint={t("wipe.hint")}>
+        <button className="btn btn-small btn-danger" disabled={open} onClick={() => setOpen(true)}>
+          {t("wipe.button")}
+        </button>
+      </Field>
+      {open && (
+        <div className="danger-box" role="alertdialog" aria-labelledby="wipe-confirm-title">
+          <p id="wipe-confirm-title">
+            <strong>{t("wipe.confirmTitle")}</strong>
+          </p>
+          <ul>
+            <li>{t("wipe.itemKeys")}</li>
+            <li>{t("wipe.itemSettings")}</li>
+            <li>{t("wipe.itemRecords")}</li>
+            <li>{t("wipe.itemLogs")}</li>
+          </ul>
+          <p>{t("wipe.confirmLead")}</p>
+          <label htmlFor="wipe-confirm">{t("wipe.typeToConfirm", { word })}</label>
+          <div className="row">
+            <input
+              id="wipe-confirm"
+              autoFocus
+              autoComplete="off"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && close()}
+            />
+            <button className="btn btn-danger" disabled={busy || typed.trim() !== word} onClick={() => void wipe()}>
+              {busy ? t("wipe.working") : t("wipe.confirmButton")}
+            </button>
+            <button className="btn" disabled={busy} onClick={close}>
+              {t("common.cancel")}
+            </button>
+          </div>
+          {error && <p className="err">{t("wipe.failed", { detail: error })}</p>}
+        </div>
+      )}
+    </Section>
   );
 }
 

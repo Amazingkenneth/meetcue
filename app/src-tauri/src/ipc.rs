@@ -170,6 +170,44 @@ pub fn delete_credential(app: AppHandle, state: State<'_, AppState>, key: String
     Ok(())
 }
 
+/// Erases everything MeetCue keeps on this computer: API keys, settings,
+/// logs, practice reports, usage, latency history, cached prices, webview
+/// storage and the autostart entry. Then restarts, so the app comes back as
+/// a fresh install with the setup assistant.
+#[tauri::command]
+pub async fn wipe_all_data(app: AppHandle) -> Res<()> {
+    tracing::warn!("erasing all data on request");
+    if practice::is_active(&app) {
+        practice::control(&app, practice::Control::Stop);
+        *app.state::<AppState>().practice.lock().unwrap() = None;
+    }
+    session::stop(&app).await;
+    // Give stopping runs a moment to finish their last writes.
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+    let state = app.state::<AppState>();
+    for id in PROVIDER_IDS {
+        state.credentials.delete(id)?;
+    }
+    {
+        use tauri_plugin_autostart::ManagerExt;
+        if let Err(e) = app.autolaunch().disable() {
+            tracing::warn!("autostart: {e}");
+        }
+    }
+    for (label, window) in app.webview_windows() {
+        if let Err(e) = window.clear_all_browsing_data() {
+            tracing::warn!("webview data for {label} not cleared: {e}");
+        }
+    }
+    let left = state.paths.wipe();
+    if !left.is_empty() {
+        let names: Vec<String> = left.iter().map(|p| p.display().to_string()).collect();
+        return Err(io_err(format!("could not delete {}", names.join(", "))));
+    }
+    app.restart()
+}
+
 fn kind_of(provider: &str) -> &'static str {
     match provider {
         "soniox" | "deepgram" | "azure-speech" | "mock" => "asr",
@@ -595,6 +633,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         credential_status,
         set_credential,
         delete_credential,
+        wipe_all_data,
         verify_provider,
         list_models,
         get_pricing,

@@ -72,6 +72,29 @@ impl AppPaths {
         fs::create_dir_all(self.practice_dir())?;
         Ok(())
     }
+
+    /// Deletes everything in the config directory: settings, logs, practice
+    /// reports, usage, latency history and the price cache. The directory
+    /// itself stays. Keeps going past entries it can't remove and returns
+    /// their paths.
+    pub fn wipe(&self) -> Vec<PathBuf> {
+        let mut left = Vec::new();
+        let Ok(entries) = fs::read_dir(&self.config_dir) else {
+            return left;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let removed = if path.is_dir() {
+                fs::remove_dir_all(&path)
+            } else {
+                fs::remove_file(&path)
+            };
+            if removed.is_err() {
+                left.push(path);
+            }
+        }
+        left
+    }
 }
 
 /// Whether a directory can be created and written to.
@@ -215,6 +238,20 @@ mod tests {
             assert!(p.fallback_notice_due());
             assert!(!p.fallback_notice_due());
         }
+    }
+
+    #[test]
+    fn wipe_empties_config_dir() {
+        let user = tempfile::tempdir().unwrap();
+        let p = resolve_with(None, user.path().join("meetcue"), false);
+        p.ensure().unwrap();
+        fs::write(p.settings_file(), "{}").unwrap();
+        fs::write(p.usage_ledger(), "").unwrap();
+        fs::write(p.practice_dir().join("r.json"), "{}").unwrap();
+        fs::write(p.logs_dir().join("meetcue.log"), "x").unwrap();
+        assert!(p.wipe().is_empty());
+        assert!(p.config_dir.is_dir());
+        assert_eq!(fs::read_dir(&p.config_dir).unwrap().count(), 0);
     }
 
     #[test]

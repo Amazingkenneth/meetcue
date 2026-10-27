@@ -44,6 +44,11 @@ See [Settings](/reference/settings#where-settings-are-stored) for the folder loc
 
 ## Delete your data
 
+**Settings › General › Erase all data** does it in one step: type the confirmation word and MeetCue removes its API keys from Credential Manager, deletes everything in the settings folder listed above, clears the interface's own browser storage, turns off start with Windows, and restarts as if newly installed.
+
+To remove MeetCue entirely instead:
+
 1. Uninstall with `scoop uninstall meetcue --purge` to remove the settings folder.
 2. Remove the `MeetCue` entries in **Credential Manager › Windows Credentials**.
-3. Ask your providers to delete data they retained, according to their policies.
+
+Either way, ask your providers to delete data they retained, according to their policies.

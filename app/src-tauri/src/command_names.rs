@@ -10,6 +10,7 @@ pub const COMMANDS: &[&str] = &[
     "credential_status",
     "set_credential",
     "delete_credential",
+    "wipe_all_data",
     "verify_provider",
     "list_models",
     "get_pricing",

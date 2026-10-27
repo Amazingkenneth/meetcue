@@ -28,6 +28,8 @@ If `settings.json` can't be read, MeetCue renames it to `settings.json.bad` and 
 | Panel position (drag the panel; **Reset panel position** puts it back) | `overlay.x`, `overlay.y` | top right |
 | Run setup again | `general.wizardCompleted` | `false` until setup is finished |
 
+**Erase all data**, at the bottom of the General tab, deletes API keys, settings and every local record after you type the confirmation word, then restarts MeetCue. See [Delete your data](/reference/privacy#delete-your-data).
+
 Every setting applies as soon as it's changed, including during a meeting: models, keys, languages and hint settings take effect for the next question, and recognition and audio capture switch without restarting the session.
 
 ## Audio
