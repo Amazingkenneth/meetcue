@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-27
+
 ### Added
 
 - **Move** on the panel opens one-click placement for touchpads: snap to any edge or corner (clear of the taskbar), move to the next screen, narrow/normal/wide and ⅓, ½ or full height, opacity, text size, hide for 6 seconds, and let clicks pass through.
