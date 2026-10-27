@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MeetCueEvent } from "../bindings/MeetCueEvent";
 import demo from "../mock/sdn-demo.json";
 import type { TimedEvent } from "../bindings/TimedEvent";
-import { coverageCount, currentId, emptySession, neighbours, nextPoint, reduce } from "./session";
+import { coverageCount, currentId, displayOrder, emptySession, neighbours, nextPoint, reduce } from "./session";
 
 const q = (id: number, version = 1, status: "active" | "pending" = "active"): MeetCueEvent => ({
   type: "questionNew",
@@ -82,6 +82,23 @@ describe("session reducer", () => {
     const n = neighbours(s);
     expect([n.prev?.id, n.current?.id, n.next?.id]).toEqual([1, 2, 3]);
     expect(s.questions[1].status).toBe("answered");
+  });
+
+  it("lists the current question first, then waiting ones, then earlier ones newest first", () => {
+    let s = run([q(1), q(2), q(3), q(4, 1, "pending")]);
+    s = reduce(s, {
+      type: "queueChanged",
+      questions: [
+        { id: 1, short: "Q1", status: "answered" },
+        { id: 2, short: "Q2", status: "answered" },
+        { id: 3, short: "Q3", status: "active" },
+        { id: 4, short: "Q4", status: "pending" },
+      ],
+      active: 3,
+      focus: null,
+    });
+    expect(displayOrder(s)).toEqual([3, 4, 2, 1]);
+    expect(displayOrder(emptySession())).toEqual([]);
   });
 
   it("keeps partial and final transcript lines apart", () => {

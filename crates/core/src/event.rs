@@ -281,9 +281,19 @@ pub enum FocusTarget {
 )]
 #[ts(export)]
 pub enum UserAction {
-    Focus { id: QuestionId },
-    FocusStep { target: FocusTarget },
+    Focus {
+        id: QuestionId,
+    },
+    FocusStep {
+        target: FocusTarget,
+    },
     MarkAnswered,
+    /// Ticks or unticks a talking point by hand (`index` counts from 0);
+    /// automatic tracking leaves it as set from then on.
+    TogglePoint {
+        id: QuestionId,
+        index: u32,
+    },
     Pause,
     Resume,
 }

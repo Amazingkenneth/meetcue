@@ -230,6 +230,8 @@ struct Question {
     statuses: Vec<PointStatus>,
     hints: HintsState,
     answer: AnswerText,
+    /// Points ticked (true) or unticked (false) by hand, by index.
+    manual: HashMap<usize, bool>,
     user_spoke: bool,
     latency: Latency,
 }
@@ -407,6 +409,7 @@ impl Engine {
                     self.last_me_activity = now;
                 }
                 self.emit_partial(ch, now, false, out);
+                self.live_coverage(ch, out);
             }
             AsrResult::Final { text, t0_ms, t1_ms } => {
                 u.finals.push_str(&text);
@@ -418,6 +421,7 @@ impl Engine {
                     self.last_me_activity = now;
                 }
                 self.emit_partial(ch, now, true, out);
+                self.live_coverage(ch, out);
             }
             AsrResult::Endpoint { t_ms } => {
                 u.t1 = u.t1.max(t_ms);
@@ -427,6 +431,15 @@ impl Engine {
                 code: e.code,
                 detail: e.detail,
             })),
+        }
+    }
+
+    fn live_coverage(&mut self, ch: Channel, out: &mut Vec<Output>) {
+        if ch != Channel::Me || !self.cfg.track_coverage {
+            return;
+        }
+        if let Some(id) = self.queue.active() {
+            self.update_coverage(id, out);
         }
     }
 
@@ -783,6 +796,7 @@ impl Engine {
                 }
                 q.vocab.clear();
                 q.statuses.clear();
+                q.manual.clear();
                 q.latency = latency;
             }
             self.cancel_hints(id, out);
@@ -824,6 +838,7 @@ impl Engine {
             statuses: Vec::new(),
             hints: HintsState::Idle,
             answer: AnswerText::default(),
+            manual: HashMap::new(),
             user_spoke: false,
             latency,
         });
@@ -1136,18 +1151,52 @@ impl Engine {
 
     // ---- coverage and queue -----------------------------------------------
 
+    /// Recomputes the ticks of a question. The active question also counts the
+    /// sentence the user is still saying, so points tick while they talk
+    /// rather than only after they pause.
     fn update_coverage(&mut self, id: QuestionId, out: &mut Vec<Output>) {
+        let track = self.cfg.track_coverage;
+        let live = if track && self.queue.active() == Some(id) {
+            self.live_answer()
+        } else {
+            None
+        };
         let Some(q) = self.question_mut(id) else {
             return;
         };
         if q.vocab.is_empty() {
             return;
         }
-        let next = coverage::statuses(&q.vocab, &q.statuses, &q.answer);
+        let mut answer = if track {
+            q.answer.clone()
+        } else {
+            AnswerText::default()
+        };
+        if let Some(text) = live {
+            answer.push(&text);
+        }
+        let next = coverage::statuses(&q.vocab, &q.statuses, &answer, &q.manual);
         if next != q.statuses {
             q.statuses = next.clone();
             out.push(Output::Emit(MeetCueEvent::Coverage { id, statuses: next }));
         }
+    }
+
+    /// The microphone sentence in progress, unless it is the other side
+    /// leaking through the speakers.
+    fn live_answer(&self) -> Option<String> {
+        let u = &self.utterances[idx(Channel::Me)];
+        if u.is_empty() {
+            return None;
+        }
+        let text = u.text();
+        let remote_partial = self.utterances[idx(Channel::Remote)].text();
+        let nearby = self
+            .transcript
+            .remote_near(u.t0.unwrap_or(u.t1), u.t1, ECHO_WINDOW_MS)
+            .map(|l| l.text.as_str())
+            .chain(Some(remote_partial.as_str()).filter(|t| !t.is_empty()));
+        (!coverage::is_echo(&text, nearby)).then_some(text)
     }
 
     fn apply_status_changes(
@@ -1264,6 +1313,18 @@ impl Engine {
                 if self.queue.step_focus(target) {
                     out.push(Output::Emit(self.queue_event()));
                 }
+            }
+            UserAction::TogglePoint { id, index } => {
+                let index = index as usize;
+                let Some(q) = self.question_mut(id) else {
+                    return;
+                };
+                let Some(status) = q.statuses.get(index) else {
+                    return;
+                };
+                let done = *status != PointStatus::Done;
+                q.manual.insert(index, done);
+                self.update_coverage(id, out);
             }
             UserAction::Pause if self.state == SessionState::Running => {
                 self.state = SessionState::Paused;
@@ -1584,6 +1645,71 @@ mod tests {
         assert_eq!(h.statuses().len(), 1);
         h.at(17_100 + ANSWERED_SILENCE_MS + 100);
         assert_eq!(h.statuses().last(), Some(&(1, QuestionStatus::Answered)));
+    }
+
+    fn asked_and_active(h: &mut Harness) -> ReqId {
+        h.say(Channel::Remote, 1000, 3000, "你们是怎么做高可用的？");
+        h.at(3400).detect_reply(YES);
+        h.hints[0].0
+    }
+
+    #[test]
+    fn points_tick_while_the_user_is_still_talking() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        // One long sentence with no pause: the first point ticks before it ends.
+        h.at(5000).input(Input::Asr {
+            channel: Channel::Me,
+            result: AsrResult::Partial {
+                text: "我们做了两地双活，然后".into(),
+                t0_ms: 5000,
+                t1_ms: 6000,
+            },
+        });
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Done, PointStatus::Next])
+        );
+    }
+
+    #[test]
+    fn points_already_said_tick_when_they_arrive() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.say(Channel::Me, 3500, 4500, "我们做了两地双活");
+        h.at(4700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        // Ticked as soon as it arrives; the second point then arrives as next.
+        assert_eq!(h.last_coverage(1), Some(vec![PointStatus::Done]));
+        let second = h.events.iter().rev().find_map(|e| match e {
+            MeetCueEvent::QuestionPoint { n: 2, status, .. } => Some(*status),
+            _ => None,
+        });
+        assert_eq!(second, Some(PointStatus::Next));
+    }
+
+    #[test]
+    fn points_can_be_ticked_by_hand() {
+        let mut h = Harness::new(no_early());
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 1 }));
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Next, PointStatus::Done])
+        );
+        // Unticked by hand: saying it again does not tick it back.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 1 }));
+        h.say(Channel::Me, 5000, 6000, "核心交换机堆叠，双电源");
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Next, PointStatus::Todo])
+        );
+        // Out of range does nothing.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 9 }));
     }
 
     #[test]

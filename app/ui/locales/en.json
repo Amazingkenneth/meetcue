@@ -55,6 +55,8 @@
     "queued": "Queued",
     "nextTag": "Next",
     "doneLabel": "Covered",
+    "tickHint": "Mark as said",
+    "untickHint": "Mark as not said yet",
     "fullAnswer": "Show full answer →",
     "hideAnswer": "Hide full answer",
     "generating": "Generating hints…",

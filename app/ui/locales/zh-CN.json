@@ -54,6 +54,8 @@
     "covered": "已讲 {{done}}/{{total}}",
     "queued": "排队中",
     "nextTag": "接下来",
+    "tickHint": "标记为已讲",
+    "untickHint": "标记为未讲",
     "doneLabel": "已讲",
     "fullAnswer": "查看全文 →",
     "hideAnswer": "收起全文",

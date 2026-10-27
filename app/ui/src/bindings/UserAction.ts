@@ -4,4 +4,4 @@ import type { FocusTarget } from "./FocusTarget";
 /**
  * Actions from the user (hotkeys, clicks) to the pipeline.
  */
-export type UserAction = { "type": "focus", id: number, } | { "type": "focusStep", target: FocusTarget, } | { "type": "markAnswered" } | { "type": "pause" } | { "type": "resume" };
+export type UserAction = { "type": "focus", id: number, } | { "type": "focusStep", target: FocusTarget, } | { "type": "markAnswered" } | { "type": "togglePoint", id: number, index: number, } | { "type": "pause" } | { "type": "resume" };
