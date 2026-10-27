@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.2.4 — 2026-10-27
+
 ### Added
 
 - **Boost quiet voices from the meeting** (**Settings › Audio**, on by default) raises soft-spoken participants to a normal speaking level before recognition, and system sound has its own, lower voice threshold (−60 dBFS), so quiet questions are no longer missed.
