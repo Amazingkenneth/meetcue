@@ -6,7 +6,21 @@ import { setLanguage } from "../i18n";
 import { createMockBackend } from "../mock/mockBackend";
 import { mockPracticeScript } from "../mock/practice";
 import { hintVisibility } from "../overlay/Overlay";
-import { answerTurns, keepFirst, moveItem, removeItem, setMeSpeaker, shuffleItems } from "../state/practice";
+import {
+  addQuestion,
+  answerTurns,
+  groups,
+  keepFirst,
+  keepSelected,
+  moveItem,
+  moveSelected,
+  range,
+  removeItem,
+  removeSelected,
+  setGroup,
+  setMeSpeaker,
+  shuffleItems,
+} from "../state/practice";
 import { Practice } from "./Practice";
 import { Review } from "./Review";
 
@@ -69,6 +83,28 @@ describe("practice script editing", () => {
   });
 });
 
+describe("batch changes", () => {
+  it("deletes, keeps, moves and regroups the selection", () => {
+    const s = addQuestion(mockPracticeScript(), "  Fourth?  ");
+    expect(s.items.map((i) => i.id)).toEqual([1, 2, 3, 4]);
+    expect(s.items[3].text).toBe("Fourth?");
+    expect(addQuestion(s, " ")).toBe(s);
+    const sel = new Set([1, 3]);
+    expect(removeSelected(s, sel).items.map((i) => i.text)).toEqual([s.items[0].text, s.items[2].text]);
+    expect(keepSelected(s, sel).items.map((i) => i.id)).toEqual([1, 2]);
+    expect(keepSelected(s, new Set())).toBe(s);
+    const top = moveSelected(s, sel, "top");
+    expect(top.items.map((i) => i.text)).toEqual([s.items[1].text, "Fourth?", s.items[0].text, s.items[2].text]);
+    expect(top.items.map((i) => i.id)).toEqual([1, 2, 3, 4]);
+    expect(moveSelected(s, new Set([0]), "bottom").items[3].text).toBe(s.items[0].text);
+    const g = setGroup(s, sel, " Design ");
+    expect(g.items.map((i) => i.category)).toEqual(["SDN", "Design", "SDN", "Design"]);
+    expect(groups(g)).toEqual(["SDN", "Design"]);
+    expect(setGroup(s, sel, "").items[1].category).toBeNull();
+    expect(range(4, 2)).toEqual([2, 3, 4]);
+  });
+});
+
 describe("hint levels", () => {
   it("hides, delays or shows hints", () => {
     expect(hintVisibility({ level: "full", delayS: 5 }, 0, 0).hidden).toBe(false);
@@ -95,6 +131,24 @@ describe("Practice window", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
     await flush();
     expect(screen.getByText("2 questions", { exact: false })).toBeInTheDocument();
+    // Tick both rows (shift-click selects the range) and move them to the bottom.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select 1" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select 2" }), { shiftKey: true });
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Add question" }), { target: { value: "My own question?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add question" }));
+    expect(screen.getByText("3 questions", { exact: false })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select 3" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep only these" }));
+    expect(screen.getByText("1 question", { exact: false })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("My own question?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Choose another file" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Choose a file…" }));
+    await flush();
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]);
+    await flush();
     fireEvent.click(screen.getByRole("switch", { name: /Speech-to-text for the questions/ }));
     await flush();
     expect(screen.getByText("Only recognition delay is simulated; the model's delay is real.")).toBeInTheDocument();
@@ -102,7 +156,11 @@ describe("Practice window", () => {
     await flush();
     expect(screen.getByRole("heading", { name: "Practice is running" })).toBeInTheDocument();
     expect(screen.getByText("Question 1 / 2")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ask again" }));
+    expect(screen.getByRole("heading", { name: "Go to a question" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go" }));
+    await flush();
+    expect(screen.getByText("Question 2 / 2")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Ask again" })[0]);
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "End practice" }));
     await flush();
@@ -124,8 +182,9 @@ describe("Practice window", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Try it" })[0]);
     fireEvent.click(screen.getByRole("button", { name: "Next: choose questions" }));
     await flush();
-    expect(screen.getAllByRole("button", { name: "Use this" })).toHaveLength(6);
-    fireEvent.click(screen.getAllByRole("button", { name: "Use this" })[2]);
+    expect(screen.getAllByRole("button", { name: "Use this" })).toHaveLength(4);
+    expect(screen.getAllByText("Chinese")).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole("button", { name: "Use this" })[1]);
     await flush();
     expect(screen.getByText("questions-security-ai")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start practice" })).toBeEnabled();

@@ -91,6 +91,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       type: "practiceProgress",
       index: Math.min(practiceIndex, practiceTotal()),
       total: practiceTotal(),
+      turn: Math.min(practiceIndex, practiceTotal()),
       phase,
       question: practiceScript?.items[practiceIndex - 1]?.text ?? "",
     });
@@ -99,7 +100,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     clearTimers();
     state = "stopped";
     emit({ type: "sessionState", state: "stopped", tMs: Date.now() - startWall });
-    emitApp({ type: "practiceProgress", index: 0, total: 0, phase: "done", question: "" });
+    emitApp({ type: "practiceProgress", index: 0, total: 0, turn: 0, phase: "done", question: "" });
     emitApp({ type: "practiceFinished", reportId: "demo" });
   };
   const practiceStep = () => {
@@ -436,6 +437,15 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
         toggle();
         emitPractice(state === "paused" ? "paused" : "answering");
       } else if (control === "skip" || control === "answered") {
+        practiceStep();
+      }
+      return null;
+    },
+    practice_outline: () => (state === "stopped" ? [] : (practiceScript?.items.filter((i) => !i.isMe).map((i) => i.text) ?? [])),
+    practice_jump: ({ turn }) => {
+      if (turn >= 1 && turn <= practiceTotal()) {
+        practiceIndex = turn - 1;
+        if (state === "paused") toggle();
         practiceStep();
       }
       return null;

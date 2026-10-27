@@ -471,32 +471,24 @@
     "howBriefing": "Optional: add the matching job description as briefing material, so hints fit the role.",
     "openHints": "Open briefing material",
     "samplesTitle": "Try a sample interview",
-    "samplesLead": "Built into MeetCue, with reference answers for the review. Question lists ask one question at a time; transcripts replay an interviewer and stop when it's your turn.",
+    "samplesLead": "Built into MeetCue, with reference answers for the review: two in English, two in Chinese. Each asks one question at a time, and you can trim and reorder the list before you start.",
     "useSample": "Use this",
     "sample": {
       "sweQuestions": {
-        "title": "Software engineer: question list",
+        "title": "Software engineer",
         "body": "14 questions on fundamentals, algorithms, system design, debugging and teamwork."
       },
-      "sweInterview": {
-        "title": "Software engineer: interview transcript",
-        "body": "A backend engineer technical round with 6 answers to give."
-      },
       "securityQuestions": {
-        "title": "Network security and AI: question list",
+        "title": "Network security and AI",
         "body": "12 questions on TLS, zero trust, detection, incident response, ML for security and LLM security."
       },
-      "securityInterview": {
-        "title": "Network security and AI: interview transcript",
-        "body": "A security engineer round for an AI platform team with 5 answers to give."
+      "sweQuestionsZh": {
+        "title": "Backend software engineer (Chinese)",
+        "body": "14 questions on networking, databases, caching, system design, troubleshooting and teamwork."
       },
-      "networkQuestions": {
-        "title": "Network architecture: question list",
-        "body": "10 questions on routing, data center fabrics and SDN."
-      },
-      "sdnInterview": {
-        "title": "SDN interview transcript (Chinese)",
-        "body": "A short Chinese interview about high availability and SDN controllers."
+      "networkOpsZh": {
+        "title": "Telecom network operations (Chinese)",
+        "body": "42 scenario questions on major incidents, home broadband, IP and enterprise lines, optical transport, 5G, data centers and management."
       }
     },
     "sttQuestions": "Speech-to-text for the questions",
@@ -538,7 +530,45 @@
       "followUp": "Writing a follow-up question about your answer.",
       "paused": "Paused. Nothing is sent to any provider.",
       "done": "Finished. The review opens in its own window."
-    }
+    },
+    "lang": {
+      "en": "English",
+      "zh": "Chinese"
+    },
+    "filter": "Filter by text",
+    "groupFilter": "Show group",
+    "allGroups": "All groups",
+    "batchLabel": "Change the selected questions",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "moveTop": "Move to top",
+    "moveBottom": "Move to bottom",
+    "keepSelected": "Keep only these",
+    "setGroup": "Set group",
+    "deleteSelected": "Delete",
+    "clearSelection": "Clear selection",
+    "selectTip": "Tick rows to change several at once. Shift-click a second row to tick everything in between.",
+    "selectShown": "Select all shown",
+    "selectRow": "Select {{n}}",
+    "noMatch": "Nothing matches the filter.",
+    "addQuestion": "Add question",
+    "addQuestionHint": "Type a question of your own",
+    "jumpTitle": "Go to a question",
+    "jumpLead": "Jump forwards or back at any time. The current answer is kept; a question you leave unanswered counts as skipped.",
+    "goTo": "Go",
+    "restartThis": "Ask again",
+    "turnN": "Turn {{n}}",
+    "missingVoice": {
+      "en": "No English voice is installed, so English questions can't be read aloud.",
+      "zh": "No Chinese voice is installed, so Chinese questions can't be read aloud."
+    },
+    "missingVoiceSteps": {
+      "en": "In Windows Settings › Time & language › Language & region, add English (United States) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window.",
+      "zh": "In Windows Settings › Time & language › Language & region, add Chinese (Simplified, China) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window."
+    },
+    "openLanguages": "Open language settings",
+    "openSpeech": "Open speech settings",
+    "voiceGuide": "Step-by-step guide"
   },
   "review": {
     "title": "Practice review",

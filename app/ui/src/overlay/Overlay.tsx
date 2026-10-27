@@ -19,7 +19,7 @@ import {
 } from "../state/session";
 import { activeMs, useAppEvents, useAppInfo, useNow, useSession, useSettings, type PauseClock } from "../state/hooks";
 import { latencyTip } from "../state/latency";
-import { usePracticeProgress, type PracticeProgress } from "../state/practice";
+import { jumpTo, usePracticeOutline, usePracticeProgress, type PracticeProgress } from "../state/practice";
 import { boldSegments, clock, seconds } from "../util/format";
 import { errorDocsUrl, errorFix, errorTitle } from "../util/errors";
 import { ClickThroughBar, dragHandle, panelStyle, PlacementMenu, useSpotFlash } from "./Placement";
@@ -103,11 +103,28 @@ function PracticeBar({ p }: { p: PracticeProgress }) {
   const { t } = useTranslation();
   const paused = p.phase === "paused";
   const control = (c: "pause" | "resume" | "skip" | "repeat") => void backend().invoke("practice_control", { control: c });
+  const outline = usePracticeOutline(true);
   return (
     <div className="ov-practice" role="status">
       <strong>{t("practice.progress", { index: p.index, total: p.total })}</strong>
       <span className="ov-muted">{p.nudge ? t("practice.phase.nudge") : t(`practice.phase.${p.phase}`)}</span>
       <span className="grow" />
+      {outline.length > 1 && (
+        <select
+          className="ov-jump"
+          aria-label={t("practice.jumpTitle")}
+          title={t("practice.jumpTitle")}
+          value={p.turn || ""}
+          onChange={(e) => Number(e.target.value) && jumpTo(Number(e.target.value))}
+        >
+          {!p.turn && <option value="">—</option>}
+          {outline.map((q, i) => (
+            <option key={i} value={i + 1}>
+              {i + 1}. {(q || t("practice.turnN", { n: i + 1 })).slice(0, 40)}
+            </option>
+          ))}
+        </select>
+      )}
       <button className="ov-icon" onClick={() => control("repeat")}>
         {t("practice.repeat")}
       </button>

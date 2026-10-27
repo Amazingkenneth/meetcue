@@ -635,6 +635,18 @@ pub fn practice_control(app: AppHandle, control: String) -> Res<()> {
     Ok(())
 }
 
+/// The question of each answer turn of the running practice.
+#[tauri::command]
+pub fn practice_outline(app: AppHandle) -> Vec<String> {
+    practice::outline(&app)
+}
+
+/// Goes to answer turn `turn` (1-based) of the running practice.
+#[tauri::command]
+pub fn practice_jump(app: AppHandle, turn: u32) {
+    practice::control(&app, practice::Control::Jump(turn));
+}
+
 #[tauri::command]
 pub fn practice_reports(app: AppHandle) -> Vec<PracticeReportSummary> {
     practice::reports(&app)
@@ -695,6 +707,8 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         practice_classify,
         practice_start,
         practice_control,
+        practice_outline,
+        practice_jump,
         practice_reports,
         practice_report,
         export_report,

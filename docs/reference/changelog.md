@@ -8,6 +8,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ### Added
 
+- The mock interview offers four built-in samples, two in English and two in Chinese: software engineer, network security and AI, backend software engineer (Chinese) and telecom network operations (Chinese, 42 questions in seven groups).
+- **Go to a question** jumps to any question during a mock interview, forwards or back, from the practice window or the panel's practice bar.
+- Batch changes before a mock interview: tick several questions (Shift-click for a range) to move them to the top or bottom, keep only them, set their group or delete them. The list can be filtered by text or group, and you can add your own questions.
+- When Windows has no voice for English or Chinese, the sound check says so and links to the Windows settings that install one, with a step-by-step guide.
 - **Move** on the panel opens one-click placement for touchpads: snap to any edge or corner (clear of the taskbar), move to the next screen, narrow/normal/wide and ⅓, ½ or full height, opacity, text size, hide for 6 seconds, and let clicks pass through.
 - **Saved spots**: save up to three panel positions, each with its size and layout, and jump to them with `Ctrl+Alt+Shift+1`, `2` and `3`. On an empty spot the shortcut saves where the panel is now.
 - `Ctrl+Alt+Shift+P` hides the panel for 6 seconds so you can click what is behind it; `Ctrl+Alt+Shift+T` and a tray menu item turn click-through on and off.

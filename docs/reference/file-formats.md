@@ -80,5 +80,7 @@ question,reference_answer,category,followups
 - [swe-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/swe-interview.srt): a backend software engineer technical round in English.
 - [questions-security-ai.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-security-ai.csv): twelve network security and AI security questions with reference answers and follow-ups.
 - [security-ai-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/security-ai-interview.srt): a network security engineer round for an AI platform team, in English.
+- [questions-software-engineer-zh.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-software-engineer-zh.csv): fourteen backend software engineering questions in Chinese, with reference answers and follow-ups.
+- [questions-network-operations-zh.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network-operations-zh.csv): forty-two telecom network operations scenario questions in Chinese, in seven groups, with reference answers and follow-ups.
 
-All of them are built into MeetCue: click **Use this** in the mock interview window. See [Mock interview](/guide/mock-interview).
+Four of them are built into MeetCue: `questions-software-engineer.csv`, `questions-security-ai.csv`, `questions-software-engineer-zh.csv` and `questions-network-operations-zh.csv`. Click **Use this** in the mock interview window. Load the others with **Choose a file…**. See [Mock interview](/guide/mock-interview).

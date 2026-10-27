@@ -165,6 +165,9 @@ pub enum AppEvent {
     PracticeProgress {
         index: u32,
         total: u32,
+        /// The script's own answer turn (1-based, 0 when none), matching
+        /// `practice_outline`; follow-ups belong to the turn they follow.
+        turn: u32,
         /// `speaking`, `waiting`, `answering`, `followUp`, `paused`, `done`.
         phase: String,
         question: String,

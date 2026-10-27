@@ -19,7 +19,7 @@ Start with the demo if you haven't set up any keys yet. Use the mock interview f
 1. **MeetCue is installed and set up.** You have finished [first-time setup](/setup), with a speech recognition key and a model key saved and verified. Without them, the mock interview can read questions but can't show hints.
 2. **Wear headphones.** In a mock interview, MeetCue plays the questions through your output device and hears them through system sound, exactly as it hears other participants in a meeting. With speakers, your microphone picks the questions up too. MeetCue filters most of that echo, but headphones give the cleanest result.
 3. **Check both level bars.** Open **Settings › Audio**, click **Test levels**, play any video and say something. The microphone bar should move when you speak and the system sound bar when the video plays. If one stays flat, see [Audio and devices](/troubleshooting/audio).
-4. **Know the language.** The built-in software engineering and security samples are in English; the SDN transcript is in Chinese. By default, hints follow the language of the question; you can fix it under **Settings › General › Hint language**.
+4. **Know the language.** Two built-in samples are in English and two in Chinese. Each language needs a Windows voice to read the questions; see [Voices for each language](#voices). By default, hints follow the language of the question; you can fix it under **Settings › General › Hint language**.
 
 ## Step 1: Open the mock interview window {#step-1}
 
@@ -38,7 +38,18 @@ The window guides you through four steps, shown at the top: **Sound check**, **Q
 
 The first step shows both level bars live. Say something: the microphone bar should move. Play any video, or press **Try it** below: the system sound bar should move. If one stays flat, **Open audio settings** takes you to the device list; see [Audio and devices](/troubleshooting/audio).
 
-Under **The voice that asks the questions**, pick the Windows voice for each language and press **Try it** to hear a sample sentence. **First voice Windows offers** keeps the old behaviour. Windows installs more voices under Settings › Time & language › Speech; a voice you add there appears here after restarting MeetCue. **Reading speed** is on the same step.
+Under **The voice that asks the questions**, pick the Windows voice for each language and press **Try it** to hear a sample sentence. **First voice Windows offers** keeps the old behaviour. **Reading speed** is on the same step.
+
+### Voices for each language {#voices}
+
+If Windows has no voice for English or for Chinese, the step says so under that language, with buttons that open the right Windows settings page. To add a voice:
+
+1. Click **Open language settings** (Windows Settings › Time & language › Language & region).
+2. Click **Add a language** and choose **English (United States)** or **中文(简体，中国)**. If the language is already listed, click **…** next to it, then **Language options**.
+3. Make sure **Text-to-speech** is ticked, then install. Windows downloads the voice in a minute or two.
+4. Close and reopen the mock interview window. The new voice appears in the list; press **Try it**.
+
+**Open speech settings** (Windows Settings › Time & language › Speech) also has **Add voices**, which installs a voice without changing your display language.
 
 ## Step 3: Tell MeetCue about the role (optional) {#step-3}
 
@@ -60,18 +71,16 @@ See [Briefing material](/guide/materials) for what is sent and how to keep it fo
 
 Under **Try a sample interview**, click **Use this** next to one of the built-in interviews. You don't need to download anything.
 
-| Sample | Kind | What happens |
-| --- | --- | --- |
-| Software engineer: question list | 14 questions | Fundamentals, algorithms, system design, debugging, databases, distributed systems and teamwork, one at a time |
-| Software engineer: interview transcript | 6 answers | A backend engineer technical round. The interviewer's lines are read aloud; playback stops when it's your turn |
-| Network security and AI: question list | 12 questions | TLS, zero trust, lateral movement, DNS exfiltration, ML for intrusion detection, prompt injection, RAG security, AI governance |
-| Network security and AI: interview transcript | 5 answers | A security engineer round for an AI platform team |
-| Network architecture: question list | 10 questions | Routing, data center fabrics and SDN |
-| SDN interview transcript (Chinese) | 3 answers | A short interview in Chinese |
+| Sample | Language | Questions | Topics |
+| --- | --- | --- | --- |
+| Software engineer | English | 14 | Fundamentals, algorithms, system design, debugging, databases, distributed systems and teamwork |
+| Network security and AI | English | 12 | TLS, zero trust, lateral movement, DNS exfiltration, ML for intrusion detection, prompt injection, RAG security, AI governance |
+| Backend software engineer | Chinese | 14 | Networking, MySQL, Redis, system design, idempotency, troubleshooting, concurrency and teamwork |
+| Telecom network operations | Chinese | 42 | Major incidents, home broadband, IP and enterprise lines, optical transport, 5G, data centers and management, in seven groups |
 
-**Which one first?** Use a **question list** for your first run: MeetCue asks one question, waits for you, and moves on when you pause, which makes it easy to see each part working. Use a **transcript** to rehearse the flow of a real conversation, with small talk and follow-up questions in between.
+Each sample asks one question at a time, waits for you, and moves on when you pause. Every question has a reference answer, so the review can tell you what you missed. For a long list such as the 42 network operations questions, pick a group or a handful of questions in the next step.
 
-Every sample has a reference answer for each question, so the review can tell you what you missed. The same files are in the repository under [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice) if you want to edit them.
+The same files are in the repository under [samples/practice](https://github.com/Amazingkenneth/meetcue/tree/HEAD/samples/practice), together with interview transcripts (`.srt`) you can load with **Choose a file…** to rehearse the flow of a real conversation.
 
 To use your own questions, click **Choose a file…** under **Use your own file**. See [Write your own interview](#own-interview).
 
@@ -81,8 +90,12 @@ The preview lists every question or line. You can:
 
 - Edit a question's text by clicking it.
 - Move questions up or down, or delete them.
-- For a question list: **Shuffle**, or **Keep the first** few, for example 5 questions for a quick round.
+- **Filter by text**, or for a question list pick a group under **Show group**, to find questions in a long list.
+- Tick several rows to change them at once: **Move to top**, **Move to bottom**, **Keep only these**, **Set group** or **Delete**. Shift-click a second row to tick everything in between; the box in the header ticks every row shown.
+- For a question list: **Shuffle**, **Keep the first** few, for example 5 questions for a quick round, or **Add question** to type one of your own.
 - For a transcript: check **Which speaker is you?** MeetCue picks the speaker who asks the fewest questions, which is **Candidate** in the samples. Your lines aren't read aloud; they become the reference answers.
+
+To practise one group of a long list, choose it under **Show group**, tick the header box, and click **Keep only these**.
 
 ## Step 6: Choose how to practise {#step-6}
 
@@ -111,6 +124,8 @@ For each question, this is what happens:
 4. **Points tick off** as you cover them, and the next uncovered point is marked **Next**.
 5. **A pause ends your answer.** After the pause you set (3 seconds by default), MeetCue sometimes asks a follow-up, then moves to the next question. If you don't start within 20 seconds, the panel shows a gentle reminder.
 
+To go to any other question, use **Go to a question** in the practice window, which lists every question with the current one highlighted, or the question list on the panel's practice bar. You can jump forwards or back at any time, even while paused. The answer you had given so far is kept for the review; a question you leave without answering counts as skipped.
+
 The practice window and the panel both show what is expected of you right now, and both have **Ask again**, which reads the current question from the start. Use it when you missed the question or want a second run at the same answer; the answer you had started is discarded and nothing extra is sent to the model.
 
 MeetCue stops reading when you start to answer, but only for real speech: a cough, an "um" or a word misheard from the question itself doesn't cut the question short. You can turn interruption off entirely with **Stop reading when I start speaking** in the practice options.
@@ -138,10 +153,10 @@ Run these five rounds to cover everything MeetCue does, one feature at a time. E
 
 | Round | Sample | Settings | Check that |
 | --- | --- | --- | --- |
-| 1 | Software engineer: question list, keep the first 5 | Speech-to-text on, Full | Each question is read, hints appear, points tick as you speak, the review opens |
-| 2 | Network security and AI: question list, keep the first 5 | Speech-to-text on, Keywords only, with the security job description added | Hints mention the role (zero trust, detection, LLM security); only keywords show |
-| 3 | Software engineer: interview transcript | Speech-to-text on, Full | Playback stops at your turns and waits; a greeting usually gets no hints; the review compares your answers with the candidate's lines |
-| 4 | Network security and AI: interview transcript | Speech-to-text for the questions off, Delayed (5 s) | Hints appear about 5 seconds after each question, and the review notes that recognition delay was simulated |
+| 1 | Software engineer, keep the first 5 | Speech-to-text on, Full | Each question is read, hints appear, points tick as you speak, the review opens |
+| 2 | Network security and AI, keep the first 5 | Speech-to-text on, Keywords only, with the security job description added | Hints mention the role (zero trust, detection, LLM security); only keywords show |
+| 3 | Backend software engineer (Chinese), keep the first 5 | Speech-to-text on, Full | Questions are read in the Chinese voice; hints are in Chinese; **Go to a question** jumps back and forth |
+| 4 | Telecom network operations (Chinese), one group only | Speech-to-text for the questions off, Delayed (5 s) | Hints appear about 5 seconds after each question, and the review notes that recognition delay was simulated |
 | 5 | Any question list | Speech-to-text on, hints Off | No hints during the round, and you can still answer and get feedback in the review |
 
 After round 1, look at the latency in the panel footer. Around 1.5 seconds is typical; much more points to a slow provider or network. See [High latency](/troubleshooting/latency).
@@ -195,7 +210,7 @@ Check the questions and answers before you practise with them.
 | The voice reads too fast or too slowly | Change **Reading speed** in the sound check step |
 | The question stops halfway | Something in the room interrupts it. Press **Ask again**, use headphones, and if it persists turn off **Stop reading when I start speaking** |
 | The voice is wrong or unpleasant | Choose another one under **The voice that asks the questions** and press **Try it** |
-| No voices are listed | Windows has no speech voice installed. Add one in Windows Settings › Time & language › Speech, then restart MeetCue |
+| No voices are listed, or none for one language | Windows has no voice for that language. Follow [Voices for each language](#voices) |
 | Hints are generic | Add **My role** and a job description, see [Step 2](#step-2) |
 
 With both speech-to-text switches on, a mock interview uses your speech recognition and model providers just like a meeting, and costs about as much as a meeting of the same length. Turning off **Speech-to-text for the questions** skips recognition of the questions; the questions are still spoken aloud. Turning off **Speech-to-text for my answers** as well removes all recognition cost.

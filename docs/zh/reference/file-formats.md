@@ -80,5 +80,7 @@ question,reference_answer,category,followups
 - [swe-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/swe-interview.srt)：一场后端软件工程师技术面（英文）。
 - [questions-security-ai.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-security-ai.csv)：十二道网络安全与 AI 安全面试题，附参考回答和追问（英文）。
 - [security-ai-interview.srt](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/security-ai-interview.srt)：一场 AI 平台团队的网络安全工程师面试（英文）。
+- [questions-software-engineer-zh.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-software-engineer-zh.csv)：十四道后端开发面试题，附参考回答和追问（中文）。
+- [questions-network-operations-zh.csv](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/practice/questions-network-operations-zh.csv)：四十二道运营商网络运维场景题，分七组，附参考回答和追问（中文）。
 
-这些文件都已内置在 MeetCue 中：在模拟面试窗口中点 **使用** 即可。见[模拟面试](/zh/guide/mock-interview)。
+其中四个已内置在 MeetCue 中：`questions-software-engineer.csv`、`questions-security-ai.csv`、`questions-software-engineer-zh.csv` 和 `questions-network-operations-zh.csv`。在模拟面试窗口中点 **使用** 即可，其余文件用 **选择文件…** 载入。见[模拟面试](/zh/guide/mock-interview)。

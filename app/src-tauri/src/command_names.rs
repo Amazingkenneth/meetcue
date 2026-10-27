@@ -46,6 +46,8 @@ pub const COMMANDS: &[&str] = &[
     "practice_classify",
     "practice_start",
     "practice_control",
+    "practice_outline",
+    "practice_jump",
     "practice_reports",
     "practice_report",
     "export_report",
