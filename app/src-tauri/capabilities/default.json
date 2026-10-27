@@ -54,6 +54,8 @@
     "allow-practice-classify",
     "allow-practice-start",
     "allow-practice-control",
+    "allow-practice-outline",
+    "allow-practice-jump",
     "allow-practice-reports",
     "allow-practice-report",
     "allow-export-report"

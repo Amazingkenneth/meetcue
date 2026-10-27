@@ -4,6 +4,13 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- The mock interview offers four built-in samples, two in English and two in Chinese: software engineer, network security and AI, backend software engineer (Chinese) and telecom network operations (Chinese, 42 questions in seven groups).
+- **Go to a question** jumps to any question during a mock interview, forwards or back, from the practice window or the panel's practice bar.
+- Batch changes before a mock interview: tick several questions (Shift-click for a range) to move them to the top or bottom, keep only them, set their group or delete them. The list can be filtered by text or group, and you can add your own questions.
+- When Windows has no voice for English or Chinese, the sound check says so and links to the Windows settings that install one, with a step-by-step guide.
+
 ## 0.2.4 — 2026-10-27
 
 ### Added

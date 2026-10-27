@@ -74,6 +74,9 @@ pub enum PacerInput {
     /// Read the current question again.
     Repeat,
     Skip,
+    /// Go to answer turn `n` (1-based, counted over the script's own turns
+    /// as listed by [`Pacer::outline`]), forwards or back.
+    Jump(u32),
     Pause,
     Resume,
     Stop,
@@ -109,6 +112,9 @@ pub struct Progress {
     /// 1-based number of the current answer turn.
     pub index: u32,
     pub total: u32,
+    /// The script's own turn this is (1-based, follow-ups belong to the
+    /// turn they follow; 0 when finished), to match [`Pacer::outline`].
+    pub turn: u32,
     pub phase: Phase,
     pub question: String,
 }
@@ -288,6 +294,21 @@ impl Pacer {
         self.total
     }
 
+    /// The question of each of the script's own answer turns, in order.
+    pub fn outline(&self) -> Vec<String> {
+        self.steps
+            .iter()
+            .filter_map(|s| match s {
+                Step::Answer {
+                    question,
+                    is_follow_up: false,
+                    ..
+                } => Some(question.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
     pub fn records(&self) -> &[AnswerRecord] {
         &self.records
     }
@@ -355,6 +376,11 @@ impl Pacer {
                     self.state = prev;
                     self.repeat(now, &mut out);
                 }
+                PacerInput::Jump(n) => {
+                    self.paused = None;
+                    self.state = prev;
+                    self.jump(n, now, &mut out);
+                }
                 _ => {}
             }
             return out;
@@ -392,6 +418,7 @@ impl Pacer {
             },
             PacerInput::Repeat => self.repeat(now, &mut out),
             PacerInput::Skip => self.skip(now, &mut out),
+            PacerInput::Jump(n) => self.jump(n, now, &mut out),
             PacerInput::Pause => {
                 if self.state == State::Speaking {
                     out.push(PacerOutput::StopSpeaking);
@@ -418,6 +445,27 @@ impl Pacer {
         (self.answered_turns + 1).min(self.total.max(1))
     }
 
+    /// The script's own turn at the current position.
+    fn turn(&self) -> u32 {
+        let answer = self.steps[self.pos.min(self.steps.len())..]
+            .iter()
+            .position(|s| matches!(s, Step::Answer { .. }))
+            .map_or(self.steps.len(), |p| self.pos + p);
+        let upto = (answer + 1).min(self.steps.len());
+        self.steps[..upto]
+            .iter()
+            .filter(|s| {
+                matches!(
+                    s,
+                    Step::Answer {
+                        is_follow_up: false,
+                        ..
+                    }
+                )
+            })
+            .count() as u32
+    }
+
     fn progress(&self, phase: Phase) -> PacerOutput {
         let question = match self.steps.get(self.pos) {
             // Show the question being answered, not the user's own line.
@@ -427,6 +475,7 @@ impl Pacer {
         PacerOutput::Progress(Progress {
             index: self.turn_index(),
             total: self.total,
+            turn: self.turn(),
             phase,
             question,
         })
@@ -752,6 +801,65 @@ impl Pacer {
         self.enter_step(now, out);
     }
 
+    /// Leaves the current turn (an unanswered one counts as skipped) and
+    /// plays turn `n` from the interviewer lines that lead to it. Follow-ups
+    /// asked so far are dropped, so going back asks the question afresh.
+    fn jump(&mut self, n: u32, now: i64, out: &mut Vec<PacerOutput>) {
+        if n == 0 || n as usize > self.outline().len() {
+            return;
+        }
+        match self.state {
+            State::Speaking => out.push(PacerOutput::StopSpeaking),
+            State::Waiting { .. } | State::Answering | State::FollowUpPending => {
+                if let Some(r) = self.records.last_mut() {
+                    if r.ended_at_ms.is_none() {
+                        r.skipped = r.answer.is_empty();
+                        r.ended_at_ms = Some(now);
+                    }
+                }
+            }
+            _ => {}
+        }
+        // Drop inserted follow-ups (each is a Play directly before its Answer).
+        let mut i = self.steps.len();
+        while i > 0 {
+            i -= 1;
+            if matches!(
+                self.steps[i],
+                Step::Answer {
+                    is_follow_up: true,
+                    ..
+                }
+            ) {
+                self.steps.remove(i);
+                if i > 0 && matches!(self.steps[i - 1], Step::Play { .. }) {
+                    i -= 1;
+                    self.steps.remove(i);
+                }
+            }
+        }
+        let mut seen = 0;
+        let Some(answer) = self.steps.iter().position(|s| {
+            if matches!(s, Step::Answer { .. }) {
+                seen += 1;
+            }
+            seen == n
+        }) else {
+            return;
+        };
+        let start = self.steps[..answer]
+            .iter()
+            .rposition(|s| matches!(s, Step::Answer { .. }))
+            .map_or(0, |p| p + 1);
+        self.total = self.outline().len() as u32;
+        self.answered_turns = n - 1;
+        self.pending_qids.clear();
+        self.repeating = false;
+        self.speaking_text.clear();
+        self.pos = start;
+        self.enter_step(now, out);
+    }
+
     fn resume(&mut self, prev: State, now: i64, out: &mut Vec<PacerOutput>) {
         match prev {
             State::Speaking | State::Idle => self.enter_step(now, out),
@@ -784,6 +892,7 @@ impl Pacer {
         out.push(PacerOutput::Progress(Progress {
             index: self.answered_turns.min(self.total),
             total: self.total,
+            turn: 0,
             phase: Phase::Done,
             question: String::new(),
         }));
@@ -934,6 +1043,75 @@ mod tests {
         let out = p.handle(PacerInput::Repeat, 3_800);
         assert!(out.contains(&PacerOutput::StopSpeaking));
         assert_eq!(speaks(&out), vec!["Question 1?"]);
+    }
+
+    fn turn(out: &[PacerOutput]) -> Option<(u32, u32, u32)> {
+        out.iter().rev().find_map(|o| match o {
+            PacerOutput::Progress(p) => Some((p.turn, p.index, p.total)),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn jumps_forwards_and_back_to_any_question() {
+        let mut p = Pacer::new(&questions(5), cfg());
+        assert_eq!(
+            p.outline(),
+            (1..=5)
+                .map(|i| format!("Question {i}?"))
+                .collect::<Vec<_>>()
+        );
+        p.start(0);
+        p.handle(PacerInput::SpeechDone, 1_000);
+        p.handle(text("partial answer"), 2_000);
+        // Forwards while answering: the answer so far is kept.
+        let out = p.handle(PacerInput::Jump(4), 3_000);
+        assert_eq!(speaks(&out), vec!["Question 4?"]);
+        assert_eq!(turn(&out), Some((4, 4, 5)));
+        assert_eq!(p.records()[0].ended_at_ms, Some(3_000));
+        assert!(!p.records()[0].skipped);
+        // Back while the question is read: reading stops, question 2 plays.
+        let out = p.handle(PacerInput::Jump(2), 3_500);
+        assert!(out.contains(&PacerOutput::StopSpeaking));
+        assert_eq!(speaks(&out), vec!["Question 2?"]);
+        assert_eq!(turn(&out), Some((2, 2, 5)));
+        // Waiting without an answer, then jumping, records a skip.
+        p.handle(PacerInput::SpeechDone, 4_000);
+        p.handle(PacerInput::Jump(5), 5_000);
+        assert!(p.records()[1].skipped);
+        // Out of range does nothing; the run then goes on from question 5.
+        assert!(p.handle(PacerInput::Jump(9), 5_100).is_empty());
+        assert!(p.handle(PacerInput::Jump(0), 5_100).is_empty());
+        p.handle(PacerInput::SpeechDone, 6_000);
+        let out = p.handle(PacerInput::Answered, 7_000);
+        assert!(out.contains(&PacerOutput::Finished));
+    }
+
+    #[test]
+    fn jump_while_paused_resumes_and_drops_follow_ups() {
+        let mut p = Pacer::new(
+            &questions(3),
+            PacerConfig {
+                follow_up_probability: 1.0,
+                ..cfg()
+            },
+        );
+        p.start(0);
+        p.handle(PacerInput::SpeechDone, 1_000);
+        p.handle(text("my answer"), 2_000);
+        let out = p.handle(PacerInput::Answered, 3_000);
+        assert_eq!(phase(&out), Some(Phase::FollowUp));
+        let out = p.handle(PacerInput::FollowUp(Some("Why?".into())), 3_100);
+        assert_eq!(speaks(&out), vec!["Why?"]);
+        assert_eq!(turn(&out), Some((1, 2, 4)), "a follow-up belongs to turn 1");
+        p.handle(PacerInput::Pause, 3_200);
+        let out = p.handle(PacerInput::Jump(1), 3_300);
+        assert_eq!(speaks(&out), vec!["Question 1?"]);
+        assert_eq!(turn(&out), Some((1, 1, 3)));
+        assert_eq!(p.outline().len(), 3);
+        p.handle(PacerInput::SpeechDone, 4_000);
+        p.handle(PacerInput::Jump(2), 4_500);
+        assert_eq!(p.records().len(), 2, "first answer and the skipped retry");
     }
 
     #[test]

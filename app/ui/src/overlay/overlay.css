@@ -458,3 +458,14 @@ html.overlay-view body {
 .ov-practice .grow {
   flex: 1;
 }
+
+.ov-practice .ov-jump {
+  min-width: 0;
+  max-width: 160px;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--ov-line);
+  border-radius: 4px;
+  padding: 1px 4px;
+}

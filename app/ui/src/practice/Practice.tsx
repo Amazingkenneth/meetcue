@@ -9,15 +9,24 @@ import type { Voice } from "../bindings/Voice";
 import { Field, Section, Switch } from "../design/components";
 import { LevelBar, useLevels } from "../settings/Settings";
 import { useDraft } from "../settings/useDraft";
-import { useAppEvents } from "../state/hooks";
+import { useAppEvents, useAppInfo } from "../state/hooks";
 import {
+  addQuestion,
   answerTurns,
   editItem,
+  groups,
   keepFirst,
+  keepSelected,
   moveItem,
+  moveSelected,
+  range,
   removeItem,
+  removeSelected,
+  setGroup,
   setMeSpeaker,
   shuffleItems,
+  jumpTo,
+  usePracticeOutline,
   usePracticeProgress,
   type PracticeProgress,
 } from "../state/practice";
@@ -232,11 +241,17 @@ function VoiceStep({ settings, update }: { settings: Settings; update: Update })
   ];
   return (
     <Section title={t("practice.voiceTitle")} lead={t("practice.voiceLead")}>
-      {voices !== null && voices.length === 0 && <p className="note note-warn">{t("practice.noVoices")}</p>}
+      {voices !== null && voices.length === 0 && (
+        <div className="note note-warn" role="alert">
+          <p>{t("practice.noVoices")}</p>
+          <VoiceLinks />
+        </div>
+      )}
       {langs.map(([lang, label, value]) => {
         const forLang = (voices ?? []).filter((v) => v.lang.toLowerCase().startsWith(lang));
+        const missing = voices !== null && voices.length > 0 && forLang.length === 0;
         return (
-          <Field key={lang} label={label} htmlFor={`voice-${lang}`} hint={t("practice.voiceHint")}>
+          <Field key={lang} label={label} htmlFor={`voice-${lang}`} hint={missing ? undefined : t("practice.voiceHint")}>
             <select
               id={`voice-${lang}`}
               className="input-wide"
@@ -258,6 +273,7 @@ function VoiceStep({ settings, update }: { settings: Settings; update: Update })
             >
               {t("practice.tryVoice")}
             </button>
+            {missing && <MissingVoice lang={lang} />}
           </Field>
         );
       })}
@@ -269,14 +285,44 @@ function VoiceStep({ settings, update }: { settings: Settings; update: Update })
   );
 }
 
+/** Where Windows installs speech voices, and the guide that walks through it. */
+function VoiceLinks() {
+  const { t, i18n } = useTranslation();
+  const base = (useAppInfo()?.docsUrl ?? "https://amazingkenneth.github.io/meetcue/").replace(/\/+$/, "");
+  const docs = `${base}${i18n.language.startsWith("zh") ? "/zh" : ""}/guide/mock-interview#voices`;
+  return (
+    <div className="practice-tools">
+      <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: "ms-settings:regionlanguage" })}>
+        {t("practice.openLanguages")}
+      </button>
+      <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: "ms-settings:speech" })}>
+        {t("practice.openSpeech")}
+      </button>
+      <button className="btn btn-small btn-link" onClick={() => void backend().invoke("open_url", { url: docs })}>
+        {t("practice.voiceGuide")}
+      </button>
+    </div>
+  );
+}
+
+/** A language has no voice: say how to add one. */
+function MissingVoice({ lang }: { lang: "zh" | "en" }) {
+  const { t } = useTranslation();
+  return (
+    <div className="note note-warn practice-voice-missing" role="alert">
+      <strong>{t(`practice.missingVoice.${lang}`)}</strong>
+      <p>{t(`practice.missingVoiceSteps.${lang}`)}</p>
+      <VoiceLinks />
+    </div>
+  );
+}
+
 /** Sample interviews built into the app; names match `practice::SAMPLES`. */
 export const SAMPLES = [
-  { key: "sweQuestions", file: "questions-software-engineer.csv" },
-  { key: "sweInterview", file: "swe-interview.srt" },
-  { key: "securityQuestions", file: "questions-security-ai.csv" },
-  { key: "securityInterview", file: "security-ai-interview.srt" },
-  { key: "networkQuestions", file: "questions-network.csv" },
-  { key: "sdnInterview", file: "sdn-interview.srt" },
+  { key: "sweQuestions", file: "questions-software-engineer.csv", lang: "en" },
+  { key: "securityQuestions", file: "questions-security-ai.csv", lang: "en" },
+  { key: "sweQuestionsZh", file: "questions-software-engineer-zh.csv", lang: "zh" },
+  { key: "networkOpsZh", file: "questions-network-operations-zh.csv", lang: "zh" },
 ] as const;
 
 function ChooseStep({
@@ -307,7 +353,9 @@ function ChooseStep({
           {SAMPLES.map((s) => (
             <li key={s.file}>
               <span>
-                <strong>{t(`practice.sample.${s.key}.title`)}</strong>
+                <strong>
+                  {t(`practice.sample.${s.key}.title`)} <span className="badge">{t(`practice.lang.${s.lang}`)}</span>
+                </strong>
                 <span className="muted">{t(`practice.sample.${s.key}.body`)}</span>
               </span>
               <button className="btn btn-small" onClick={() => onSample(s.file)} disabled={busy}>
@@ -368,8 +416,46 @@ function Preview({
 }) {
   const { t } = useTranslation();
   const [keep, setKeep] = useState(String(script.items.length));
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [anchor, setAnchor] = useState<number | null>(null);
+  const [filter, setFilter] = useState("");
+  const [group, setGroupFilter] = useState("");
+  const [newGroup, setNewGroup] = useState("");
+  const [newQuestion, setNewQuestion] = useState("");
   const subtitles = script.kind === "subtitles";
   const turns = answerTurns(script);
+  const allGroups = groups(script);
+  // Positions shift after any change, so a change clears the selection.
+  const change = (next: PracticeScript) => {
+    setSelected(new Set());
+    setAnchor(null);
+    onChange(next);
+  };
+  const needle = filter.trim().toLowerCase();
+  const shown = script.items
+    .map((it, i) => ({ it, i }))
+    .filter(({ it }) => (!group || it.category === group) && (!needle || `${it.text} ${it.reference ?? ""}`.toLowerCase().includes(needle)));
+  const allShown = shown.length > 0 && shown.every(({ i }) => selected.has(i));
+  const pick = (i: number, shift: boolean) => {
+    const next = new Set(selected);
+    const on = !selected.has(i);
+    const visible = new Set(shown.map(({ i }) => i));
+    const span = shift && anchor !== null ? range(anchor, i).filter((j) => visible.has(j)) : [i];
+    for (const j of span) {
+      if (on) next.add(j);
+      else next.delete(j);
+    }
+    setSelected(next);
+    setAnchor(i);
+  };
+  const pickShown = (on: boolean) => {
+    const next = new Set(selected);
+    for (const { i } of shown) {
+      if (on) next.add(i);
+      else next.delete(i);
+    }
+    setSelected(next);
+  };
   return (
     <Section
       title={t("practice.previewTitle")}
@@ -394,7 +480,7 @@ function Preview({
           <select
             id="me-speaker"
             value={script.meSpeaker ?? ""}
-            onChange={(e) => onChange(setMeSpeaker(script, e.target.value || null))}
+            onChange={(e) => change(setMeSpeaker(script, e.target.value || null))}
           >
             <option value="">—</option>
             {script.speakers.map((s) => (
@@ -405,24 +491,93 @@ function Preview({
           </select>
         </Field>
       )}
-      {!subtitles && (
-        <div className="practice-tools">
-          <button className="btn btn-small" onClick={() => onChange(shuffleItems(script))}>
-            {t("practice.shuffle")}
+      <div className="practice-tools">
+        <input
+          type="search"
+          className="practice-filter"
+          placeholder={t("practice.filter")}
+          aria-label={t("practice.filter")}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        {!subtitles && allGroups.length > 0 && (
+          <select aria-label={t("practice.groupFilter")} value={group} onChange={(e) => setGroupFilter(e.target.value)}>
+            <option value="">{t("practice.allGroups")}</option>
+            {allGroups.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        )}
+        {!subtitles && (
+          <>
+            <button className="btn btn-small" onClick={() => change(shuffleItems(script))}>
+              {t("practice.shuffle")}
+            </button>
+            <label className="practice-keep">
+              {t("practice.keepFirst")}{" "}
+              <input type="number" min={1} max={script.items.length} value={keep} onChange={(e) => setKeep(e.target.value)} />
+            </label>
+            <button className="btn btn-small" onClick={() => change(keepFirst(script, Number(keep)))}>
+              {t("practice.apply")}
+            </button>
+          </>
+        )}
+      </div>
+      {selected.size > 0 && (
+        <div className="practice-batch" role="toolbar" aria-label={t("practice.batchLabel")}>
+          <strong>{t("practice.selected", { count: selected.size })}</strong>
+          <button className="btn btn-small" onClick={() => change(moveSelected(script, selected, "top"))}>
+            {t("practice.moveTop")}
           </button>
-          <label className="practice-keep">
-            {t("practice.keepFirst")}{" "}
-            <input type="number" min={1} max={script.items.length} value={keep} onChange={(e) => setKeep(e.target.value)} />
-          </label>
-          <button className="btn btn-small" onClick={() => onChange(keepFirst(script, Number(keep)))}>
-            {t("practice.apply")}
+          <button className="btn btn-small" onClick={() => change(moveSelected(script, selected, "bottom"))}>
+            {t("practice.moveBottom")}
+          </button>
+          <button className="btn btn-small" onClick={() => change(keepSelected(script, selected))}>
+            {t("practice.keepSelected")}
+          </button>
+          {!subtitles && (
+            <span className="practice-inline-group">
+              <input
+                list="practice-groups"
+                aria-label={t("practice.setGroup")}
+                placeholder={t("practice.setGroup")}
+                value={newGroup}
+                onChange={(e) => setNewGroup(e.target.value)}
+              />
+              <datalist id="practice-groups">
+                {allGroups.map((g) => (
+                  <option key={g} value={g} />
+                ))}
+              </datalist>
+              <button className="btn btn-small" onClick={() => change(setGroup(script, selected, newGroup))}>
+                {t("practice.apply")}
+              </button>
+            </span>
+          )}
+          <button className="btn btn-small btn-danger" onClick={() => change(removeSelected(script, selected))}>
+            {t("practice.deleteSelected")}
+          </button>
+          <button className="btn btn-small" onClick={() => setSelected(new Set())}>
+            {t("practice.clearSelection")}
           </button>
         </div>
       )}
+      <p className="muted practice-tip">{t("practice.selectTip")}</p>
       <div className="table-wrap">
         <table className="data practice-table">
           <thead>
             <tr>
+              <th scope="col" className="pick">
+                <input
+                  type="checkbox"
+                  aria-label={t("practice.selectShown")}
+                  title={t("practice.selectShown")}
+                  checked={allShown}
+                  onChange={(e) => pickShown(e.target.checked)}
+                />
+              </th>
               <th scope="col">{t("practice.colNo")}</th>
               {subtitles && <th scope="col">{t("practice.colSpeaker")}</th>}
               <th scope="col">{t("practice.colText")}</th>
@@ -431,8 +586,17 @@ function Preview({
             </tr>
           </thead>
           <tbody>
-            {script.items.map((it, i) => (
-              <tr key={`${it.id}-${i}`} data-me={it.isMe}>
+            {shown.map(({ it, i }) => (
+              <tr key={`${it.id}-${i}`} data-me={it.isMe} data-selected={selected.has(i)}>
+                <td className="pick">
+                  <input
+                    type="checkbox"
+                    aria-label={t("practice.selectRow", { n: it.id })}
+                    checked={selected.has(i)}
+                    onChange={() => undefined}
+                    onClick={(e) => pick(i, e.shiftKey)}
+                  />
+                </td>
                 <td className="mono">{it.id}</td>
                 {subtitles && (
                   <td>
@@ -450,7 +614,7 @@ function Preview({
                 </td>
                 {!subtitles && <td>{it.category ?? ""}</td>}
                 <td className="actions">
-                  <button className="btn btn-small" aria-label={t("practice.moveUp")} title={t("practice.moveUp")} disabled={i === 0} onClick={() => onChange(moveItem(script, i, -1))}>
+                  <button className="btn btn-small" aria-label={t("practice.moveUp")} title={t("practice.moveUp")} disabled={i === 0} onClick={() => change(moveItem(script, i, -1))}>
                     ↑
                   </button>
                   <button
@@ -458,11 +622,11 @@ function Preview({
                     aria-label={t("practice.moveDown")}
                     title={t("practice.moveDown")}
                     disabled={i === script.items.length - 1}
-                    onClick={() => onChange(moveItem(script, i, 1))}
+                    onClick={() => change(moveItem(script, i, 1))}
                   >
                     ↓
                   </button>
-                  <button className="btn btn-small" aria-label={t("practice.delete")} title={t("practice.delete")} onClick={() => onChange(removeItem(script, i))}>
+                  <button className="btn btn-small" aria-label={t("practice.delete")} title={t("practice.delete")} onClick={() => change(removeItem(script, i))}>
                     ✕
                   </button>
                 </td>
@@ -471,6 +635,28 @@ function Preview({
           </tbody>
         </table>
       </div>
+      {shown.length === 0 && <p className="muted">{t("practice.noMatch")}</p>}
+      {!subtitles && (
+        <form
+          className="practice-tools practice-add"
+          onSubmit={(e) => {
+            e.preventDefault();
+            change(addQuestion(script, newQuestion));
+            setNewQuestion("");
+          }}
+        >
+          <input
+            className="input-wide"
+            aria-label={t("practice.addQuestion")}
+            placeholder={t("practice.addQuestionHint")}
+            value={newQuestion}
+            onChange={(e) => setNewQuestion(e.target.value)}
+          />
+          <button className="btn btn-small" type="submit" disabled={!newQuestion.trim()}>
+            {t("practice.addQuestion")}
+          </button>
+        </form>
+      )}
     </Section>
   );
 }
@@ -586,6 +772,7 @@ function Running({ settings, progress }: { settings: Settings; progress: Practic
   const control = (c: "pause" | "resume" | "skip" | "stop" | "answered" | "repeat") =>
     void backend().invoke("practice_control", { control: c });
   const next = progress ? t(`practice.next.${progress.phase}`, { seconds: seconds(settings.practice.answerPauseS * 1000) }) : "";
+  const outline = usePracticeOutline(progress !== null);
   return (
     <Section title={t("practice.runningTitle")} lead={t("practice.runningBody", { seconds: seconds(settings.practice.answerPauseS * 1000) })}>
       {progress && (
@@ -614,6 +801,26 @@ function Running({ settings, progress }: { settings: Settings; progress: Practic
           {t("practice.stop")}
         </button>
       </div>
+      {outline.length > 1 && (
+        <div className="practice-outline">
+          <h3>{t("practice.jumpTitle")}</h3>
+          <p className="muted">{t("practice.jumpLead")}</p>
+          <ol>
+            {outline.map((q, i) => {
+              const current = progress?.turn === i + 1;
+              return (
+                <li key={i} aria-current={current ? "step" : undefined}>
+                  <span className="mono">{i + 1}</span>
+                  <span className="q">{q || t("practice.turnN", { n: i + 1 })}</span>
+                  <button className="btn btn-small" onClick={() => jumpTo(i + 1)}>
+                    {current ? t("practice.restartThis") : t("practice.goTo")}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
     </Section>
   );
 }

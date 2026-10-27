@@ -77,6 +77,8 @@ export interface Commands {
   practice_classify: { args: { script: PracticeScript }; result: PracticeScript };
   practice_start: { args: { script: PracticeScript }; result: null };
   practice_control: { args: { control: PracticeControl }; result: null };
+  practice_outline: { args: undefined; result: string[] };
+  practice_jump: { args: { turn: number }; result: null };
   practice_reports: { args: undefined; result: PracticeReportSummary[] };
   practice_report: { args: { id: string }; result: PracticeReport };
   export_report: { args: { id: string }; result: string | null };

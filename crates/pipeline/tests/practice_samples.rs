@@ -55,3 +55,25 @@ fn technical_question_lists() {
         assert!(s.items.iter().all(|i| i.category.is_some()), "{name}");
     }
 }
+
+#[test]
+fn chinese_question_lists() {
+    for (name, count, groups) in [
+        ("questions-software-engineer-zh.csv", 14, 11),
+        ("questions-network-operations-zh.csv", 42, 7),
+    ] {
+        let s = parse_file(name, &sample(name)).unwrap();
+        assert_eq!(s.kind, PracticeKind::Questions, "{name}");
+        assert_eq!(s.items.len(), count, "{name}");
+        assert!(s.items.iter().all(|i| i.reference.is_some()), "{name}");
+        let mut cats: Vec<_> = s.items.iter().filter_map(|i| i.category.clone()).collect();
+        assert_eq!(cats.len(), count, "{name}");
+        cats.sort();
+        cats.dedup();
+        assert_eq!(cats.len(), groups, "{name}");
+        assert!(s.items.iter().all(|i| i
+            .text
+            .chars()
+            .any(|c| ('\u{4e00}'..='\u{9fff}').contains(&c))));
+    }
+}

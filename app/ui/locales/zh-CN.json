@@ -450,32 +450,24 @@
     "howBriefing": "可选：把对应的职位描述添加为会前资料，提示会更贴合岗位。",
     "openHints": "打开会前资料",
     "samplesTitle": "试试示例面试",
-    "samplesLead": "内置在 MeetCue 中，带参考回答供复盘使用。问题列表一次问一道题；面试字幕会重放面试官的话，轮到你时停下来等你回答。",
+    "samplesLead": "内置在 MeetCue 中，带参考回答供复盘使用：两套英文、两套中文。每次问一道题，开始前可以删减和调整顺序。",
     "useSample": "使用",
     "sample": {
       "sweQuestions": {
-        "title": "软件工程师：问题列表",
-        "body": "14 道题，涵盖基础知识、算法、系统设计、排障和团队协作（英文）。"
-      },
-      "sweInterview": {
-        "title": "软件工程师：面试字幕",
-        "body": "一场后端工程师技术面，需要回答 6 次（英文）。"
+        "title": "软件工程师（英文）",
+        "body": "14 道题，涵盖基础知识、算法、系统设计、排障和团队协作。"
       },
       "securityQuestions": {
-        "title": "网络安全与 AI：问题列表",
-        "body": "12 道题，涵盖 TLS、零信任、威胁检测、应急响应、机器学习安全检测和大模型安全（英文）。"
+        "title": "网络安全与 AI（英文）",
+        "body": "12 道题，涵盖 TLS、零信任、威胁检测、应急响应、机器学习安全检测和大模型安全。"
       },
-      "securityInterview": {
-        "title": "网络安全与 AI：面试字幕",
-        "body": "一场 AI 平台团队安全工程师面试，需要回答 5 次（英文）。"
+      "sweQuestionsZh": {
+        "title": "后端开发工程师",
+        "body": "14 道题，涵盖网络、数据库、缓存、系统设计、线上排障和团队协作。"
       },
-      "networkQuestions": {
-        "title": "网络架构：问题列表",
-        "body": "10 道题，涵盖路由、数据中心网络和 SDN（英文）。"
-      },
-      "sdnInterview": {
-        "title": "SDN 面试字幕（中文）",
-        "body": "一段关于高可用和 SDN 控制器的简短中文面试。"
+      "networkOpsZh": {
+        "title": "运营商网络运维",
+        "body": "42 道场景题，涵盖重大故障处置、家庭宽带、IP 与政企专线、传输光网络、5G、数据中心和管理协调。"
       }
     },
     "sttQuestions": "问题语音转文字",
@@ -517,7 +509,45 @@
       "followUp": "正在根据你的回答准备追问。",
       "paused": "已暂停，不会向任何供应商发送内容。",
       "done": "已结束，复盘会在单独的窗口中打开。"
-    }
+    },
+    "lang": {
+      "en": "英文",
+      "zh": "中文"
+    },
+    "filter": "按文字筛选",
+    "groupFilter": "显示分组",
+    "allGroups": "全部分组",
+    "batchLabel": "修改选中的问题",
+    "selected_one": "已选 {{count}} 项",
+    "selected_other": "已选 {{count}} 项",
+    "moveTop": "移到最前",
+    "moveBottom": "移到最后",
+    "keepSelected": "只保留这些",
+    "setGroup": "设置分组",
+    "deleteSelected": "删除",
+    "clearSelection": "取消选择",
+    "selectTip": "勾选多行可一次修改。按住 Shift 再点另一行，可选中中间的所有行。",
+    "selectShown": "全选当前显示的行",
+    "selectRow": "选择第 {{n}} 项",
+    "noMatch": "没有符合筛选条件的问题。",
+    "addQuestion": "添加问题",
+    "addQuestionHint": "输入一道自己的问题",
+    "jumpTitle": "跳到某道题",
+    "jumpLead": "随时可以向前或向后跳。当前的回答会保留；没回答就离开的题记为跳过。",
+    "goTo": "跳到这里",
+    "restartThis": "重新提问",
+    "turnN": "第 {{n}} 轮",
+    "missingVoice": {
+      "en": "没有安装英文语音，英文问题无法朗读。",
+      "zh": "没有安装中文语音，中文问题无法朗读。"
+    },
+    "missingVoiceSteps": {
+      "en": "在 Windows 设置 › 时间和语言 › 语言和区域 中添加 English (United States)，并勾选“文本到语音转换”；或打开“语音”页，点“添加语音”。完成后重新打开本窗口。",
+      "zh": "在 Windows 设置 › 时间和语言 › 语言和区域 中添加“中文(简体，中国)”，并勾选“文本到语音转换”；或打开“语音”页，点“添加语音”。完成后重新打开本窗口。"
+    },
+    "openLanguages": "打开语言设置",
+    "openSpeech": "打开语音设置",
+    "voiceGuide": "图文步骤"
   },
   "review": {
     "title": "练习复盘",

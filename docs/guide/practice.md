@@ -3,7 +3,7 @@
 This page shows how to rehearse an interview or a meeting with MeetCue. It reads questions aloud, gives you hints exactly as in a real meeting, and gives you a review report afterwards.
 
 ::: tip First time?
-[Mock interview](/guide/mock-interview) walks through a complete practice run step by step, with built-in sample interviews for software engineering and network security with AI.
+[Mock interview](/guide/mock-interview) walks through a complete practice run step by step, with built-in sample interviews in English and Chinese.
 :::
 
 ## Import questions

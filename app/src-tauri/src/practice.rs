@@ -41,6 +41,8 @@ use crate::{config, session, windows, APP_EVENT, PIPELINE_EVENT};
 pub struct PracticeRunner {
     tx: mpsc::UnboundedSender<Msg>,
     paused: Arc<AtomicBool>,
+    /// The question of each answer turn, for jumping between them.
+    outline: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -54,6 +56,8 @@ pub enum Control {
     Answered,
     /// Read the current question again.
     Repeat,
+    /// Go to answer turn `n` (1-based, as in [`outline`]).
+    Jump(u32),
 }
 
 /// The sentence the settings read aloud when trying a voice.
@@ -76,6 +80,17 @@ enum Msg {
 const DEFAULT_SIMULATED_DELAY_MS: f64 = 400.0;
 /// Microphone level that counts as the user speaking, above the VAD threshold.
 const VOICE_MARGIN_DB: f32 = 6.0;
+
+/// The question of each answer turn of the running practice; empty when
+/// none is running.
+pub fn outline(app: &AppHandle) -> Vec<String> {
+    let state = app.state::<AppState>();
+    let guard = state.practice.lock().unwrap();
+    guard
+        .as_ref()
+        .map(|r| r.outline.clone())
+        .unwrap_or_default()
+}
 
 pub fn control(app: &AppHandle, c: Control) {
     let state = app.state::<AppState>();
@@ -130,24 +145,16 @@ const SAMPLES: &[(&str, &[u8])] = &[
         include_bytes!("../../../samples/practice/questions-software-engineer.csv"),
     ),
     (
-        "swe-interview.srt",
-        include_bytes!("../../../samples/practice/swe-interview.srt"),
-    ),
-    (
         "questions-security-ai.csv",
         include_bytes!("../../../samples/practice/questions-security-ai.csv"),
     ),
     (
-        "security-ai-interview.srt",
-        include_bytes!("../../../samples/practice/security-ai-interview.srt"),
+        "questions-software-engineer-zh.csv",
+        include_bytes!("../../../samples/practice/questions-software-engineer-zh.csv"),
     ),
     (
-        "questions-network.csv",
-        include_bytes!("../../../samples/practice/questions-network.csv"),
-    ),
-    (
-        "sdn-interview.srt",
-        include_bytes!("../../../samples/practice/sdn-interview.srt"),
+        "questions-network-operations-zh.csv",
+        include_bytes!("../../../samples/practice/questions-network-operations-zh.csv"),
     ),
 ];
 
@@ -299,10 +306,6 @@ pub async fn start(app: &AppHandle, script: PracticeScript) -> Result<(), MeetCu
 
     let (tx, rx) = mpsc::unbounded_channel();
     let paused = Arc::new(AtomicBool::new(false));
-    *state.practice.lock().unwrap() = Some(PracticeRunner {
-        tx: tx.clone(),
-        paused: paused.clone(),
-    });
     let pacer = Pacer::new(
         &script,
         PacerConfig {
@@ -322,6 +325,11 @@ pub async fn start(app: &AppHandle, script: PracticeScript) -> Result<(), MeetCu
             ..Default::default()
         },
     );
+    *state.practice.lock().unwrap() = Some(PracticeRunner {
+        tx: tx.clone(),
+        paused: paused.clone(),
+        outline: pacer.outline(),
+    });
     let ctx = RunCtx {
         app: app.clone(),
         tx,
@@ -393,6 +401,13 @@ async fn run(mut ctx: RunCtx, mut pacer: Pacer) {
                     Control::Stop => PacerInput::Stop,
                     Control::Answered => PacerInput::Answered,
                     Control::Repeat => PacerInput::Repeat,
+                    Control::Jump(n) => {
+                        // Jumping also ends a pause, like skipping does.
+                        if ctx.paused.swap(false, Ordering::SeqCst) {
+                            app.state::<AppState>().backend.send(UserAction::Resume).await;
+                        }
+                        PacerInput::Jump(n)
+                    }
                 }),
                 Some(Msg::SpeechDone(n)) => (n == ctx.utterance).then_some(PacerInput::SpeechDone),
                 Some(Msg::FollowUp(q)) => Some(PacerInput::FollowUp(q)),
@@ -523,6 +538,7 @@ async fn apply(ctx: &mut RunCtx, outputs: Vec<PacerOutput>) {
                     AppEvent::PracticeProgress {
                         index: p.index,
                         total: p.total,
+                        turn: p.turn,
                         phase: p.phase.as_str().into(),
                         question: p.question,
                     },
@@ -534,6 +550,7 @@ async fn apply(ctx: &mut RunCtx, outputs: Vec<PacerOutput>) {
                     AppEvent::PracticeProgress {
                         index: 0,
                         total: 0,
+                        turn: 0,
                         phase: "nudge".into(),
                         question: String::new(),
                     },
