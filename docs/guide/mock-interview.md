@@ -19,7 +19,7 @@ Start with the demo if you haven't set up any keys yet. Use the mock interview f
 1. **MeetCue is installed and set up.** You have finished [first-time setup](/setup), with a speech recognition key and a model key saved and verified. Without them, the mock interview can read questions but can't show hints.
 2. **Wear headphones.** In a mock interview, MeetCue plays the questions through your output device and hears them through system sound, exactly as it hears other participants in a meeting. With speakers, your microphone picks the questions up too. MeetCue filters most of that echo, but headphones give the cleanest result.
 3. **Check both level bars.** Open **Settings › Audio**, click **Test levels**, play any video and say something. The microphone bar should move when you speak and the system sound bar when the video plays. If one stays flat, see [Audio and devices](/troubleshooting/audio).
-4. **Know the language.** Two built-in samples are in English and two in Chinese. Each language needs a Windows voice to read the questions; see [Voices for each language](#voices). By default, hints follow the language of the question; you can fix it under **Settings › General › Hint language**.
+4. **Know the language.** Two built-in samples are in English and two in Chinese. Each language needs a system voice to read the questions; see [Voices for each language](#voices). By default, hints follow the language of the question; you can fix it under **Settings › General › Hint language**.
 
 ## Step 1: Open the mock interview window {#step-1}
 
@@ -38,9 +38,11 @@ The window guides you through four steps, shown at the top: **Sound check**, **Q
 
 The first step shows both level bars live. Say something: the microphone bar should move. Play any video, or press **Try it** below: the system sound bar should move. If one stays flat, **Open audio settings** takes you to the device list; see [Audio and devices](/troubleshooting/audio).
 
-Under **The voice that asks the questions**, pick the Windows voice for each language and press **Try it** to hear a sample sentence. **First voice Windows offers** keeps the old behaviour. **Reading speed** is on the same step.
+Under **The voice that asks the questions**, pick the system voice for each language and press **Try it** to hear a sample sentence. **First available voice** keeps the old behaviour. **Reading speed** is on the same step.
 
 ### Voices for each language {#voices}
+
+On macOS, add English or Chinese voices in **System Settings › Accessibility › Spoken Content** (called **Read & Speak** on newer versions), under the system voice picker’s **Manage Voices** option. Reopen the practice window after downloading a voice.
 
 If Windows has no voice for English or for Chinese, the step says so under that language, with buttons that open the right Windows settings page. To add a voice:
 

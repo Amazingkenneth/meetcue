@@ -6,7 +6,7 @@
 
 1. 在两种语言[更新日志](/zh/reference/changelog)的 **未发布** 部分写上本次改动。发布时这些条目会移到新版本标题下，并用作发布说明。
 2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，有变化时更新 `verified` 日期和 `updated`。程序从文档站下载这个文件，所以修正价格只需推送到默认分支，无需发布新版本。
-3. 涉及音频、语音识别或窗口的改动，请在 Windows 电脑上用该分支的构建运行[实机测试清单](/zh/test-checklist)（CI 会为每次推送上传 `MeetCue-windows-x64`）。
+3. 涉及音频、语音识别或窗口的改动，请在 Windows 和 macOS 电脑上用该分支的构建运行[实机测试清单](/zh/test-checklist)（CI 会为每次推送上传 `MeetCue-windows-x64`）。
 
 ## 版本号如何确定
 
@@ -37,7 +37,7 @@
 
 ## 发布之后
 
-1. 在 Windows 电脑上确认 `scoop update meetcue` 能升级到新版本。
+1. 在 Windows 和 macOS 电脑上确认 `scoop update meetcue` 能升级到新版本。
 2. 确认文档站点显示了新的更新日志。
 
 ## 仓库设置
@@ -48,3 +48,5 @@
 - **Settings › Secrets and variables › Actions › Variables**：设置 `GIT_NAME` 和 `GIT_EMAIL`，供工作流提交时使用。
 - **Settings › Actions › General › Workflow permissions**：工作流用 `GITHUB_TOKEN` 推送到默认分支，如果默认分支有保护规则，需要允许 GitHub Actions 推送。
 - 仓库必须是公开的，否则 Scoop 无法下载 Release 中的文件。
+
+Mac 发布在 Apple 芯片和 Intel 运行器上构建，提供 `.app` ZIP 和 DMG。应用包检查会验证隐私用途描述、最低 macOS 13 版本、签名完整性和 `--version`。当前采用临时签名；Developer ID 签名和公证需要 Apple 凭据，本次变更未配置。

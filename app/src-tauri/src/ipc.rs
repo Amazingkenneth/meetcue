@@ -52,7 +52,7 @@ pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
         config_dir: state.paths.config_dir.to_string_lossy().into_owned(),
         demo: state.demo,
         docs_url: DOCS_URL.into(),
-        capture_supported: cfg!(windows),
+        capture_supported: cfg!(any(windows, target_os = "macos")),
     }
 }
 
@@ -399,7 +399,9 @@ pub async fn open_window(app: AppHandle, view: String, section: Option<String>) 
 #[tauri::command]
 pub fn open_url(app: AppHandle, url: String) -> Res<()> {
     // Only web links and the system settings pages named in the error catalog.
-    let allowed = url.starts_with("https://") || url.starts_with("ms-settings:");
+    let allowed = url.starts_with("https://")
+        || url.starts_with("ms-settings:")
+        || url == "x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent";
     if !allowed {
         return Err(io_err("blocked URL"));
     }

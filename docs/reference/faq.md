@@ -24,7 +24,7 @@ The interface is in English and Simplified Chinese. Recognition and hints work i
 
 ## Does it work on macOS or Linux?
 
-The app builds on both, but audio capture, the panel behaviour and installation packages are only finished for Windows in this release.
+macOS 13 or later supports native system sound and microphone capture, Keychain credentials and system voices. Install the Apple Silicon or Intel app from Releases and grant microphone and screen/audio recording permissions. Linux can build the interface and run demo mode, but native audio capture is not implemented yet.
 
 ## Can I use a model running on my own computer?
 

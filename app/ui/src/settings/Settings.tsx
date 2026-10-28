@@ -13,7 +13,7 @@ import type { UsageSummary } from "../bindings/UsageSummary";
 import { Badge, Field, Section, Switch } from "../design/components";
 import { useAppEvents, useAppInfo } from "../state/hooks";
 import { millis, seconds, usd } from "../util/format";
-import { errorTitle } from "../util/errors";
+import { errorFix, errorTitle } from "../util/errors";
 import type { ModelSlot } from "../backend/types";
 import defaults from "../mock/default-settings.json";
 import { LogView } from "./LogView";
@@ -470,6 +470,7 @@ export function AudioFields({ settings, update }: { settings: Settings; update: 
   const { t } = useTranslation();
   const [devices, setDevices] = useState<DeviceList | null>(null);
   const [preview, setPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const levels = useLevels();
   const info = useAppInfo();
   useEffect(() => {
@@ -479,13 +480,20 @@ export function AudioFields({ settings, update }: { settings: Settings; update: 
       .catch(() => setDevices({ microphones: [], outputs: [] }));
   }, []);
   useEffect(() => {
-    void backend().invoke("audio_preview", { on: preview });
+    let alive = true;
+    void backend().invoke("audio_preview", { on: preview })
+      .then(() => { if (alive) setPreviewError(null); })
+      .catch((e: unknown) => {
+        if (alive) setPreviewError(String((e as { code?: string })?.code ?? e));
+      });
+    return () => { alive = false; };
   }, [preview]);
-  useEffect(() => () => void backend().invoke("audio_preview", { on: false }), []);
+  useEffect(() => () => { void backend().invoke("audio_preview", { on: false }).catch(() => {}); }, []);
   const mic = devices?.microphones.find((d) => (settings.audio.micDevice ? d.id === settings.audio.micDevice : d.isDefault));
   return (
     <>
       {info && !info.captureSupported && <p className="note note-warn">{errorTitle("MC-AUD-900")}</p>}
+      {previewError && <p className="note note-warn" role="alert"><strong>{errorTitle(previewError)}</strong><br />{errorFix(previewError)}</p>}
       <Field label={t("audio.microphone")} htmlFor="mic">
         <select
           id="mic"

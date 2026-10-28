@@ -6,7 +6,7 @@ Releases are automatic. Every push to the default branch that changes the app is
 
 1. Add the change to the **Unreleased** section of both [changelogs](/reference/changelog). The release moves these entries under the new version and uses them as the release notes.
 2. Check prices in `crates/core/data/pricing.json` against the providers' pricing pages and update the `verified` dates and `updated` when they change. The app downloads this file from the documentation site, so a price fix only needs a push to the default branch, not a release.
-3. For changes to audio, recognition or windows, run the [hardware test checklist](/test-checklist) on a Windows computer with a build from the branch (CI uploads `MeetCue-windows-x64` for every push).
+3. For changes to audio, recognition or windows, run the [hardware test checklist](/test-checklist) on Windows and macOS with builds from the branch (CI uploads `MeetCue-windows-x64` for every push).
 
 ## Choosing the version
 
@@ -37,7 +37,7 @@ If a run fails after the commit and tag were pushed, use **Re-run failed jobs**:
 
 ## After the release
 
-1. Check that `scoop update meetcue` picks up the new version on a Windows computer.
+1. Check that `scoop update meetcue` picks up the new version on Windows and macOS.
 2. Check that the documentation site shows the new changelog.
 
 ## Repository settings
@@ -48,3 +48,5 @@ These are set once:
 - **Settings › Secrets and variables › Actions › Variables**: `GIT_NAME` and `GIT_EMAIL` for commits made by workflows.
 - **Settings › Actions › General › Workflow permissions**: the workflow pushes to the default branch with `GITHUB_TOKEN`, so a branch protection rule on it must let GitHub Actions push.
 - The repository must be public, or Scoop can't download release assets.
+
+Mac releases are built on Apple Silicon and Intel runners as `.app` ZIPs and DMGs. The bundle check verifies privacy descriptions, the macOS 13 minimum, signature integrity and `--version`. Packages currently use ad-hoc signing; Developer ID signing and notarization require Apple credentials and are not configured by this change.

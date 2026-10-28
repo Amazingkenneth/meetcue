@@ -83,10 +83,12 @@ jobs:
 
   app:
     name: Desktop app (${{ matrix.os }})
+    env:
+      APPLE_SIGNING_IDENTITY: '-'
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, macos-latest, macos-15-intel, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -134,11 +136,38 @@ jobs:
           name: MeetCue-windows-x64
           path: target/release/MeetCue.exe
           retention-days: 14
-      - name: Build (macOS, Linux)
-        if: runner.os != 'Windows'
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
         run: |
           npm run build
           cargo build -p meetcue-app
+      - name: Test the native macOS audio bridge
+        if: runner.os == 'macOS'
+        run: |
+          cargo clippy -p meetcue-audio -p meetcue-platform --all-targets -- -D warnings
+          cargo test -p meetcue-audio -p meetcue-platform
+      - name: Build and verify the macOS app bundle
+        if: runner.os == 'macOS'
+        working-directory: app/src-tauri
+        run: |
+          npx tauri build --bundles app,dmg
+          ../../scripts/check-macos-bundle.sh ../../target/release/bundle/macos/MeetCue.app
+      - name: Pack the macOS app
+        if: runner.os == 'macOS'
+        run: ditto -c -k --sequesterRsrc --keepParent target/release/bundle/macos/MeetCue.app MeetCue-macos-${{ runner.arch }}.zip
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: MeetCue-macos-${{ runner.arch }}
+          path: MeetCue-macos-${{ runner.arch }}.zip
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: MeetCue-macos-${{ runner.arch }}-dmg
+          path: target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 14
       - run: cargo test -p meetcue-app
 
   secrets:

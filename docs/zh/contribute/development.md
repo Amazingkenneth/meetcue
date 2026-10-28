@@ -8,6 +8,7 @@
 - Node.js 20 或更高版本。
 - Windows：Microsoft C++ 生成工具和 WebView2 运行时。
 - Linux（仅构建桌面应用时需要）：[Tauri 依赖的系统库](https://v2.tauri.app/start/prerequisites/)（WebKitGTK、libappindicator 等）。
+- macOS：需要 macOS 13 及以上版本，以及 Xcode 命令行工具（`xcode-select --install`）。在 `app/src-tauri` 中运行 `npx tauri build` 生成安装包，使用应用包获得稳定的隐私权限标识。
 
 克隆仓库并安装 JavaScript 依赖：
 

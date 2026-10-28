@@ -1,7 +1,7 @@
 name: Release
 
 # Every push to the default branch that changes the app is released once CI
-# passes on it: the version is raised, the Windows build is published as a
+# passes on it: the version is raised, the Windows and macOS builds are published as a
 # GitHub release, and the version, changelogs and Scoop manifest are committed
 # to the default branch together with a v* tag. Nobody tags by hand.
 #
@@ -161,9 +161,56 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    needs: plan
+    if: needs.plan.outputs.release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      APPLE_SIGNING_IDENTITY: '-'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: node scripts/set-version.mjs "$VERSION"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-macos-${{ matrix.arch }}
+      - run: npm ci
+      - name: Build app and disk image
+        working-directory: app/src-tauri
+        run: npx tauri build --bundles app,dmg
+      - name: Verify and pack the app
+        run: |
+          scripts/check-macos-bundle.sh target/release/bundle/macos/MeetCue.app
+          mkdir -p dist-release
+          ditto -c -k --sequesterRsrc --keepParent target/release/bundle/macos/MeetCue.app "dist-release/meetcue-macos-${{ matrix.arch }}.zip"
+          cp target/release/bundle/dmg/*.dmg "dist-release/meetcue-macos-${{ matrix.arch }}.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meetcue-macos-${{ matrix.arch }}
+          path: dist-release/*
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: Commit, tag and publish
-    needs: [plan, build]
+    needs: [plan, build, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -179,7 +226,8 @@ jobs:
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
-          name: meetcue-win-x64
+          pattern: meetcue-*
+          merge-multiple: true
           path: dist-release
 
       - name: Commit the version and Scoop manifest, and tag it
@@ -213,19 +261,20 @@ jobs:
       - name: Create the GitHub release
         run: |
           set -euo pipefail
-          hash=$(sha256sum dist-release/meetcue-win-x64.zip | cut -d' ' -f1)
           {
             echo "Install or update with Scoop: \`scoop install meetcue\` / \`scoop update meetcue\`. See the [installation guide](https://amazingkenneth.github.io/meetcue/install)."
             echo
             # This version's changelog section, without its heading.
             awk -v h="## $VERSION — " 'index($0, h) == 1 { on = 1; next } on && /^## / { exit } on' docs/reference/changelog.md
             echo
-            echo "SHA-256 of meetcue-win-x64.zip: \`$hash\`"
+            echo "macOS: download the arm64 (Apple Silicon) or x64 (Intel) disk image, drag MeetCue to Applications, and grant microphone and screen/audio recording access. These builds are ad-hoc signed, not notarized; see the installation guide."
+            echo
+            sha256sum dist-release/*
           } > notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist-release/meetcue-win-x64.zip --clobber
+            gh release upload "$TAG" dist-release/* --clobber
           else
-            gh release create "$TAG" dist-release/meetcue-win-x64.zip --verify-tag \
+            gh release create "$TAG" dist-release/* --verify-tag \
               --title "MeetCue $VERSION" --notes-file notes.md
           fi
 

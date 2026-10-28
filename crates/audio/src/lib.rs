@@ -11,7 +11,9 @@ pub mod convert;
 pub mod gain;
 pub mod vad;
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(not(any(windows, target_os = "macos")))]
 mod unsupported;
 #[cfg(windows)]
 mod windows;
@@ -73,7 +75,11 @@ pub fn platform_source() -> Box<dyn AudioSource> {
     {
         Box::new(windows::WasapiSource::new())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        Box::new(macos::MacSource::default())
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         Box::new(unsupported::UnsupportedSource)
     }

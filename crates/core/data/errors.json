@@ -15,8 +15,8 @@
       "severity": "error",
       "title": { "en": "The microphone is blocked or muted", "zh-CN": "麦克风被禁止访问或已静音" },
       "fix": {
-        "en": "Turn on microphone access for desktop apps in the system privacy settings and check that the microphone isn't muted (mute key, headset switch or Sound settings), then restart capture.",
-        "zh-CN": "在系统隐私设置里允许桌面应用访问麦克风，并确认麦克风没有被静音（静音键、耳机开关或声音设置），然后重新开始拾取。"
+        "en": "Allow MeetCue microphone access in the system privacy settings (macOS: Privacy & Security › Microphone) and check that the microphone isn't muted (mute key, headset switch or Sound settings), then restart capture.",
+        "zh-CN": "在系统隐私设置里允许 MeetCue 访问麦克风（macOS：隐私与安全性 › 麦克风），并确认麦克风没有被静音（静音键、耳机开关或声音设置），然后重新开始拾取。"
       },
       "action": { "kind": "open-url", "target": "ms-settings:privacy-microphone" }
     },
@@ -48,12 +48,24 @@
       }
     },
     {
+      "code": "MC-AUD-006",
+      "severity": "error",
+      "title": {
+        "en": "System audio recording permission is missing",
+        "zh-CN": "缺少系统声音录制权限"
+      },
+      "fix": {
+        "en": "On macOS, allow MeetCue in System Settings › Privacy & Security › Screen & System Audio Recording (Screen Recording on older versions). Quit and reopen MeetCue after granting permission.",
+        "zh-CN": "在 macOS 的 系统设置 › 隐私与安全性 › 屏幕与系统音频录制（旧版系统为“屏幕录制”）中允许 MeetCue，授权后退出并重新打开 MeetCue。"
+      }
+    },
+    {
       "code": "MC-AUD-900",
       "severity": "error",
       "title": { "en": "Audio capture is not available on this platform yet", "zh-CN": "此平台暂不支持音频采集" },
       "fix": {
-        "en": "This build supports audio capture on Windows only. Practice mode with speech-to-text for the questions turned off still works.",
-        "zh-CN": "当前版本只在 Windows 上支持音频采集。练习模式关闭“问题语音转文字”后仍可使用。"
+        "en": "Audio capture requires Windows or macOS 13 or later. Practice mode with speech-to-text for the questions turned off still works.",
+        "zh-CN": "音频采集需要 Windows 或 macOS 13 及以上版本。练习模式关闭“问题语音转文字”后仍可使用。"
       }
     },
     {

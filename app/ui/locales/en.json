@@ -509,13 +509,13 @@
     "audioSettings": "Both bars flat, or the wrong device?",
     "openAudio": "Open audio settings",
     "voiceTitle": "The voice that asks the questions",
-    "voiceLead": "Questions are read by a Windows voice. Pick one per language and listen to it before you start.",
+    "voiceLead": "Questions are read by a system voice. Pick one per language and listen to it before you start.",
     "voiceEn": "English voice",
     "voiceZh": "Chinese voice",
-    "voiceAuto": "First voice Windows offers",
-    "voiceHint": "Install more voices in Windows Settings › Time & language › Speech.",
+    "voiceAuto": "First available voice",
+    "voiceHint": "Add voices in your system speech settings. On macOS: Accessibility › Spoken Content (Read & Speak on newer versions). On Windows: Time & language › Speech.",
     "tryVoice": "Try it",
-    "noVoices": "Windows reports no speech voices, so questions can't be read aloud. Add one in Windows Settings › Time & language › Speech.",
+    "noVoices": "No system speech voices are available. Add a voice in your system speech settings, then reopen this window.",
     "briefingTitle": "Briefing material (optional)",
     "nextChoose": "Next: choose the interview questions.",
     "nextCheck": "Next: check the questions, then start.",
@@ -563,8 +563,8 @@
       "zh": "No Chinese voice is installed, so Chinese questions can't be read aloud."
     },
     "missingVoiceSteps": {
-      "en": "In Windows Settings › Time & language › Language & region, add English (United States) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window.",
-      "zh": "In Windows Settings › Time & language › Language & region, add Chinese (Simplified, China) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window."
+      "en": "In Windows Settings › Time & language › Language & region, add English (United States) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window. On macOS, open System Settings › Accessibility › Spoken Content (or Read & Speak), choose Manage Voices and download a voice for this language.",
+      "zh": "In Windows Settings › Time & language › Language & region, add Chinese (Simplified, China) and tick Text-to-speech, or open Speech and choose Add voices. Then reopen this window. On macOS, open System Settings › Accessibility › Spoken Content (or Read & Speak), choose Manage Voices and download a voice for this language."
     },
     "openLanguages": "Open language settings",
     "openSpeech": "Open speech settings",

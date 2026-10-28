@@ -4,6 +4,18 @@ This page lists the checks that can only be done on a real Windows computer: aud
 
 When an item fails, note the error code if any, [export diagnostics](/troubleshooting/diagnostics) and [open an issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml).
 
+## macOS acceptance checks
+
+Test the packaged app from Applications on both Apple Silicon and Intel with macOS 13 or later. Automated CI builds both architectures and checks the bundle's version, signature and privacy metadata; it cannot approve macOS privacy dialogs or validate real audio hardware.
+
+1. Start without permissions. Deny screen/audio recording and confirm `MC-AUD-006`; grant it in Privacy & Security, quit and reopen. Deny microphone and confirm `MC-AUD-002`, then allow it and restart capture.
+2. Run `--self-test` from the app bundle, use headphones and speak during the microphone check. Confirm the remote test tone and microphone both pass. Screen-share hiding may be skipped by the automated self-test; check your actual meeting app manually.
+3. Play a meeting or video. Confirm both level meters, live transcription and hints; pause/resume and stop/start several times. Let system audio stay silent for a minute, then resume it.
+4. Select a USB/headset microphone, unplug it, and switch the system default. Confirm capture follows the setting, reports a device change and resumes.
+5. Preview English and Chinese voices, then run a mock interview with question speech-to-text on. Confirm the app's spoken questions enter the remote channel and Stop/Ask again interrupt speech.
+6. Confirm overlay transparency, shortcuts, click-through, positioning on multiple Retina displays and normal settings-window focus. Verify screen-share visibility in your actual meeting app: macOS capture clients may ignore window-sharing exclusion.
+7. Save keys, quit and reopen; verify Keychain persistence and autostart. Confirm Erase all data removes keys/settings. Check launch after dragging a newer app over the old one.
+
 ## Self-test first
 
 - [ ] `MeetCue.exe --version` prints the expected version.
