@@ -2,6 +2,12 @@
 
 This page helps when MeetCue doesn't hear you or the other participants, or hears the wrong thing. Open **Settings › Audio › Test levels** to watch both level bars while you work through the steps.
 
+## macOS permissions and device changes
+
+On macOS 13 or later, system sound uses ScreenCaptureKit and the microphone uses AVFoundation. In **System Settings › Privacy & Security**, allow MeetCue under **Microphone** and **Screen & System Audio Recording** (or **Screen Recording**). Quit and reopen the app after changing screen recording permission. `MC-AUD-006` means system-audio permission is missing; `MC-AUD-002` means microphone permission is missing.
+
+Choose **System default** in Settings › Audio to follow input changes. If a selected headset disconnects, capture falls back to the default microphone. Bluetooth call mode can reduce sound quality on macOS too; a separate microphone and headphones avoid that switch. The Windows-specific steps below apply only to Windows.
+
 ## The system sound level stays flat {#no-system-sound}
 
 **Possible causes**

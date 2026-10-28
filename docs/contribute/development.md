@@ -9,6 +9,8 @@ This page shows how to build MeetCue from source, run the tests and preview the 
 - On Windows: the Microsoft C++ build tools and the WebView2 runtime.
 - On Linux, for the desktop app only: the [Tauri system libraries](https://v2.tauri.app/start/prerequisites/) (WebKitGTK, libappindicator and so on).
 
+- On macOS: macOS 13 or later and Xcode Command Line Tools (`xcode-select --install`). Build the distributable app with `npx tauri build` from `app/src-tauri`; use the app bundle for stable privacy permissions.
+
 Clone the repository and install the JavaScript dependencies:
 
 ```sh

@@ -17,6 +17,7 @@ pub mod codes {
     pub const AUD_NO_DEVICE: &str = "MC-AUD-003";
     pub const AUD_DEVICE_CHANGED: &str = "MC-AUD-004";
     pub const AUD_LOOPBACK_SILENT: &str = "MC-AUD-005";
+    pub const AUD_SYSTEM_DENIED: &str = "MC-AUD-006";
     pub const AUD_UNSUPPORTED: &str = "MC-AUD-900";
     pub const ASR_AUTH: &str = "MC-ASR-001";
     pub const ASR_CONNECT: &str = "MC-ASR-002";
@@ -49,6 +50,7 @@ pub mod codes {
         AUD_NO_DEVICE,
         AUD_DEVICE_CHANGED,
         AUD_LOOPBACK_SILENT,
+        AUD_SYSTEM_DENIED,
         AUD_UNSUPPORTED,
         ASR_AUTH,
         ASR_CONNECT,

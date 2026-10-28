@@ -11,6 +11,7 @@ MeetCue 完全在你的电脑上运行，直接调用你选择的语音识别和
 - **文档：** <https://amazingkenneth.github.io/meetcue/zh/>
 - **安装（Windows）：** `scoop bucket add meetcue https://github.com/Amazingkenneth/meetcue`，然后 `scoop install meetcue`
 - **无需密钥试用：** 运行 `MeetCue.exe --demo` 回放一段示例面试。
+- **安装（macOS 13+）：** 从 [Releases](https://github.com/Amazingkenneth/meetcue/releases) 下载 Apple 芯片或 Intel 安装包，拖到应用程序，并允许麦克风与屏幕/音频录制。
 
 ## 功能
 

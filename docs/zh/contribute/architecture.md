@@ -20,7 +20,7 @@ MeetCue 是一个 Tauri 2 桌面应用。所有实时处理都在 Rust 端运行
 | --- | --- |
 | `crates/core` | 共享类型：设置、事件、错误码（`data/errors.json`）、发布的价格表（`data/pricing.json`，运行时下载，不编译进程序） |
 | `crates/pipeline` | 提示引擎、供应商客户端、延迟探测、练习逻辑、提示词（`prompts/*.txt`） |
-| `crates/audio` | 音频采集（Windows 上为 WASAPI）、格式转换、人声检测 |
+| `crates/audio` | 音频采集（Windows：WASAPI；macOS：ScreenCaptureKit 和 AVFoundation）、格式转换、人声检测 |
 | `crates/platform` | 凭据库、设置路径、语音合成、窗口样式 |
 | `app/src-tauri` | 桌面应用：窗口、托盘、快捷键、命令、会话、诊断 |
 | `app/ui` | React 界面、翻译文件（`locales/`）、浏览器预览用的模拟后端（`src/mock/`） |

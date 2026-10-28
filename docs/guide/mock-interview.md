@@ -42,6 +42,8 @@ Under **The voice that asks the questions**, pick the Windows voice for each lan
 
 ### Voices for each language {#voices}
 
+On macOS, add English or Chinese voices in **System Settings › Accessibility › Spoken Content** (called **Read & Speak** on newer versions), under the system voice picker’s **Manage Voices** option. Reopen the practice window after downloading a voice.
+
 If Windows has no voice for English or for Chinese, the step says so under that language, with buttons that open the right Windows settings page. To add a voice:
 
 1. Click **Open language settings** (Windows Settings › Time & language › Language & region).

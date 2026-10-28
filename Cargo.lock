@@ -2698,6 +2698,7 @@ dependencies = [
 name = "meetcue-audio"
 version = "0.3.1"
 dependencies = [
+ "cc",
  "meetcue-core",
  "ringbuf",
  "rubato",

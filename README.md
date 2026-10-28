@@ -10,6 +10,7 @@ MeetCue runs entirely on your computer. It calls the speech recognition and lang
 
 - **Documentation:** <https://amazingkenneth.github.io/meetcue/>
 - **Install (Windows):** `scoop bucket add meetcue https://github.com/Amazingkenneth/meetcue` then `scoop install meetcue`
+- **Install (macOS 13+):** download the Apple Silicon or Intel disk image from [Releases](https://github.com/Amazingkenneth/meetcue/releases), drag MeetCue to Applications, and grant microphone and screen/audio recording access.
 - **Try without keys:** run `MeetCue.exe --demo` to replay a sample interview.
 
 ## Features

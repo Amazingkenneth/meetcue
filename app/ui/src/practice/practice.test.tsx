@@ -203,4 +203,22 @@ describe("Practice window", () => {
     expect(screen.getByText("漏掉了故障收敛时间这个要点。")).toBeInTheDocument();
     expect(screen.getByText("212 字/分钟")).toBeInTheDocument();
   });
+
+  it("opens macOS speech settings when voices are missing", async () => {
+    const b = createMockBackend();
+    const opened: string[] = [];
+    setBackend({ ...b, invoke: new Proxy(b.invoke, {
+      apply(target, thisArg, args) {
+        if (args[0] === "get_app_info") return b.invoke("get_app_info").then((i) => ({ ...i, platform: "macos", captureSupported: true }));
+        if (args[0] === "list_voices") return Promise.resolve([]);
+        if (args[0] === "open_url") { opened.push(args[1].url); return Promise.resolve(null); }
+        return Reflect.apply(target, thisArg, args);
+      },
+    }) });
+    render(<Practice />);
+    await flush();
+    expect(screen.queryByRole("button", { name: "Open language settings" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open speech settings" }));
+    expect(opened).toEqual(["x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent"]);
+  });
 });

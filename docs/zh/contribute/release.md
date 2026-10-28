@@ -48,3 +48,5 @@
 - **Settings › Secrets and variables › Actions › Variables**：设置 `GIT_NAME` 和 `GIT_EMAIL`，供工作流提交时使用。
 - **Settings › Actions › General › Workflow permissions**：工作流用 `GITHUB_TOKEN` 推送到默认分支，如果默认分支有保护规则，需要允许 GitHub Actions 推送。
 - 仓库必须是公开的，否则 Scoop 无法下载 Release 中的文件。
+
+Mac 发布在 Apple 芯片和 Intel 运行器上构建，提供 `.app` ZIP 和 DMG。应用包检查会验证隐私用途描述、最低 macOS 13 版本、签名完整性和 `--version`。当前采用临时签名；Developer ID 签名和公证需要 Apple 凭据，本次变更未配置。

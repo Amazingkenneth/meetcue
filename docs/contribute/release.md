@@ -48,3 +48,5 @@ These are set once:
 - **Settings › Secrets and variables › Actions › Variables**: `GIT_NAME` and `GIT_EMAIL` for commits made by workflows.
 - **Settings › Actions › General › Workflow permissions**: the workflow pushes to the default branch with `GITHUB_TOKEN`, so a branch protection rule on it must let GitHub Actions push.
 - The repository must be public, or Scoop can't download release assets.
+
+Mac releases are built on Apple Silicon and Intel runners as `.app` ZIPs and DMGs. The bundle check verifies privacy descriptions, the macOS 13 minimum, signature integrity and `--version`. Packages currently use ad-hoc signing; Developer ID signing and notarization require Apple credentials and are not configured by this change.

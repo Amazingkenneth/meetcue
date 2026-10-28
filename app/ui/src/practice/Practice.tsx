@@ -285,19 +285,24 @@ function VoiceStep({ settings, update }: { settings: Settings; update: Update })
   );
 }
 
-/** Where Windows installs speech voices, and the guide that walks through it. */
+/** System speech settings, and the guide that walks through adding voices. */
 function VoiceLinks() {
   const { t, i18n } = useTranslation();
-  const base = (useAppInfo()?.docsUrl ?? "https://amazingkenneth.github.io/meetcue/").replace(/\/+$/, "");
+  const info = useAppInfo();
+  const base = (info?.docsUrl ?? "https://amazingkenneth.github.io/meetcue/").replace(/\/+$/, "");
   const docs = `${base}${i18n.language.startsWith("zh") ? "/zh" : ""}/guide/mock-interview#voices`;
   return (
     <div className="practice-tools">
+      {info?.platform === "macos" ? <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: "x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent" })}>
+        {t("practice.openSpeech")}
+      </button> : info?.platform === "windows" || info?.platform === "web" ? <>
       <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: "ms-settings:regionlanguage" })}>
         {t("practice.openLanguages")}
       </button>
       <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: "ms-settings:speech" })}>
         {t("practice.openSpeech")}
       </button>
+      </> : null}
       <button className="btn btn-small btn-link" onClick={() => void backend().invoke("open_url", { url: docs })}>
         {t("practice.voiceGuide")}
       </button>

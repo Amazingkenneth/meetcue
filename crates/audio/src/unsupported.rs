@@ -1,7 +1,6 @@
 //! Placeholder for platforms whose capture backend is not implemented yet.
 //!
-//! macOS will use ScreenCaptureKit (system sound) and Core Audio; Linux will
-//! use PipeWire/PulseAudio monitor sources. Until then every call returns
+//! Linux will use PipeWire/PulseAudio monitor sources. Until then every call returns
 //! `MC-AUD-900` so the rest of the application still builds and runs.
 
 use meetcue_core::{codes, MeetCueError};

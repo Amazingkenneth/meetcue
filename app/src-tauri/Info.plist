@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>MeetCue listens to your microphone to transcribe your answers and track your talking points.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>MeetCue captures meeting sound to transcribe questions and show talking points.</string>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>MeetCue uses ScreenCaptureKit to listen to meeting sound. Screen images are not recorded.</string>
+</dict>
+</plist>
