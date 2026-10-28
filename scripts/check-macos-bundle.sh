@@ -12,6 +12,6 @@ version=$("$app/Contents/MacOS/MeetCue" --version)
 codesign --verify --deep --strict "$app"
 entitlements=$(mktemp)
 trap 'rm -f "$entitlements"' EXIT
-codesign --display --entitlements - "$app" > "$entitlements" 2>/dev/null
+codesign --display --entitlements - --xml "$app" > "$entitlements" 2>/dev/null
 test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.device.audio-input' "$entitlements")" = 'true'
 echo "Verified $version bundle and privacy metadata"

@@ -77,6 +77,7 @@ void mc_audio_devices(bool input, void *context, MCDevice callback) {
     if (status == AVAuthorizationStatusNotDetermined) {
         dispatch_semaphore_t permission = dispatch_semaphore_create(0);
         [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
+            (void)granted;
             dispatch_semaphore_signal(permission);
         }];
         // Called from a worker, never the AppKit event loop. Permission
@@ -267,6 +268,7 @@ void mc_audio_devices(bool input, void *context, MCDevice callback) {
     if (self.remote) {
         dispatch_semaphore_t stopped = dispatch_semaphore_create(0);
         [self.remote stopCaptureWithCompletionHandler:^(NSError *error) {
+            (void)error;
             dispatch_semaphore_signal(stopped);
         }];
         dispatch_semaphore_wait(stopped, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
