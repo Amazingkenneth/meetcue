@@ -4,8 +4,8 @@
 
 ## 系统要求
 
-- Windows 10 2004 及以上版本，或 Windows 11，64 位。
-- Microsoft Edge WebView2 运行时。几乎所有 Windows 10 和 11 电脑都已预装。如果 MeetCue 提示 [MC-SYS-001](/zh/troubleshooting/error-codes#mc-sys-001)，请从微软官网安装 Evergreen 版运行时。
+- Windows 10 2004 及以上版本 / Windows 11（64 位），或 macOS 13 及以上版本（Apple 芯片或 Intel）。
+- Windows 上需要 Microsoft Edge WebView2 运行时。几乎所有 Windows 10 和 11 电脑都已预装。如果 MeetCue 提示 [MC-SYS-001](/zh/troubleshooting/error-codes#mc-sys-001)，请从微软官网安装 Evergreen 版运行时。
 - 一个语音识别供应商的 API 密钥，和一个大模型供应商的 API 密钥。参见[供应商配置](/zh/guide/providers)。
 
 ::: info Linux

@@ -201,14 +201,8 @@ impl AudioSource for MacSource {
         let worker = thread::spawn(move || {
             let mut native = Some(native);
             let mut uid = microphone_uid(cfg.mic_device.as_deref());
-            let mut converters: [Option<FrameConverter>; 2] = [None, None];
-            // Clock the remote channel even before ScreenCaptureKit sends
-            // its first packet, so silent output keeps recognition alive.
-            if cfg.capture_remote {
-                let mut c = converter(Channel::Remote, 48_000, &cfg);
-                c.start_clock(clock::mono_ms());
-                converters[1] = Some(c);
-            }
+            let mut converters = initial_converters(&cfg);
+            let mut restart = false;
             let mut last_device_check = Instant::now();
             while !stop.load(Ordering::Relaxed) {
                 match rx.recv_timeout(Duration::from_millis(20)) {
@@ -224,6 +218,10 @@ impl AudioSource for MacSource {
                         }
                     }
                     Ok(Packet::Error(ch, e)) => {
+                        // A device/stream failure (including waking from
+                        // sleep) needs reopening even if its UID is unchanged.
+                        // Permission failures require an explicit user retry.
+                        restart |= e.code == codes::AUD_NO_DEVICE;
                         sink(SourceEvent::Error(ch, e));
                     }
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -238,10 +236,10 @@ impl AudioSource for MacSource {
                 }
                 // Follow the default microphone and recover when a selected
                 // headset disappears. Device UIDs remain stable across runs.
-                if cfg.capture_me && last_device_check.elapsed() >= Duration::from_secs(1) {
+                if last_device_check.elapsed() >= Duration::from_secs(1) {
                     last_device_check = Instant::now();
                     let current = microphone_uid(cfg.mic_device.as_deref());
-                    if current != uid || native.is_none() {
+                    if (cfg.capture_me && current != uid) || native.is_none() || restart {
                         drop(native.take());
                         // Discard packets belonging to the previous stream.
                         while rx.try_recv().is_ok() {}
@@ -249,8 +247,16 @@ impl AudioSource for MacSource {
                             Ok(n) => {
                                 native = Some(n);
                                 uid = current;
-                                converters = [None, None];
-                                sink(SourceEvent::DeviceChanged(Channel::Me));
+                                restart = false;
+                                converters = initial_converters(&cfg);
+                                for (enabled, ch) in [
+                                    (cfg.capture_me, Channel::Me),
+                                    (cfg.capture_remote, Channel::Remote),
+                                ] {
+                                    if enabled {
+                                        sink(SourceEvent::DeviceChanged(ch));
+                                    }
+                                }
                             }
                             Err(e) => sink(SourceEvent::Error(Channel::Me, e)),
                         }
@@ -299,6 +305,22 @@ fn converter(channel: Channel, rate: u32, cfg: &CaptureConfig) -> FrameConverter
     );
     c.set_boost(remote && cfg.boost_remote);
     c
+}
+
+fn initial_converters(cfg: &CaptureConfig) -> [Option<FrameConverter>; 2] {
+    // Clock enabled channels before the first packet and after every reopen,
+    // so silence never starves a recognition connection.
+    [
+        (cfg.capture_me, Channel::Me),
+        (cfg.capture_remote, Channel::Remote),
+    ]
+    .map(|(enabled, ch)| {
+        enabled.then(|| {
+            let mut c = converter(ch, 48_000, cfg);
+            c.start_clock(clock::mono_ms());
+            c
+        })
+    })
 }
 
 impl Drop for MacSource {

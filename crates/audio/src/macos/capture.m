@@ -106,11 +106,15 @@ void mc_audio_devices(bool input, void *context, MCDevice callback) {
         AVLinearPCMBitDepthKey: @32, AVLinearPCMIsNonInterleaved: @YES
     };
     [output setSampleBufferDelegate:self queue:self.queue];
-    if (![self.mic canAddInput:input] || ![self.mic canAddOutput:output]) {
-        self.failure = @"The microphone cannot deliver PCM audio";
+    if (![self.mic canAddInput:input]) {
+        self.failure = @"The microphone cannot be opened";
         return NO;
     }
     [self.mic addInput:input];
+    if (![self.mic canAddOutput:output]) {
+        self.failure = @"The microphone cannot deliver PCM audio";
+        return NO;
+    }
     [self.mic addOutput:output];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(micFailed:)
         name:AVCaptureSessionRuntimeErrorNotification object:self.mic];

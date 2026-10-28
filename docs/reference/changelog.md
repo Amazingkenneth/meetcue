@@ -5,6 +5,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 ## Unreleased
 
 - macOS 13+ native microphone and system-audio capture, permission guidance, transparent overlays, and app/DMG builds for Apple Silicon and Intel.
+- Reuse the macOS speech engine so listing voices does not break subsequent voice previews and mock interviews; reopen audio streams after device failures or sleep.
 
 ## 0.3.0 — 2026-10-27
 

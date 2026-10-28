@@ -144,13 +144,13 @@ jobs:
       - name: Test the native macOS audio bridge
         if: runner.os == 'macOS'
         run: |
-          cargo clippy -p meetcue-audio --all-targets -- -D warnings
-          cargo test -p meetcue-audio
+          cargo clippy -p meetcue-audio -p meetcue-platform --all-targets -- -D warnings
+          cargo test -p meetcue-audio -p meetcue-platform
       - name: Build and verify the macOS app bundle
         if: runner.os == 'macOS'
         working-directory: app/src-tauri
         run: |
-          npx tauri build --bundles app
+          npx tauri build --bundles app,dmg
           ../../scripts/check-macos-bundle.sh ../../target/release/bundle/macos/MeetCue.app
       - name: Pack the macOS app
         if: runner.os == 'macOS'
@@ -160,6 +160,13 @@ jobs:
         with:
           name: MeetCue-macos-${{ runner.arch }}
           path: MeetCue-macos-${{ runner.arch }}.zip
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'macOS'
+        with:
+          name: MeetCue-macos-${{ runner.arch }}-dmg
+          path: target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
           retention-days: 14
       - run: cargo test -p meetcue-app
 

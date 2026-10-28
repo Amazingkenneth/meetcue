@@ -10,4 +10,8 @@ test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" = 
 version=$("$app/Contents/MacOS/MeetCue" --version)
 [[ "$version" =~ ^MeetCue\ [0-9]+\.[0-9]+\.[0-9]+$ ]]
 codesign --verify --deep --strict "$app"
+entitlements=$(mktemp)
+trap 'rm -f "$entitlements"' EXIT
+codesign --display --entitlements - "$app" > "$entitlements" 2>/dev/null
+test "$(/usr/libexec/PlistBuddy -c 'Print :com.apple.security.device.audio-input' "$entitlements")" = 'true'
 echo "Verified $version bundle and privacy metadata"

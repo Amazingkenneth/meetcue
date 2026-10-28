@@ -261,7 +261,6 @@ jobs:
       - name: Create the GitHub release
         run: |
           set -euo pipefail
-          hash=$(sha256sum dist-release/meetcue-win-x64.zip | cut -d' ' -f1)
           {
             echo "Install or update with Scoop: \`scoop install meetcue\` / \`scoop update meetcue\`. See the [installation guide](https://amazingkenneth.github.io/meetcue/install)."
             echo

@@ -4,8 +4,8 @@ This page shows how to install, update and remove MeetCue on Windows and macOS. 
 
 ## Requirements
 
-- Windows 10 version 2004 or later, or Windows 11, 64-bit.
-- The Microsoft Edge WebView2 runtime. It is already installed on almost every Windows 10 and 11 computer. If MeetCue reports [MC-SYS-001](/troubleshooting/error-codes#mc-sys-001), install the Evergreen runtime from Microsoft.
+- Windows 10 version 2004 or later / Windows 11 (64-bit), or macOS 13 or later (Apple Silicon or Intel).
+- On Windows, the Microsoft Edge WebView2 runtime. It is already installed on almost every Windows 10 and 11 computer. If MeetCue reports [MC-SYS-001](/troubleshooting/error-codes#mc-sys-001), install the Evergreen runtime from Microsoft.
 - An API key for a speech recognition provider and one for a language model provider. See [Providers and keys](/guide/providers).
 
 ::: info Linux

@@ -6,7 +6,7 @@
 
 1. 在两种语言[更新日志](/zh/reference/changelog)的 **未发布** 部分写上本次改动。发布时这些条目会移到新版本标题下，并用作发布说明。
 2. 对照各供应商的定价页面核对 `crates/core/data/pricing.json` 中的价格，有变化时更新 `verified` 日期和 `updated`。程序从文档站下载这个文件，所以修正价格只需推送到默认分支，无需发布新版本。
-3. 涉及音频、语音识别或窗口的改动，请在 Windows 电脑上用该分支的构建运行[实机测试清单](/zh/test-checklist)（CI 会为每次推送上传 `MeetCue-windows-x64`）。
+3. 涉及音频、语音识别或窗口的改动，请在 Windows 和 macOS 电脑上用该分支的构建运行[实机测试清单](/zh/test-checklist)（CI 会为每次推送上传 `MeetCue-windows-x64`）。
 
 ## 版本号如何确定
 
@@ -37,7 +37,7 @@
 
 ## 发布之后
 
-1. 在 Windows 电脑上确认 `scoop update meetcue` 能升级到新版本。
+1. 在 Windows 和 macOS 电脑上确认 `scoop update meetcue` 能升级到新版本。
 2. 确认文档站点显示了新的更新日志。
 
 ## 仓库设置

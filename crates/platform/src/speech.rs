@@ -45,6 +45,20 @@ fn tts_err(e: tts::Error) -> MeetCueError {
 
 impl Speaker {
     pub fn new() -> Self {
+        // tts 0.26's AVFoundation backend registers an Objective-C delegate
+        // class on construction. A second engine cannot register that class
+        // again, so listing voices used to break all subsequent previews and
+        // practice runs. Keep one worker/engine for the process on macOS.
+        #[cfg(target_os = "macos")]
+        {
+            static SPEAKER: std::sync::OnceLock<Speaker> = std::sync::OnceLock::new();
+            SPEAKER.get_or_init(Self::spawn_worker).clone()
+        }
+        #[cfg(not(target_os = "macos"))]
+        Self::spawn_worker()
+    }
+
+    fn spawn_worker() -> Self {
         let (tx, rx) = mpsc::channel::<Command>();
         let stop: Arc<Mutex<Option<tts::Tts>>> = Arc::new(Mutex::new(None));
         let shared = stop.clone();
@@ -179,4 +193,22 @@ fn speak_blocking(
         waited += 50;
     }
     Ok(())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn voice_listing_and_later_speakers_reuse_the_mac_engine() {
+        let first = Speaker::new();
+        let voices = first.voices();
+        let second = Speaker::new();
+        assert!(Arc::ptr_eq(&first.stop, &second.stop));
+        assert!(
+            second.stop.lock().unwrap().is_some(),
+            "AVFoundation speech engine did not initialize"
+        );
+        assert_eq!(second.voices(), voices);
+    }
 }
