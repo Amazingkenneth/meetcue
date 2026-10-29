@@ -57,17 +57,17 @@ If Windows has no voice for English or for Chinese, the step says so under that 
 
 Hints are better when MeetCue knows who you are and what the interview is for. This step takes two minutes and is worth doing at least once.
 
-1. In the sound check step, click **Open briefing material**. It opens **Settings › Hints**.
+1. In the sound check step, click **Open knowledge base**. It opens **Settings › Hints**.
 2. Under **My role**, write one sentence about yourself, for example:
    - `Backend software engineer with 4 years of Go and PostgreSQL`
    - `Network security engineer moving into AI security, 5 years in a SOC`
-3. Under **Briefing material**, click **Add a file…** and choose a job description. Two samples match the built-in interviews:
+3. Under **Knowledge base**, click **Add files…** and choose a job description. Two samples match the built-in interviews:
    - [jd-software-engineer.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-software-engineer.md): backend software engineer
    - [jd-security-ai.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-security-ai.md): network security engineer on an AI platform team
 
    Download a sample with the **Download raw file** button on GitHub, or paste a real job description into a `.txt` or `.md` file.
 
-See [Briefing material](/guide/materials) for what is sent and how to keep it focused. Remove the job description afterwards if you don't want it in your real meetings.
+See [Knowledge base](/guide/materials) for what is sent and how to keep it focused. Remove the job description afterwards if you don't want it in your real meetings.
 
 ## Step 4: Choose an interview {#step-4}
 

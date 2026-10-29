@@ -4,6 +4,12 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- **Knowledge base**: add your résumé, project notes, slides or spreadsheets, and hints build on your real experience. Long files are searched per question on your computer, so each question gets the passages that match it. New formats: Excel, PowerPoint (with speaker notes), OpenDocument, RTF and HTML, and several files can be added at once.
+- **Try a question** shows which knowledge base passages a question would get.
+- **Settings › Hints › Prompts** shows the hint model's instructions and lets you edit them, with warnings for missing placeholders and a button to restore the built-in text.
+
 ### Changed
 
 - A question the speaker pauses in the middle of ("your thoughts on idea A… and idea B") stays one question: the rest is joined to the same card and the hints are rewritten to cover every part, instead of answering only the first half. This also applies when the early trigger fired at the pause.

@@ -5,13 +5,13 @@ This page explains what MeetCue sends to which provider, what it keeps on your c
 ## What goes to your speech recognition provider
 
 - Audio from your microphone and from system sound while listening is on, converted to 16 kHz mono. Silence is not sent, except about 0.3 s just before speech starts so the first word isn't cut off, and up to about a second after it so the recognizer can tell the sentence ended.
-- Terms from your briefing material, as recognition hints.
+- Terms from your knowledge base, as recognition hints.
 - In practice mode with **Speech-to-text for the questions** off, the other side's audio isn't sent.
 
 ## What goes to your language model provider
 
 - For detection: the recognised sentence and a few sentences of context.
-- For hints: the question, recent conversation, your role, and a short excerpt of your briefing material.
+- For hints: the question, recent conversation, your role, a short overview of your knowledge base, and the passages of it that match the question.
 - In practice mode: questions, your recognised answers, reference answers for feedback, and subtitle lines to classify.
 - During the latency probe: a short built-in sample transcript.
 
@@ -26,7 +26,7 @@ Each provider's own privacy policy and data retention terms apply to what you se
 | Data | Location |
 | --- | --- |
 | API keys | Windows Credential Manager, entries named `MeetCue` |
-| Settings, role and extracted briefing text | `settings.json` in the settings folder |
+| Settings, role, custom prompts and extracted knowledge base text | `settings.json` in the settings folder |
 | Latency results | `latency-history.json` |
 | Usage and cost per call (no content) | `usage.jsonl` |
 | Logs, kept 7 days, without transcripts unless debug logging is on (the last lines are also shown in **Settings › Diagnostics › Activity log**) | `logs\` |
@@ -39,7 +39,7 @@ See [Settings](/reference/settings#where-settings-are-stored) for the folder loc
 
 - No telemetry, usage statistics or crash reports are collected.
 - API keys are never sent to the interface, written to files or logged.
-- Diagnostics exports never include keys, transcripts, briefing material or practice records.
+- Diagnostics exports never include keys, transcripts, knowledge base files, custom prompts or practice records.
 - Nothing is sent anywhere while listening is paused, except a latency probe you start yourself.
 
 ## Delete your data

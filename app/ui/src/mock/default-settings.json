@@ -69,7 +69,11 @@
     "queueInterruptions": true,
     "trackCoverage": true,
     "earlyTrigger": true,
-    "speculativeHints": true
+    "speculativeHints": true,
+    "prompts": {
+      "hintsSystem": "",
+      "hintsUser": ""
+    }
   },
   "hotkeys": {
     "toggleCapture": "Ctrl+Alt+Space",

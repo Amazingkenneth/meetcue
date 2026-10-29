@@ -43,6 +43,7 @@ pub mod codes {
     pub const PRACTICE_FILE: &str = "MC-PRC-001";
     pub const PRACTICE_TTS: &str = "MC-PRC-002";
     pub const DIAG_EXPORT: &str = "MC-DIAG-001";
+    pub const KNOWLEDGE_FILE: &str = "MC-KB-001";
 
     pub const ALL: &[&str] = &[
         AUD_EXCLUSIVE,
@@ -76,6 +77,7 @@ pub mod codes {
         PRACTICE_FILE,
         PRACTICE_TTS,
         DIAG_EXPORT,
+        KNOWLEDGE_FILE,
     ];
 }
 

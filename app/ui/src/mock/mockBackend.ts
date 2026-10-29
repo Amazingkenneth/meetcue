@@ -10,6 +10,7 @@ import type { PointStatus } from "../bindings/PointStatus";
 import type { PriceEntry } from "../bindings/PriceEntry";
 import type { PriceTable } from "../bindings/PriceTable";
 import type { ProbeReport } from "../bindings/ProbeReport";
+import type { KnowledgePreview } from "../bindings/KnowledgePreview";
 import type { Settings } from "../bindings/Settings";
 import type { TimedEvent } from "../bindings/TimedEvent";
 import type { UserAction } from "../bindings/UserAction";
@@ -21,6 +22,7 @@ import type { Backend, CommandName, Commands } from "../backend/types";
 import type { LogLine } from "../bindings/LogLine";
 import { estimateHourly } from "../util/cost";
 import defaults from "./default-settings.json";
+import defaultPrompts from "./default-prompts.json";
 import demo from "./sdn-demo.json";
 import { mockPracticeReport, mockPracticeScript } from "./practice";
 
@@ -404,7 +406,12 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       "system.txt (OS version, audio devices, sample rates)",
     ],
     export_diagnostics: () => "meetcue-diagnostics.zip",
-    import_material: () => ({ name: "agenda.md", path: "agenda.md", text: "Agenda: network architecture review, SDN rollout, failover drills." }),
+    import_materials: () => ({
+      materials: [{ name: "agenda.md", path: "agenda.md", text: "Agenda: network architecture review, SDN rollout, failover drills." }],
+      failures: [{ name: "old-notes.doc", error: { code: "MC-KB-001", detail: "the old binary format .doc is not supported" } }],
+    }),
+    default_prompts: () => structuredClone(defaultPrompts),
+    preview_knowledge: ({ question }) => mockKnowledge(settings.hints.materials, question),
     practice_import: () => {
       practiceScript = mockPracticeScript();
       return practiceScript;
@@ -535,4 +542,20 @@ function mockProbe(networkOnly: boolean, label: string | null): ProbeReport {
           hourlyMicros: 155_000,
         })),
   };
+}
+
+/** A rough stand-in for the Rust passage search: paragraphs ranked by shared words. */
+function mockKnowledge(materials: Settings["hints"]["materials"], question: string): KnowledgePreview {
+  const total = materials.reduce((n, m) => n + [...m.text].length, 0);
+  const excerpt = materials.map((m) => `## ${m.name}\n${m.text.slice(0, total > 3000 ? 1200 / materials.length : 3000)}`).join("\n\n");
+  if (total <= 3000) return { excerpt, searched: false, passages: [] };
+  const words = new Set(question.toLowerCase().match(/[a-z0-9]{3,}|[\u4e00-\u9fff]{2}/g) ?? []);
+  const passages = materials
+    .flatMap((m) => m.text.split(/\n\s*\n/).map((text) => ({ source: m.name, text: text.trim() })))
+    .map((p) => ({ p, score: [...words].filter((w) => p.text.toLowerCase().includes(w)).length }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((x) => x.p);
+  return { excerpt, searched: true, passages };
 }

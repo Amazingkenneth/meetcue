@@ -271,8 +271,22 @@ impl ProviderSettings {
 pub struct Material {
     pub name: String,
     pub path: String,
-    /// Extracted plain text (kept locally; only a summary is sent to the model).
+    /// Extracted plain text (kept locally; only excerpts are sent to the model).
     pub text: String,
+}
+
+/// The user's own versions of the hint prompts. Empty means the built-in
+/// prompt, so improvements in new versions reach everyone who hasn't
+/// changed it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct PromptSettings {
+    /// Instructions for the hint model: `{role}`, `{materials}`,
+    /// `{output_language}`.
+    pub hints_system: String,
+    /// The per-question message: `{knowledge}`, `{transcript}`, `{question}`.
+    pub hints_user: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -288,6 +302,7 @@ pub struct HintSettings {
     /// Write hints while detection is still checking the sentence, and
     /// discard them if it isn't a question.
     pub speculative_hints: bool,
+    pub prompts: PromptSettings,
 }
 
 impl Default for HintSettings {
@@ -300,6 +315,7 @@ impl Default for HintSettings {
             track_coverage: true,
             early_trigger: true,
             speculative_hints: true,
+            prompts: PromptSettings::default(),
         }
     }
 }

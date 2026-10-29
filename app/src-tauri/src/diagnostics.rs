@@ -59,6 +59,15 @@ pub fn shareable_settings(s: &Settings) -> String {
     if !s.hints.role.is_empty() {
         s.hints.role = "(removed)".into();
     }
+    // Custom prompts can quote the user's background; keep only whether they exist.
+    for p in [
+        &mut s.hints.prompts.hints_system,
+        &mut s.hints.prompts.hints_user,
+    ] {
+        if !p.is_empty() {
+            *p = format!("(custom, {} characters removed)", p.chars().count());
+        }
+    }
     if let Some(p) = &s.providers.proxy {
         s.providers.proxy = Some(mask_userinfo(p));
     }

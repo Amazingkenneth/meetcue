@@ -4,8 +4,9 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::error::MeetCueError;
 use crate::pricing::PriceTable;
-use crate::settings::{PanelHeight, PanelMode, PanelPlace, PanelWidth, Settings};
+use crate::settings::{Material, PanelHeight, PanelMode, PanelPlace, PanelWidth, Settings};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -36,6 +37,44 @@ pub struct DeviceInfo {
     /// Bluetooth headsets switch to a low-quality call profile when their
     /// microphone is opened; the settings page warns about it.
     pub is_bluetooth: bool,
+}
+
+/// Files added to the knowledge base in one go, and those that could not be read.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct MaterialImport {
+    pub materials: Vec<Material>,
+    pub failures: Vec<FileFailure>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct FileFailure {
+    pub name: String,
+    pub error: MeetCueError,
+}
+
+/// What the hint model would be given from the knowledge base for a question.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct KnowledgePreview {
+    /// The excerpt in the hint model's instructions (same for every question).
+    pub excerpt: String,
+    /// Whether the files are long enough to be searched per question.
+    pub searched: bool,
+    /// The passages that would go with this question, most relevant first.
+    pub passages: Vec<KnowledgePassage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct KnowledgePassage {
+    pub source: String,
+    pub text: String,
 }
 
 /// A system text-to-speech voice offered for reading practice questions.

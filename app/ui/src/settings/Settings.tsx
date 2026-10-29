@@ -16,6 +16,7 @@ import { millis, seconds, usd } from "../util/format";
 import { errorFix, errorTitle } from "../util/errors";
 import type { ModelSlot } from "../backend/types";
 import defaults from "../mock/default-settings.json";
+import { KnowledgeSection, PromptsSection } from "./Knowledge";
 import { LogView } from "./LogView";
 import { ModelsPanel, PriceEditor, SLOTS } from "./ModelPicker";
 import { ProbePanel } from "./Probe";
@@ -1027,47 +1028,8 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
             }
           />
         </Field>
-        <Field label={t("hints.materials")} hint={t("hints.materialsHint")}>
-          <div style={{ display: "grid", gap: 6, width: "100%" }}>
-            {settings.hints.materials.map((m, i) => (
-              <div className="row" key={m.path + i}>
-                <span>{m.name}</span>
-                <span className="muted">{t("hints.chars", { count: m.text.length })}</span>
-                <span className="spacer" />
-                <button
-                  className="btn btn-small"
-                  onClick={() =>
-                    void update((s) => {
-                      s.hints.materials.splice(i, 1);
-                      return s;
-                    })
-                  }
-                >
-                  {t("common.remove")}
-                </button>
-              </div>
-            ))}
-            <span>
-              <button
-                className="btn btn-small"
-                onClick={() =>
-                  void backend()
-                    .invoke("import_material")
-                    .then((m) => {
-                      if (m)
-                        void update((s) => {
-                          s.hints.materials.push(m);
-                          return s;
-                        });
-                    })
-                }
-              >
-                {t("hints.importMaterial")}
-              </button>
-            </span>
-          </div>
-        </Field>
       </Section>
+      <KnowledgeSection settings={settings} update={update} />
       <Section title={t("hints.rulesTitle")}>
         {rule("onlyDirectedToMe")}
         {rule("queueInterruptions")}
@@ -1075,6 +1037,7 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
         {rule("earlyTrigger")}
         {rule("speculativeHints")}
       </Section>
+      <PromptsSection settings={settings} update={update} />
     </>
   );
 }

@@ -341,6 +341,7 @@ async fn time_llm(cfg: &ProviderConfig, env: &ProbeEnv) -> Result<(f64, f64), Me
     let user = crate::prompts::render(
         crate::prompts::HINTS_USER,
         &[
+            ("knowledge", "(none)"),
             ("transcript", PROBE_TRANSCRIPT),
             (
                 "question",

@@ -18,7 +18,7 @@ const pages = {
     severity: { error: "Error", warning: "Warning", info: "Notice" },
     fix: "How to fix",
     more: "Still stuck? [Export diagnostics](./diagnostics) and open an issue with the code.",
-    modules: { AUD: "Audio", ASR: "Speech recognition", LLM: "Language models", HK: "Shortcuts", SYS: "System", NET: "Network", BUD: "Budget", PRC: "Practice", DIAG: "Diagnostics" },
+    modules: { AUD: "Audio", ASR: "Speech recognition", LLM: "Language models", HK: "Shortcuts", SYS: "System", NET: "Network", BUD: "Budget", PRC: "Practice", DIAG: "Diagnostics", KB: "Knowledge base" },
     lang: "en",
   },
   zh: {
@@ -28,7 +28,7 @@ const pages = {
     severity: { error: "错误", warning: "警告", info: "提示" },
     fix: "解决办法",
     more: "仍未解决？请[导出诊断信息](./diagnostics)，并带上错误码提交 Issue。",
-    modules: { AUD: "音频", ASR: "语音识别", LLM: "大模型", HK: "快捷键", SYS: "系统", NET: "网络", BUD: "预算", PRC: "练习", DIAG: "诊断" },
+    modules: { AUD: "音频", ASR: "语音识别", LLM: "大模型", HK: "快捷键", SYS: "系统", NET: "网络", BUD: "预算", PRC: "练习", DIAG: "诊断", KB: "知识库" },
     lang: "zh-CN",
   },
 };
