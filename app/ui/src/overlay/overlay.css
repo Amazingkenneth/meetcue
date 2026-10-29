@@ -139,44 +139,6 @@ html.overlay-view body {
 .ov-meter span:nth-child(4) { height: 12px; }
 .ov-meter span[data-on="true"] { background: var(--done); }
 
-.ov-queue {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 0 var(--pad) 8px;
-}
-
-.ov-qcard {
-  text-align: left;
-  padding: 6px 8px !important;
-  background: var(--ov-card) !important;
-  border: 1px solid var(--ov-line) !important;
-  min-width: 0;
-}
-
-.ov-qcard[data-current="true"] {
-  border-color: var(--ov-accent-soft) !important;
-  background: var(--ov-card-focus) !important;
-}
-
-.ov-qcard .label {
-  display: block;
-  font-size: calc(11px * var(--ov-scale, 1));
-  color: var(--ov-text-3);
-}
-
-.ov-qcard .short {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
-}
-
-.ov-qcard .st {
-  font-size: calc(11px * var(--ov-scale, 1));
-}
-
 .st-answered { color: var(--done); }
 .st-active { color: var(--accent); }
 .st-pending { color: var(--link); }
@@ -206,6 +168,44 @@ html.overlay-view body {
   border-radius: 4px;
   padding: 1px 6px;
 }
+
+.ov-away {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--ov-accent-soft);
+  border-radius: var(--radius);
+  color: var(--ov-text-2);
+  font-size: calc(12px * var(--ov-scale, 1));
+}
+
+.ov-away .ov-link { margin: 0 0 0 auto; }
+
+.ov-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ov-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 10px !important;
+  text-align: left;
+  font-size: calc(12px * var(--ov-scale, 1));
+  color: var(--ov-text-2) !important;
+  border: 1px solid transparent !important;
+}
+
+.ov-row:hover { background: var(--ov-card) !important; color: var(--ov-text) !important; }
+.ov-row[data-live="true"] { border-color: var(--ov-accent-soft) !important; }
+.ov-row .mono { color: var(--ov-text-3); flex: none; }
+.ov-row .short { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-row .ov-muted, .ov-row .st { flex: none; font-size: calc(11px * var(--ov-scale, 1)); }
+.ov-live { flex: none; color: var(--accent); font-weight: 600; }
 
 .ov-block {
   background: var(--ov-card);

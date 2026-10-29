@@ -13,6 +13,9 @@ pub enum Admission {
     /// Interruptions are not queued: the new question takes over and the
     /// previous active one goes back to waiting.
     Preempt,
+    /// The other side moved on before the user said anything about the active
+    /// question: the new question takes over and the old one is done with.
+    Supersede,
 }
 
 #[derive(Debug, Default)]
@@ -65,6 +68,11 @@ impl QuestionQueue {
             Admission::Preempt => {
                 if let Some(active) = self.active() {
                     self.set(active, QuestionStatus::Pending, &mut changes);
+                }
+            }
+            Admission::Supersede => {
+                if let Some(active) = self.active() {
+                    self.set(active, QuestionStatus::Answered, &mut changes);
                 }
             }
             Admission::Queue => {}
@@ -209,12 +217,26 @@ mod tests {
     }
 
     #[test]
+    fn supersede_retires_active_and_keeps_waiting_ones() {
+        let mut q = QuestionQueue::default();
+        q.add(1, Admission::Queue);
+        q.add(2, Admission::Queue);
+        assert_eq!(
+            q.add(3, Admission::Supersede),
+            vec![(1, Answered), (3, Active)]
+        );
+        assert_eq!(q.focus(), Some(3));
+        assert_eq!(q.finish_active(), vec![(3, Answered), (2, Active)]);
+    }
+
+    #[test]
     fn at_most_one_active() {
         let mut q = QuestionQueue::default();
         for (i, adm) in [
             Admission::Queue,
             Admission::Preempt,
             Admission::AfterAnswer,
+            Admission::Supersede,
             Admission::Queue,
         ]
         .into_iter()

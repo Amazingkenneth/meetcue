@@ -180,7 +180,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     };
     switch (a.type) {
       case "focus":
-        view = { ...view, focus: a.id };
+        view = { ...view, focus: a.id === view.active ? null : a.id };
         queue();
         break;
       case "focusStep": {

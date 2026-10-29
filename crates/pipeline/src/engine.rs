@@ -953,15 +953,19 @@ impl Engine {
         let me_busy = !self.utterances[idx(Channel::Me)].is_empty()
             || now - self.last_me_activity < INTERRUPTION_WINDOW_MS;
         let interruption = me_busy || (det.interruption && now - self.last_me_activity < 5_000);
-        let active_answered = self
+        let active_spoken = self
             .queue
             .active()
             .and_then(|a| self.question(a))
-            .is_some_and(|q| q.user_spoke);
+            .map(|q| q.user_spoke);
         let admission = if interruption && !self.cfg.queue_interruptions {
             Admission::Preempt
-        } else if active_answered && !interruption {
+        } else if active_spoken == Some(true) && !interruption {
             Admission::AfterAnswer
+        } else if active_spoken == Some(false) && !interruption {
+            // The user never started on the active question, so the one just
+            // asked is the one to answer; it must not wait behind it.
+            Admission::Supersede
         } else {
             Admission::Queue
         };
@@ -1933,6 +1937,20 @@ mod tests {
         assert_eq!(
             h.statuses()[4..].to_vec(),
             vec![(2, QuestionStatus::Answered), (3, QuestionStatus::Active)]
+        );
+    }
+
+    #[test]
+    fn question_asked_before_the_user_starts_takes_over() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 1000, "第一个问题是什么？");
+        h.detect_reply(YES);
+        // The other side asks again before the user says anything.
+        h.say(Channel::Remote, 3000, 4000, "换个问题，你怎么排期？");
+        h.detect_reply(YES);
+        assert_eq!(
+            h.statuses()[1..].to_vec(),
+            vec![(1, QuestionStatus::Answered), (2, QuestionStatus::Active)]
         );
     }
 

@@ -10,6 +10,7 @@ import {
   coverageCount,
   currentId,
   displayOrder,
+  liveId,
   medianLatency,
   neighbours,
   nextPoint,
@@ -232,8 +233,6 @@ function FullPanel({
         })}
       </div>
 
-      <QueueCards view={view} />
-
       {view.latencyWarning !== null && <SlowToast view={view} settings={settings} />}
 
       <ErrorToast errors={problems} docsUrl={docsUrl} />
@@ -262,35 +261,16 @@ function StatusText({ q }: { q: QuestionView }) {
   return <span className={`st st-${q.status}`}>{t(key)}</span>;
 }
 
-function QueueCards({ view }: { view: SessionView }) {
-  const { t } = useTranslation();
-  const { prev, current, next } = neighbours(view);
-  const card = (label: string, q: QuestionView | null, isCurrent: boolean) => (
-    <button
-      className="ov-qcard"
-      data-current={isCurrent}
-      disabled={!q}
-      onClick={() => q && void backend().invoke("user_action", { action: { type: "focus", id: q.id } })}
-    >
-      <span className="label">{label}</span>
-      <span className="short">{q ? q.short : "—"}</span>
-      {q ? <StatusText q={q} /> : <span className="st">&nbsp;</span>}
-    </button>
-  );
-  return (
-    <nav className="ov-queue" aria-label={t("overlay.queue")}>
-      {card(t("overlay.prev"), prev, false)}
-      {card(t("overlay.current"), current, true)}
-      {card(t("overlay.next"), next, false)}
-    </nav>
-  );
-}
+const focus = (id: number) => void backend().invoke("user_action", { action: { type: "focus", id } });
 
 function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
   const { t } = useTranslation();
   const current = currentId(view);
+  const live = liveId(view);
   const listRef = useRef<HTMLDivElement>(null);
-  // The current question is first in the list, so a new one scrolls to the top.
+  // When each question was first shown, so delayed hints don't wait again after looking elsewhere.
+  const shown = useRef(new Map<string, number>());
+  // The question shown in full is first in the list, so switching scrolls to the top.
   useEffect(() => {
     listRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
   }, [current]);
@@ -318,22 +298,46 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
       </div>
     );
   }
+  const [top, ...others] = displayOrder(view);
+  const q = view.questions[top];
+  const key = `${view.startedAt}:${top}`;
+  if (!shown.current.has(key)) shown.current.set(key, Date.now());
   return (
     <div className="ov-chat" aria-live="polite" ref={listRef}>
-      {displayOrder(view).map((id) => {
-        const q = view.questions[id];
-        if (!q) return null;
-        return (
-          <ChatBlock
-            key={id}
-            q={q}
-            view={view}
-            display={display}
-            isCurrent={id === current}
-          />
-        );
-      })}
+      {live !== null && current !== live && (
+        <div className="ov-away" role="status">
+          <span>{t("overlay.viewingOther")}</span>
+          <button className="ov-link" onClick={() => focus(live)}>
+            {t("overlay.backToLive")}
+          </button>
+        </div>
+      )}
+      {q && <ChatBlock key={key} q={q} view={view} display={display} shownAt={shown.current.get(key) ?? 0} isLive={top === live} />}
+      {others.length > 0 && (
+        <nav className="ov-rows" aria-label={t("overlay.otherQuestions")}>
+          {others.map((id) => {
+            const o = view.questions[id];
+            return o ? <QuestionRow key={id} q={o} view={view} isLive={id === live} /> : null;
+          })}
+        </nav>
+      )}
     </div>
+  );
+}
+
+/** One line for a question that isn't shown in full; a click shows it in full. */
+function QuestionRow({ q, view, isLive }: { q: QuestionView; view: SessionView; isLive: boolean }) {
+  const { t } = useTranslation();
+  const { done, total } = coverageCount(q);
+  const at = view.startedAt !== null ? clock(q.tMs - view.startedAt) : "";
+  return (
+    <button className="ov-row" data-live={isLive} title={q.text} onClick={() => focus(q.id)}>
+      <span className="mono">{at}</span>
+      {isLive && <span className="ov-live">{t("overlay.live")}</span>}
+      <span className="short">{q.short || q.text}</span>
+      {total > 0 && <span className="ov-muted">{t("overlay.covered", { done, total })}</span>}
+      <StatusText q={q} />
+    </button>
   );
 }
 
@@ -351,15 +355,16 @@ function ChatBlock({
   q,
   view,
   display,
-  isCurrent,
+  shownAt,
+  isLive,
 }: {
   q: QuestionView;
   view: SessionView;
   display: HintDisplay;
-  isCurrent: boolean;
+  shownAt: number;
+  isLive: boolean;
 }) {
   const { t } = useTranslation();
-  const [shownAt] = useState(() => Date.now());
   const now = useNow(display.level === "delayed" ? 500 : 60_000);
   const vis = hintVisibility(display, shownAt, now);
   const headsOnly = display.level === "headsOnly";
@@ -369,7 +374,7 @@ function ChatBlock({
   const at = view.startedAt !== null ? clock(q.tMs - view.startedAt) : "";
   const context = useMemo(() => (showContext ? contextAround(view, q) : []), [showContext, view, q]);
   return (
-    <article className="ov-block" data-current={isCurrent} aria-current={isCurrent ? "true" : undefined}>
+    <article className="ov-block" data-current={isLive} aria-current={isLive ? "true" : undefined}>
       <header>
         <span className="mono">{at}</span>
         <span>{t("overlay.them")}</span>
@@ -597,7 +602,8 @@ export function MiniBar({
 }) {
   const { t } = useTranslation();
   const placement = usePlacement(settings);
-  const { current, next } = neighbours(view);
+  const { current } = neighbours(view);
+  const waiting = view.order.map((id) => view.questions[id]).find((q) => q?.status === "pending" && q.id !== current?.id);
   // The mini bar has no per-question timer, so "delayed" behaves like "off" here.
   const hidden = display.level === "off" || display.level === "delayed";
   const point = current && !hidden ? nextPoint(current) : null;
@@ -634,7 +640,7 @@ export function MiniBar({
       </div>
       <div className="after">
         <span>
-          {t("overlay.next")}: {next?.short ?? "—"}
+          {t("status.waiting")}: {waiting?.short ?? "—"}
         </span>
         {pending > 0 && <span>· {t("overlay.pendingCount", { count: pending })}</span>}
       </div>

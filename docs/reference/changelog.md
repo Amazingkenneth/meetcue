@@ -10,6 +10,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 - Requests that don't sound like questions, such as "Talk about…", "Share a time…" or "谈谈你的看法", are now recognised.
 - Compound questions keep the hints written while detection was still checking them, so their first point arrives about a model round trip sooner.
 - Hints lead with a direct answer, cover every part of a compound question in order, read through misheard words, and the sample answer is shorter and easier to say out loud.
+- The panel shows only the current question in full, with every other question as one line below it. Click a line to look at that question, and **Back to the current question** returns in one click.
+- A question asked before you started answering the previous one becomes the current question instead of waiting as the next one.
 
 ## 0.3.2 — 2026-10-29
 
