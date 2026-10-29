@@ -19,7 +19,7 @@ use meetcue_pipeline::engine::{EngineConfig, ModelRef};
 use meetcue_pipeline::probe::ProbeReport;
 use meetcue_pipeline::provider::{AsrOptions, LlmProvider};
 use meetcue_pipeline::providers::{self, ProviderConfig};
-use meetcue_pipeline::{materials, HintBackend};
+use meetcue_pipeline::{knowledge, materials, HintBackend};
 
 use crate::state::AppState;
 use crate::usage::{self, LedgerLine};
@@ -82,11 +82,15 @@ pub fn provider_config(
 }
 
 fn engine_config(settings: &Settings, detect: ModelRef, hints: ModelRef) -> EngineConfig {
+    let (materials, knowledge) = knowledge::prepare(&settings.hints.materials);
     EngineConfig {
         detect,
         hints,
         role: settings.hints.role.clone(),
-        materials: materials::summary(&settings.hints.materials, materials::SUMMARY_CHARS),
+        materials,
+        knowledge: Arc::new(knowledge),
+        hints_system: settings.hints.prompts.hints_system.clone(),
+        hints_user: settings.hints.prompts.hints_user.clone(),
         hint_language: settings.general.hint_language,
         only_directed_to_me: settings.hints.only_directed_to_me,
         queue_interruptions: settings.hints.queue_interruptions,

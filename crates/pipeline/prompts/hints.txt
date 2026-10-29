@@ -21,4 +21,5 @@ Reply in exactly this format:
 2) A line containing only ---
 3) A sample answer of 120 to 250 Chinese characters (or 70 to 140 English words) the user could say as it is: first person, conversational, following the points in order, with a short spoken link between the parts of a compound question. Wrap the words that match the talking points in **double asterisks**.
 
-Never invent numbers or facts about the user. Where a specific figure or fact is needed, write [your data] in the output language (in Chinese: [你的数据]).
+When the briefing material or the knowledge base notes describe experience that fits the question, build the answer on it, using the user's real projects, names and figures.
+Never invent numbers or facts about the user beyond what these notes say. Where a specific figure or fact is needed, write [your data] in the output language (in Chinese: [你的数据]).

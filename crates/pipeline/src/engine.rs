@@ -6,6 +6,7 @@
 //! This keeps every rule of the pipeline unit-testable without a network.
 
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 
 use meetcue_core::settings::{BudgetSettings, HintLanguage};
 use meetcue_core::{
@@ -16,6 +17,7 @@ use meetcue_core::{
 use crate::coverage::{self, AnswerText, PointVocab};
 use crate::detect::{self, Detection};
 use crate::hints::HintItem;
+use crate::knowledge::{self, KnowledgeBase};
 use crate::latency::LatencyMonitor;
 use crate::prefilter;
 use crate::prompts;
@@ -65,6 +67,11 @@ pub struct EngineConfig {
     pub role: String,
     /// Condensed briefing material placed in the cached system prompt.
     pub materials: String,
+    /// Passages of the user's files, searched for each question.
+    pub knowledge: Arc<KnowledgeBase>,
+    /// The user's hint prompt templates; empty uses the built-in ones.
+    pub hints_system: String,
+    pub hints_user: String,
     pub hint_language: HintLanguage,
     pub only_directed_to_me: bool,
     pub queue_interruptions: bool,
@@ -84,6 +91,9 @@ impl Default for EngineConfig {
             hints: ModelRef::default(),
             role: String::new(),
             materials: String::new(),
+            knowledge: Arc::default(),
+            hints_system: String::new(),
+            hints_user: String::new(),
             hint_language: HintLanguage::FollowQuestion,
             only_directed_to_me: false,
             queue_interruptions: true,
@@ -1055,8 +1065,19 @@ impl Engine {
         } else {
             self.cfg.materials.clone()
         };
+        let knowledge = knowledge::render(
+            &self
+                .cfg
+                .knowledge
+                .search(question, knowledge::RETRIEVED_CHARS),
+        );
+        let knowledge = if knowledge.is_empty() {
+            "(none)".to_string()
+        } else {
+            knowledge
+        };
         let system = prompts::render(
-            prompts::HINTS_SYSTEM,
+            template(&self.cfg.hints_system, prompts::HINTS_SYSTEM),
             &[
                 ("role", &role),
                 ("materials", &materials),
@@ -1065,8 +1086,9 @@ impl Engine {
         );
         let transcript = format_for_prompt(self.transcript.since(now - HINTS_WINDOW_MS));
         let user = prompts::render(
-            prompts::HINTS_USER,
+            template(&self.cfg.hints_user, prompts::HINTS_USER),
             &[
+                ("knowledge", &knowledge),
                 ("transcript", transcript.trim_end()),
                 ("question", question),
             ],
@@ -1616,6 +1638,15 @@ fn transcript_final(line: &TranscriptLine, utterance: u32) -> MeetCueEvent {
         text: line.text.clone(),
         t0_ms: line.t0_ms,
         t1_ms: line.t1_ms,
+    }
+}
+
+/// The user's prompt template, or the built-in one when theirs is empty.
+fn template<'a>(custom: &'a str, default: &'a str) -> &'a str {
+    if custom.trim().is_empty() {
+        default
+    } else {
+        custom
     }
 }
 
@@ -2546,6 +2577,52 @@ mod tests {
         });
         assert!(h.ended);
         assert_eq!(h.engine.state(), SessionState::Stopped);
+    }
+
+    #[test]
+    fn hints_use_knowledge_and_custom_prompts() {
+        use meetcue_core::settings::Material;
+        let notes = [
+            "Built a BGP EVPN fabric for three data centers; failover under one second.",
+            "Mentored four junior engineers and ran the weekly design review.",
+        ]
+        .map(|p| format!("{p} {}", "filler ".repeat(500)))
+        .join("\n\n");
+        let (materials, kb) = knowledge::prepare(&[Material {
+            name: "cv.md".into(),
+            path: "cv.md".into(),
+            text: notes,
+        }]);
+        let mut h = Harness::new(EngineConfig {
+            materials,
+            knowledge: Arc::new(kb),
+            ..no_early()
+        });
+        h.input(Input::RemoteText {
+            text: "How do you handle data center failover?".into(),
+            t_ms: 0,
+            known_question: true,
+        });
+        let user = &h.hints[0].1.messages[0].content;
+        assert!(user.contains("[cv.md]\nBuilt a BGP EVPN fabric"), "{user}");
+        assert!(!user.contains("Mentored"));
+
+        let mut h = Harness::new(EngineConfig {
+            hints_system: "Coach for {role}.".into(),
+            hints_user: "Q: {question}\nNotes: {knowledge}".into(),
+            role: "SRE".into(),
+            ..no_early()
+        });
+        h.input(Input::RemoteText {
+            text: "How do you handle failover?".into(),
+            t_ms: 0,
+            known_question: true,
+        });
+        assert_eq!(h.hints[0].1.system, "Coach for SRE.");
+        assert_eq!(
+            h.hints[0].1.messages[0].content,
+            "Q: How do you handle failover?\nNotes: (none)"
+        );
     }
 
     #[test]

@@ -598,6 +598,24 @@ table.data tr[data-suggested="true"] td:first-child {
   color: var(--text-3);
 }
 
+/* Prompt text and model excerpts: shown as written, line for line. */
+.prompt-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+pre.prompt-text {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 240px;
+  overflow: auto;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
 .row {
   display: flex;
   gap: 8px;

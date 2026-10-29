@@ -9,19 +9,19 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use meetcue_core::ipc::{
-    AppEvent, AppInfo, DeviceList, HotkeyState, LogLine, PanelChange, UsageSummary, VerifyResult,
-    Voice,
+    AppEvent, AppInfo, DeviceList, FileFailure, HotkeyState, KnowledgePassage, KnowledgePreview,
+    LogLine, MaterialImport, PanelChange, UsageSummary, VerifyResult, Voice,
 };
 use meetcue_core::pricing::{
     estimate_hourly, CostAssumptions, HourlyEstimate, PriceEntry, PriceTable,
 };
-use meetcue_core::settings::{EndpointChoice, Material, PanelMode};
+use meetcue_core::settings::{EndpointChoice, Material, PanelMode, PromptSettings};
 use meetcue_core::{codes, MeetCueError, Settings, TimedEvent, UsagePurpose, UserAction};
 use meetcue_pipeline::endpoints::EndpointCatalog;
 use meetcue_pipeline::practice::{PracticeReport, PracticeReportSummary, PracticeScript};
 use meetcue_pipeline::probe::{self, ProbeEnv, ProbeReport, ProbeRequest};
 use meetcue_pipeline::provider::ModelInfo;
-use meetcue_pipeline::{materials, providers, HintBackend};
+use meetcue_pipeline::{knowledge, materials, prompts, providers, HintBackend};
 use meetcue_platform::speech::Speaker;
 
 use crate::state::{AppState, DOCS_URL};
@@ -546,34 +546,74 @@ pub async fn export_diagnostics(app: AppHandle) -> Res<Option<String>> {
 }
 
 #[tauri::command]
-pub async fn import_material(app: AppHandle) -> Res<Option<Material>> {
+pub async fn import_materials(app: AppHandle) -> Res<MaterialImport> {
     let dialog = app
         .dialog()
         .file()
-        .add_filter("Documents", &["txt", "md", "docx", "pdf"]);
-    let picked = tauri::async_runtime::spawn_blocking(move || dialog.blocking_pick_file())
+        .add_filter("Documents", materials::EXTENSIONS);
+    let picked = tauri::async_runtime::spawn_blocking(move || dialog.blocking_pick_files())
         .await
         .map_err(io_err)?;
-    let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
-        return Ok(None);
-    };
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let bytes =
-        std::fs::read(&path).map_err(|e| MeetCueError::new(codes::PRACTICE_FILE, e.to_string()))?;
-    let text = tauri::async_runtime::spawn_blocking({
-        let name = name.clone();
-        move || materials::extract_text(&name, &bytes)
+    let paths: Vec<_> = picked
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|p| p.into_path().ok())
+        .collect();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut out = MaterialImport::default();
+        for path in paths {
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let text = std::fs::read(&path)
+                .map_err(|e| MeetCueError::new(codes::KNOWLEDGE_FILE, e.to_string()))
+                .and_then(|bytes| materials::extract_text(&name, &bytes));
+            match text {
+                Ok(text) => out.materials.push(Material {
+                    name,
+                    path: path.to_string_lossy().into_owned(),
+                    text,
+                }),
+                Err(error) => {
+                    tracing::warn!("knowledge file {name}: {error}");
+                    out.failures.push(FileFailure { name, error });
+                }
+            }
+        }
+        out
     })
     .await
-    .map_err(io_err)??;
-    Ok(Some(Material {
-        name,
-        path: path.to_string_lossy().into_owned(),
-        text,
-    }))
+    .map_err(io_err)
+}
+
+/// The built-in hint prompts, to show and to restore.
+#[tauri::command]
+pub fn default_prompts() -> PromptSettings {
+    PromptSettings {
+        hints_system: prompts::HINTS_SYSTEM.into(),
+        hints_user: prompts::HINTS_USER.into(),
+    }
+}
+
+/// What the knowledge base would contribute to the hints for a question.
+#[tauri::command]
+pub fn preview_knowledge(state: State<'_, AppState>, question: String) -> KnowledgePreview {
+    let settings = state.settings();
+    let (excerpt, kb) = knowledge::prepare(&settings.hints.materials);
+    let passages = kb
+        .search(&question, knowledge::RETRIEVED_CHARS)
+        .into_iter()
+        .map(|p| KnowledgePassage {
+            source: p.source.clone(),
+            text: p.text.clone(),
+        })
+        .collect();
+    KnowledgePreview {
+        excerpt,
+        searched: !kb.is_empty(),
+        passages,
+    }
 }
 
 #[tauri::command]
@@ -701,7 +741,9 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         export_usage_csv,
         diagnostics_preview,
         export_diagnostics,
-        import_material,
+        import_materials,
+        default_prompts,
+        preview_knowledge,
         practice_import,
         practice_sample,
         list_voices,

@@ -69,7 +69,9 @@
 | 设置 | 键名 | 默认值 |
 | --- | --- | --- |
 | 我的角色 | `hints.role` | 空 |
-| 会前资料 | `hints.materials`（名称、路径和抽取的文字） | 无 |
+| 知识库 | `hints.materials`（名称、路径和抽取的文字） | 无 |
+| 提示词：指令 | `hints.prompts.hintsSystem`（为空时使用内置提示词） | 空 |
+| 提示词：问题消息 | `hints.prompts.hintsUser`（为空时使用内置提示词） | 空 |
 | 只提示指向我的问题 | `hints.onlyDirectedToMe` | `false` |
 | 插话自动排队 | `hints.queueInterruptions` | `true` |
 | 跟踪已讲要点 | `hints.trackCoverage` | `true` |

@@ -2,6 +2,6 @@
 
 export type Material = { name: string, path: string, 
 /**
- * Extracted plain text (kept locally; only a summary is sent to the model).
+ * Extracted plain text (kept locally; only excerpts are sent to the model).
  */
 text: string, };

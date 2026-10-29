@@ -11,6 +11,7 @@ pub mod endpoints;
 pub mod engine;
 pub mod gate;
 pub mod hints;
+pub mod knowledge;
 pub mod latency;
 pub mod live_prices;
 pub mod materials;

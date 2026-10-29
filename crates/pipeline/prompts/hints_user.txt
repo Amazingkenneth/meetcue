@@ -1,3 +1,6 @@
+Notes from the user's knowledge base that may relate to the question (may be empty):
+{knowledge}
+
 Recent transcript:
 {transcript}
 Current question:

@@ -50,7 +50,21 @@ mod tests {
     fn templates_have_their_placeholders() {
         assert!(DETECT.contains("{output_language}"));
         assert!(HINTS_USER.contains("{transcript}") && HINTS_USER.contains("{question}"));
+        assert!(HINTS_USER.contains("{knowledge}") && HINTS_SYSTEM.contains("{materials}"));
         assert!(FOLLOW_UP.contains("{answer}"));
         assert!(REVIEW.contains("{reference}"));
+    }
+
+    /// Writes the built-in hint prompts for the UI's browser preview.
+    #[test]
+    fn export_defaults_for_preview() {
+        if let Ok(dir) = std::env::var("TS_RS_EXPORT_DIR") {
+            let path = std::path::Path::new(&dir).join("../mock/default-prompts.json");
+            if path.parent().is_some_and(|p| p.is_dir()) {
+                let json =
+                    serde_json::json!({ "hintsSystem": HINTS_SYSTEM, "hintsUser": HINTS_USER });
+                std::fs::write(path, serde_json::to_string_pretty(&json).unwrap() + "\n").unwrap();
+            }
+        }
     }
 }

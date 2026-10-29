@@ -283,6 +283,15 @@
         "en": "Pick a folder you can write to, for example Documents, and try again.",
         "zh-CN": "换一个有写入权限的文件夹（例如“文档”）后重试。"
       }
+    },
+    {
+      "code": "MC-KB-001",
+      "severity": "error",
+      "title": { "en": "The knowledge base file could not be read", "zh-CN": "无法读取知识库文件" },
+      "fix": {
+        "en": "Use a PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), OpenDocument, RTF, HTML, text or Markdown file. Save old .doc, .xls and .ppt files in the newer format first, and export scanned PDFs with text recognition.",
+        "zh-CN": "请使用 PDF、Word（.docx）、Excel（.xlsx）、PowerPoint（.pptx）、OpenDocument、RTF、HTML、文本或 Markdown 文件。旧版 .doc、.xls、.ppt 请先另存为新格式，扫描版 PDF 请先做文字识别再导出。"
+      }
     }
   ]
 }

@@ -57,17 +57,17 @@
 
 MeetCue 了解你是谁、面试什么岗位时，提示会更好。这一步只要两分钟，至少值得做一次。
 
-1. 在声音检查这一步点 **打开会前资料**，会打开 **设置 › 提示**。
+1. 在声音检查这一步点 **打开知识库**，会打开 **设置 › 提示**。
 2. 在 **我的角色** 中用一句话描述自己，例如：
    - `后端软件工程师，4 年 Go 和 PostgreSQL 经验`
    - `正在转向 AI 安全的网络安全工程师，5 年 SOC 经验`
-3. 在 **会前资料** 下点 **添加文件…**，选择一份职位描述。有两份示例与内置面试对应：
+3. 在 **知识库** 下点 **添加文件…**，选择一份职位描述。有两份示例与内置面试对应：
    - [jd-software-engineer.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-software-engineer.md)：后端软件工程师
    - [jd-security-ai.md](https://github.com/Amazingkenneth/meetcue/blob/HEAD/samples/materials/jd-security-ai.md)：AI 平台团队的网络安全工程师
 
    在 GitHub 上用 **Download raw file** 按钮下载示例，或者把真实的职位描述粘贴到 `.txt` 或 `.md` 文件里。
 
-发送哪些内容、如何保持精简，见[会前资料](/zh/guide/materials)。如果不想在真实会议中用到这份职位描述，练习后删除即可。
+发送哪些内容、如何保持精简，见[知识库](/zh/guide/materials)。如果不想在真实会议中用到这份职位描述，练习后删除即可。
 
 ## 第 4 步：选择面试 {#step-4}
 

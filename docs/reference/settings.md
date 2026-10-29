@@ -69,7 +69,9 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Setting | Key | Default |
 | --- | --- | --- |
 | My role | `hints.role` | empty |
-| Briefing material | `hints.materials` (name, path and extracted text) | none |
+| Knowledge base | `hints.materials` (name, path and extracted text) | none |
+| Prompt instructions | `hints.prompts.hintsSystem` (empty uses the built-in prompt) | empty |
+| Prompt question message | `hints.prompts.hintsUser` (empty uses the built-in prompt) | empty |
 | Only questions directed at me | `hints.onlyDirectedToMe` | `false` |
 | Queue interruptions | `hints.queueInterruptions` | `true` |
 | Track what I've said | `hints.trackCoverage` | `true` |
