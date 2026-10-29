@@ -21,7 +21,7 @@ use crate::prefilter;
 use crate::prompts;
 use crate::provider::{AsrResult, LlmRequest};
 use crate::queue::{Admission, QuestionQueue};
-use crate::text::{dominant_lang, edit_ratio, Lang};
+use crate::text::{dominant_lang, edit_ratio, extends, join_parts, Lang};
 use crate::transcript::{format_for_prompt, TranscriptBuffer};
 use crate::usage::{BudgetOutcome, CostMeter};
 
@@ -31,6 +31,9 @@ pub type ReqId = u64;
 pub const EARLY_QUIET_MS: i64 = 400;
 /// Edit distance above which an early trigger is cancelled and redone.
 pub const EARLY_MAX_CHANGE: f64 = 0.30;
+/// A remote sentence starting this soon after a question's last words may be
+/// the rest of it, cut off by a pause ("…idea A" / "and idea B").
+pub const CONTINUATION_MS: i64 = 5_000;
 /// Silence after which a fully covered question counts as answered.
 pub const ANSWERED_SILENCE_MS: i64 = 4_000;
 /// The user speaking this recently means a new question is an interruption.
@@ -181,6 +184,9 @@ struct Candidate {
     started_at: i64,
     early: bool,
     target: Target,
+    /// More of the question arrived after detection started; detection only
+    /// judged the first part.
+    joined: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -225,6 +231,8 @@ struct Question {
     tags: Vec<String>,
     subs: Vec<String>,
     t_ms: i64,
+    /// When the latest part of the question ended.
+    last_part_end: i64,
     context: Vec<TranscriptLine>,
     vocab: Vec<PointVocab>,
     statuses: Vec<PointStatus>,
@@ -525,6 +533,7 @@ impl Engine {
                 started_at: now,
                 early: false,
                 target: Target::New,
+                joined: false,
             };
             self.accept_detection(cand, det, None, now, out);
         } else {
@@ -540,6 +549,24 @@ impl Engine {
         out: &mut Vec<Output>,
     ) {
         if let Some(early) = self.early.take().filter(|e| e.utterance == utterance) {
+            // The speaker went on after the pause that fired the early
+            // trigger: answer the whole sentence, not just its start.
+            if extends(&early.snapshot, &line.text) {
+                match early.state {
+                    EarlyState::Detecting(req) => {
+                        self.join_candidate(req, line.text.clone(), line.t1_ms, now, out)
+                    }
+                    EarlyState::Created(id) => {
+                        self.extend_question(id, line.text.clone(), line.t1_ms, now, out)
+                    }
+                    EarlyState::Dropped => {
+                        if prefilter::might_be_question(&line.text) {
+                            self.start_detect(&line, now, false, Target::New, out);
+                        }
+                    }
+                }
+                return;
+            }
             let changed = edit_ratio(&early.snapshot, &line.text) > EARLY_MAX_CHANGE;
             match (early.state, changed) {
                 (EarlyState::Detecting(req), false) => {
@@ -570,9 +597,107 @@ impl Engine {
                 (EarlyState::Dropped, true) => {}
             }
         }
-        if prefilter::might_be_question(&line.text) {
+        if let Some(join) = self.continuation_of(&line) {
+            match join {
+                Join::Candidate(req, prev) => {
+                    let text = join_parts(&prev, &line.text);
+                    self.join_candidate(req, text, line.t1_ms, now, out);
+                }
+                Join::Question(id, prev) => {
+                    let text = join_parts(&prev, &line.text);
+                    self.extend_question(id, text, line.t1_ms, now, out);
+                }
+            }
+            return;
+        }
+        // Right after a question, let the model judge sentences the rules
+        // would skip: "idea B too" may finish it.
+        if prefilter::might_be_question(&line.text) || self.recent_question(&line).is_some() {
             self.start_detect(&line, now, false, Target::New, out);
         }
+    }
+
+    /// The open question, or the sentence still being checked, that `line`
+    /// carries on, if it starts within [`CONTINUATION_MS`] and is joined to
+    /// it by its wording.
+    fn continuation_of(&self, line: &TranscriptLine) -> Option<Join> {
+        let cand = self
+            .candidates
+            .iter()
+            .filter(|(_, c)| c.target == Target::New && within_join(c.speech_end, line))
+            .max_by_key(|(_, c)| c.speech_end)
+            .map(|(req, c)| (c.speech_end, Join::Candidate(*req, c.text.clone())));
+        let question = self
+            .recent_question(line)
+            .map(|q| (q.last_part_end, Join::Question(q.id, q.text.clone())));
+        let (_, join) = match (cand, question) {
+            (Some(c), Some(q)) => Some(if c.0 >= q.0 { c } else { q }),
+            (c, q) => c.or(q),
+        }?;
+        let prev = match &join {
+            Join::Candidate(_, t) | Join::Question(_, t) => t,
+        };
+        prefilter::continues(prev, &line.text).then_some(join)
+    }
+
+    /// The newest question, if it is still open and its last part ended
+    /// just before `line`.
+    fn recent_question(&self, line: &TranscriptLine) -> Option<&Question> {
+        self.questions
+            .last()
+            .filter(|q| self.queue.status(q.id) != Some(QuestionStatus::Answered))
+            .filter(|q| within_join(q.last_part_end, line))
+    }
+
+    /// Adds the rest of a sentence to one still being checked. Hints written
+    /// for the first part alone are dropped.
+    fn join_candidate(
+        &mut self,
+        req: ReqId,
+        text: String,
+        speech_end: i64,
+        now: i64,
+        out: &mut Vec<Output>,
+    ) {
+        if let Some(c) = self.candidates.get_mut(&req) {
+            c.text = text;
+            c.speech_end = c.speech_end.max(speech_end);
+            c.joined = true;
+        }
+        self.drop_speculation(req, now, out);
+    }
+
+    /// Replaces a question with its longer version and rewrites its hints.
+    /// Detection already confirmed the start, so it isn't asked again.
+    fn extend_question(
+        &mut self,
+        id: QuestionId,
+        text: String,
+        speech_end: i64,
+        now: i64,
+        out: &mut Vec<Output>,
+    ) {
+        let Some(q) = self.question_mut(id) else {
+            return;
+        };
+        q.version += 1;
+        q.text = text;
+        // Parts listed for the first half no longer describe the question.
+        q.subs.clear();
+        q.vocab.clear();
+        q.statuses.clear();
+        q.manual.clear();
+        q.last_part_end = q.last_part_end.max(speech_end);
+        q.latency = Latency {
+            speech_end,
+            asr_ms: (now - speech_end).max(0),
+            ..Default::default()
+        };
+        self.cancel_hints(id, out);
+        if let Some(ev) = self.question_event(id) {
+            out.push(Output::Emit(ev));
+        }
+        self.request_hints(id, now, out);
     }
 
     fn on_me_sentence(
@@ -648,11 +773,15 @@ impl Engine {
                 started_at: now,
                 early,
                 target,
+                joined: false,
             },
         );
         out.push(Output::Detect { req, request });
+        // A sentence sent only because it may finish the previous question
+        // gets no hints of its own.
         if self.cfg.speculative_hints
             && target == Target::New
+            && prefilter::might_be_question(&line.text)
             && !self.hints_paused
             && self.hints_running < MAX_CONCURRENT_HINTS
         {
@@ -723,7 +852,10 @@ impl Engine {
                 return;
             }
         };
-        let keep = det.is_question && (det.directed_to_me || !self.cfg.only_directed_to_me);
+        // The rest of a question cut off by a pause need not sound like one.
+        let continues = det.merged && self.last_open_question().is_some();
+        let keep =
+            continues || (det.is_question && (det.directed_to_me || !self.cfg.only_directed_to_me));
         if !keep {
             discard(self, spec, out);
             if let Some(link) = self
@@ -770,9 +902,17 @@ impl Engine {
             early: cand.early,
         };
         let short = detect::short_title(&det.short, &cand.text);
-        // Speculative hints answer the sentence alone: not a merged question
-        // or one detection split into several parts.
-        let usable = !det.merged && det.sub_questions.len() <= 1;
+        // Speculative hints answer the sentence they were started with, which
+        // is the whole question unless it merges into an earlier one or more
+        // of it arrived since. A compound sentence is fine: the hint prompt
+        // covers every part it asks.
+        let usable = !det.merged && !cand.joined;
+        // Parts detection listed before the rest arrived are incomplete.
+        let subs = if cand.joined {
+            Vec::new()
+        } else {
+            det.sub_questions
+        };
 
         // An updated version of an existing card.
         let existing = match cand.target {
@@ -791,9 +931,10 @@ impl Engine {
                     q.short = short;
                 }
                 q.tags = det.tags;
-                if !det.sub_questions.is_empty() {
-                    q.subs = det.sub_questions;
+                if !subs.is_empty() {
+                    q.subs = subs;
                 }
+                q.last_part_end = q.last_part_end.max(cand.speech_end);
                 q.vocab.clear();
                 q.statuses.clear();
                 q.manual.clear();
@@ -835,8 +976,9 @@ impl Engine {
             text: cand.text.clone(),
             short,
             tags: det.tags,
-            subs: det.sub_questions,
+            subs,
             t_ms: cand.speech_end,
+            last_part_end: cand.speech_end,
             context,
             vocab: Vec::new(),
             statuses: Vec::new(),
@@ -1372,13 +1514,15 @@ impl Engine {
             && self.early.as_ref().is_none_or(|e| e.utterance != remote.id)
         {
             let text = remote.text();
-            if prefilter::might_be_question(&text) {
-                let line = TranscriptLine {
-                    channel: Channel::Remote,
-                    text: text.clone(),
-                    t0_ms: remote.t0.unwrap_or(remote.t1),
-                    t1_ms: remote.t1,
-                };
+            let line = TranscriptLine {
+                channel: Channel::Remote,
+                text: text.clone(),
+                t0_ms: remote.t0.unwrap_or(remote.t1),
+                t1_ms: remote.t1,
+            };
+            // The rest of the previous question is joined to it once the
+            // sentence ends, not detected as a question of its own.
+            if prefilter::might_be_question(&text) && self.continuation_of(&line).is_none() {
                 let utterance = remote.id;
                 let req = self.start_detect(&line, now, true, Target::New, out);
                 self.early = Some(EarlyLink {
@@ -1450,6 +1594,18 @@ impl Engine {
             HintLanguage::FollowQuestion => dominant_lang(text).prompt_name(),
         }
     }
+}
+
+/// What a sentence that finishes an earlier one is joined to, with that
+/// earlier text.
+enum Join {
+    Candidate(ReqId, String),
+    Question(QuestionId, String),
+}
+
+/// Whether `line` starts soon enough after `end` to be its continuation.
+fn within_join(end: i64, line: &TranscriptLine) -> bool {
+    line.t0_ms - end <= CONTINUATION_MS && end <= line.t1_ms
 }
 
 fn transcript_final(line: &TranscriptLine, utterance: u32) -> MeetCueEvent {
@@ -2002,11 +2158,11 @@ mod tests {
         h.at(1500);
         assert_eq!(h.detects.len(), 1);
         let early_req = h.detects[0].0;
-        // The sentence continues and changes a lot before detection returns.
+        // The sentence is re-recognised differently before detection returns.
         h.input(Input::Asr {
             channel: Channel::Remote,
             result: AsrResult::Final {
-                text: "你们怎么做容量规划和成本控制的？".into(),
+                text: "那你们公司是如何规划容量的？".into(),
                 t0_ms: 0,
                 t1_ms: 2500,
             },
@@ -2032,7 +2188,7 @@ mod tests {
     }
 
     #[test]
-    fn early_trigger_after_question_created_redoes_same_card() {
+    fn early_trigger_after_question_created_answers_the_whole_sentence() {
         let mut h = Harness::new(EngineConfig::default());
         h.at(1000).input(Input::Asr {
             channel: Channel::Remote,
@@ -2057,7 +2213,12 @@ mod tests {
             result: AsrResult::Endpoint { t_ms: 3000 },
         });
         assert!(h.cancelled.contains(&first_hints));
-        h.detect_reply(r#"{"isQuestion":true,"directedToMe":true,"short":"SDN 区别"}"#);
+        // Detection already confirmed the start: only the hints are redone.
+        assert_eq!(h.detects.len(), 1);
+        assert_eq!(h.hints.len(), 2);
+        assert!(h.hints[1].1.messages[0]
+            .content
+            .contains("传统网络架构的区别"));
         let versions: Vec<(u32, u32)> = h
             .events
             .iter()
@@ -2067,6 +2228,146 @@ mod tests {
             })
             .collect();
         assert_eq!(versions, [(1, 1), (1, 2)]);
+    }
+
+    #[test]
+    fn early_trigger_waits_for_the_rest_of_the_sentence() {
+        let mut h = Harness::new(EngineConfig {
+            speculative_hints: true,
+            ..Default::default()
+        });
+        h.at(1000).input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Partial {
+                text: "Talk about your thoughts on idea A".into(),
+                t0_ms: 0,
+                t1_ms: 1000,
+            },
+        });
+        h.at(1500);
+        assert_eq!(h.detects.len(), 1);
+        let spec = h.hints[0].0;
+        // The speaker only paused; the sentence goes on.
+        h.input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Final {
+                text: "Talk about your thoughts on idea A and idea B.".into(),
+                t0_ms: 0,
+                t1_ms: 2500,
+            },
+        });
+        h.at(2600).input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Endpoint { t_ms: 2500 },
+        });
+        assert_eq!(h.detects.len(), 1, "detection is not restarted");
+        assert!(
+            h.cancelled.contains(&spec),
+            "hints for the first half dropped"
+        );
+        h.detect_reply(YES);
+        assert_eq!(h.hints.len(), 2);
+        assert!(h.hints[1].1.messages[0]
+            .content
+            .contains("idea A and idea B"));
+    }
+
+    fn texts(h: &Harness) -> Vec<(QuestionId, u32, String)> {
+        h.events
+            .iter()
+            .filter_map(|e| match e {
+                MeetCueEvent::QuestionNew {
+                    id, version, text, ..
+                } => Some((*id, *version, text.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn question_split_by_a_pause_is_joined() {
+        let mut h = Harness::new(no_early());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "Talk about your thoughts on idea A.",
+        );
+        h.at(2300).detect_reply(YES);
+        let first = h.hints[0].0;
+        h.say(Channel::Remote, 3500, 4500, "And idea B.");
+        assert_eq!(h.detects.len(), 1, "joined without asking the model");
+        assert!(h.cancelled.contains(&first));
+        assert_eq!(h.hints.len(), 2);
+        assert!(h.hints[1].1.messages[0]
+            .content
+            .contains("Talk about your thoughts on idea A. And idea B."));
+        assert_eq!(
+            texts(&h).last(),
+            Some(&(
+                1,
+                2,
+                "Talk about your thoughts on idea A. And idea B.".into()
+            ))
+        );
+        assert_eq!(h.statuses(), vec![(1, QuestionStatus::Active)]);
+    }
+
+    #[test]
+    fn rest_of_a_question_joins_it_while_detection_runs() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 0, 2000, "说说你对微服务的理解，");
+        let spec = h.hints[0].0;
+        h.say(Channel::Remote, 2600, 3500, "以及服务网格适合什么场景");
+        assert!(h.cancelled.contains(&spec));
+        assert_eq!(h.detects.len(), 1);
+        h.detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"short":"微服务","subQuestions":["微服务是什么","为什么用"]}"#,
+        );
+        assert_eq!(
+            texts(&h),
+            vec![(
+                1,
+                1,
+                "说说你对微服务的理解，以及服务网格适合什么场景".into()
+            )]
+        );
+        assert_eq!(h.hints.len(), 2);
+        // The parts listed for the first half alone are not kept.
+        assert!(!h.hints[1].1.messages[0].content.contains("为什么用"));
+    }
+
+    #[test]
+    fn fragment_after_a_question_is_checked_by_the_model() {
+        let mut h = Harness::new(speculative());
+        h.say(Channel::Remote, 0, 2000, "What do you think of idea A?");
+        h.at(2300).detect_reply(YES);
+        assert_eq!(h.hints.len(), 1);
+        h.say(Channel::Remote, 3000, 3800, "Idea B, too.");
+        assert_eq!(h.detects.len(), 2, "sent to the model despite the rules");
+        assert_eq!(h.hints.len(), 1, "no speculative hints for a fragment");
+        h.detect_reply(r#"{"isQuestion":false,"directedToMe":true,"merged":true}"#);
+        assert_eq!(h.hints.len(), 2);
+        assert_eq!(texts(&h).last().map(|t| (t.0, t.1)), Some((1, 2)));
+        // Much later, the same fragment is just a remark.
+        h.say(Channel::Remote, 20_000, 20_800, "Idea C, too.");
+        assert_eq!(h.detects.len(), 2);
+    }
+
+    #[test]
+    fn compound_question_keeps_its_speculative_hints() {
+        let mut h = Harness::new(speculative());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "What are microservices, and when would you avoid them?",
+        );
+        h.at(2300).detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"subQuestions":["What are microservices?","When to avoid them?"]}"#,
+        );
+        assert_eq!(h.hints.len(), 1, "no second round trip");
+        assert!(h.cancelled.is_empty());
     }
 
     #[test]

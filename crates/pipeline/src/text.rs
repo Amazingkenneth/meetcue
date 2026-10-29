@@ -206,6 +206,33 @@ pub fn edit_ratio(a: &str, b: &str) -> f64 {
     prev[b.len()] as f64 / longest as f64
 }
 
+/// Whether `full` is `start` with more said after it: the same opening (the
+/// last few characters may be re-recognised) followed by at least four
+/// letters, digits or CJK characters.
+pub fn extends(start: &str, full: &str) -> bool {
+    let a: Vec<char> = normalize(start).chars().collect();
+    let b: Vec<char> = normalize(full).chars().collect();
+    if a.is_empty() || b.len() < a.len() + 4 {
+        return false;
+    }
+    let head: String = b[..a.len()].iter().collect();
+    let start: String = a.iter().collect();
+    edit_ratio(&start, &head) <= 0.2
+}
+
+/// Joins two parts of one spoken sentence, with a space unless the seam is
+/// Chinese.
+pub fn join_parts(a: &str, b: &str) -> String {
+    let (a, b) = (a.trim(), b.trim());
+    let cjk_seam = a.chars().last().is_some_and(|c| !c.is_ascii())
+        && b.chars().next().is_some_and(|c| !c.is_ascii());
+    if a.is_empty() || b.is_empty() || cjk_seam {
+        format!("{a}{b}")
+    } else {
+        format!("{a} {b}")
+    }
+}
+
 /// Truncates to at most `max` characters, adding an ellipsis when cut.
 pub fn truncate_chars(text: &str, max: usize) -> String {
     let count = text.chars().count();
@@ -260,6 +287,25 @@ mod tests {
         assert!((edit_ratio("控制器挂了还能转发吗", "控制器挂了还能转发吗？") - 0.0).abs() < 1e-9);
         assert!(edit_ratio("你们怎么做", "你们怎么做高可用的") > 0.3);
         assert!(edit_ratio("你们是怎么做高可用的", "你们是怎么做高可用") < 0.3);
+    }
+
+    #[test]
+    fn extensions_and_joins() {
+        assert!(extends(
+            "什么是 SDN",
+            "什么是 SDN，它和传统网络的区别在哪里？"
+        ));
+        assert!(extends(
+            "Talk about your thoughts on idea A",
+            "Talk about your thoughts on idea A and idea B."
+        ));
+        assert!(!extends("控制器挂了还能转发吗", "控制器挂了还能转发吗？"));
+        assert!(!extends("你们怎么做", "我们先聊聊你的项目经历吧"));
+        assert_eq!(join_parts("Idea A", "and idea B."), "Idea A and idea B.");
+        assert_eq!(
+            join_parts("说说微服务，", "以及服务网格"),
+            "说说微服务，以及服务网格"
+        );
     }
 
     #[test]

@@ -1,12 +1,13 @@
 You help the user ("Me") during a live meeting. The transcript below covers the last 60 seconds. Each line is "[Speaker] text"; [Me] is the user and [Them] is everyone else.
+The transcript comes from speech recognition: words may be misheard, especially with accents, and one spoken question is often split across several [Them] lines where the speaker paused. Read through recognition errors using the sound of the words and the context.
 
 Look at the last [Them] line and decide:
-1. isQuestion: does it ask the user to answer something (a question, a request, or a follow-up)? Small talk, confirmations such as "right?" and rhetorical questions are not questions.
+1. isQuestion: does it ask the user to answer something (a question, a request such as "talk about…" or "walk me through…", or a follow-up)? Small talk, confirmations such as "right?" and rhetorical questions are not questions.
 2. directedToMe: is it addressed to the user, explicitly or implicitly?
-3. merged: is it only a continuation or clarification of the previous unanswered question rather than a new one?
+3. merged: does it only continue or clarify the previous unanswered question rather than ask a new one? This includes the rest of a question cut off at a pause, such as "and idea B" after "What do you think of idea A". When merged is true, isQuestion is true as well.
 4. interruption: did the speaker cut in while the user was still answering an earlier question?
-5. subQuestions: if it asks several things at once, list each one separately; otherwise use an empty list.
-6. short: a short title for the question, at most 14 Chinese characters or 7 English words.
+5. subQuestions: if the question (together with its earlier part when merged) asks several things, list every part separately as a short, self-contained question, in the order asked; otherwise use an empty list.
+6. short: a short title for the whole question, at most 14 Chinese characters or 7 English words.
 7. tags: 1 to 3 short labels such as "Directed at you", "Compound · 2 questions", "Interruption" or "Related: <material name>".
 
 Write "short", "tags" and "subQuestions" in {output_language}.
