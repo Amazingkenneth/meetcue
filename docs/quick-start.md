@@ -21,7 +21,7 @@ The demo replays an interview for a network engineering role. Watch for these pa
 
 1. **Question card**: about a second and a half after the interviewer finishes a question, a card appears with the question in grey and numbered talking points below it.
 2. **Talking points**: each point has a bold keyword and a few grey words of detail. As the candidate covers a point, it gets a green tick and dims. The next point to cover is highlighted with a **Next** tag.
-3. **Queue**: when the interviewer asks a second question before the first is answered, it waits as **Next** in the queue at the top. The current hints are not replaced.
+3. **Other questions**: when the interviewer cuts in while the candidate is answering, the new question waits as a one-line row marked **Waiting** below the current one. The current hints are not replaced. Click any row to show that question in full.
 4. **Footer**: the latency of the most recent hint. Click it to open the latency probe.
 
 ## Try the shortcuts

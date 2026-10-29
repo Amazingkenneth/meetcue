@@ -24,8 +24,8 @@ From top to bottom, the full panel shows:
 
 1. **Title bar**: status, elapsed time, pause, keep on top, and the switch to the mini bar.
 2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
-3. **Question queue**: the previous, current and next question, with their status. Click a card to scroll to that question.
-4. **Conversation**: one block per question. The question you are answering is always at the top, followed by questions waiting their turn and then earlier ones, newest first. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
+3. **Conversation**: the question you are answering is shown in full at the top, with its talking points. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
+4. **Other questions**: one line each below it, with the time, a short summary, coverage and status. Questions waiting their turn come first, then earlier ones, newest first. Click a line to show that question in full; a bar at the top then offers **Back to the current question**, and a new question brings you back on its own.
 5. **Footer**: shortcut reminders and the latency of the last hint.
 
 The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, the next point to cover in large type, and how many questions are waiting.
@@ -55,8 +55,8 @@ If you use speakers instead of headphones, your microphone also hears the other 
 
 ## Several questions at once
 
-- **Queue interruptions** (on by default): a question asked while you are answering waits as **Next**. When you finish answering, it becomes the current question.
-- A question asked while you are not speaking replaces the current one, which moves to **Previous**.
+- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question.
+- A question asked while you are not speaking replaces the current one, which moves down to the earlier questions. This includes a question asked before you said anything about the previous one.
 - Use `Ctrl+Alt+[` and `Ctrl+Alt+]` to move between questions, and `Ctrl+Alt+Enter` to mark the current one answered.
 
 A question counts as answered only after you have spoken and then stopped, so silence before your answer never archives it.

@@ -84,7 +84,7 @@ describe("session reducer", () => {
     expect(s.questions[1].status).toBe("answered");
   });
 
-  it("lists the current question first, then waiting ones, then earlier ones newest first", () => {
+  it("lists the shown question first, then the live one, waiting ones and earlier ones newest first", () => {
     let s = run([q(1), q(2), q(3), q(4, 1, "pending")]);
     s = reduce(s, {
       type: "queueChanged",
@@ -99,6 +99,9 @@ describe("session reducer", () => {
     });
     expect(displayOrder(s)).toEqual([3, 4, 2, 1]);
     expect(displayOrder(emptySession())).toEqual([]);
+    // Looking at an earlier question keeps the live one right below it.
+    s = reduce(s, { type: "queueChanged", questions: [], active: 3, focus: 1 });
+    expect(displayOrder(s)).toEqual([1, 3, 4, 2]);
   });
 
   it("keeps partial and final transcript lines apart", () => {
