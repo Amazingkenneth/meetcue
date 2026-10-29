@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.3.3 — 2026-10-29
+
 ### Added
 
 - **Knowledge base**: add your résumé, project notes, slides or spreadsheets, and hints build on your real experience. Long files are searched per question on your computer, so each question gets the passages that match it. New formats: Excel, PowerPoint (with speaker notes), OpenDocument, RTF and HTML, and several files can be added at once.
