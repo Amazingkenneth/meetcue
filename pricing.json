@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-24",
+  "updated": "2026-10-31",
   "currency": "USD",
   "entries": [
     {
@@ -105,6 +105,46 @@
       "note": "Standard streaming rate for one language, which MeetCue uses for Chinese or English. Several non-Chinese languages use the multilingual rate, $0.0092 per minute. Limited-time promotional rates may be lower.",
       "source": "https://deepgram.com/pricing",
       "verified": "2026-10-24"
+    },
+    {
+      "provider": "alibaba",
+      "model": "fun-asr-realtime",
+      "label": "Alibaba Fun-ASR realtime",
+      "unit": "per_audio_hour",
+      "audio": 0.324,
+      "note": "Singapore region, with 10 free hours for 90 days. The Beijing region costs $0.17 per hour.",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing",
+      "verified": "2026-10-31"
+    },
+    {
+      "provider": "alibaba",
+      "model": "paraformer-realtime-v2",
+      "label": "Alibaba Paraformer realtime v2",
+      "unit": "per_audio_hour",
+      "audio": 0.126,
+      "note": "Beijing region only.",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/model-pricing",
+      "verified": "2026-10-31"
+    },
+    {
+      "provider": "tencent",
+      "model": "16k_zh_en",
+      "label": "Tencent large model (16k_zh_en)",
+      "unit": "per_audio_hour",
+      "audio": 0.67,
+      "note": "Chinese mainland site, CNY 4.80 per hour at up to 299 hours a day. The international site charges $2.00 per hour.",
+      "source": "https://cloud.tencent.com/document/product/1093/35686",
+      "verified": "2026-10-31"
+    },
+    {
+      "provider": "tencent",
+      "model": "16k_zh",
+      "label": "Tencent standard (16k_zh)",
+      "unit": "per_audio_hour",
+      "audio": 0.45,
+      "note": "Chinese mainland site, CNY 3.20 per hour at up to 299 hours a day, with 5 free hours a month. The international site charges $1.40 per hour.",
+      "source": "https://cloud.tencent.com/document/product/1093/35686",
+      "verified": "2026-10-31"
     }
   ]
 }
