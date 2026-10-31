@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.3.4 — 2026-10-31
+
 ### Added
 
 - Two speech recognition providers for Mandarin meetings: **Alibaba Cloud (Fun-ASR)**, with Singapore and Beijing regions, and **Tencent Cloud ASR**, with Chinese-English and dialect models. See [Providers and keys](/guide/providers#alibaba-cloud).
