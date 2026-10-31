@@ -217,7 +217,7 @@
     "cancelOverheadHint": "Extra share for requests started early and then cancelled.",
     "ownPrices_one": "Your own price ({{count}})",
     "ownPrices_other": "Your own prices ({{count}})",
-    "ownPricesLead": "MeetCue doesn't list prices. To track spending against your budget, enter the price from your provider's pricing page for the models you use.",
+    "ownPricesLead": "To track spending against your budget, enter the price for models without a listed price, or to replace a listed one.",
     "provider": "Provider",
     "chooseProvider": "Choose a provider",
     "model": "Model",
@@ -227,7 +227,7 @@
     "keysNone": "Choose a provider above to enter its address and key.",
     "baseUrlFor": "{{provider}} base URL",
     "baseUrlDefault": "Base URL (default {{url}})",
-    "modelsLead": "Choose a provider and type any model name it offers for each task; once its key is saved, the names it reports appear as suggestions. MeetCue doesn't list prices: use each provider's pricing link."
+    "modelsLead": "Choose a provider, then pick a model from the list or type any name it offers. The list shows each model's price and the estimated cost of a meeting hour; once a key is saved, it adds every model your account offers."
   },
   "probe": {
     "title": "Latency probe",
@@ -722,5 +722,23 @@
     "builtIn": "Built-in",
     "reset": "Restore built-in",
     "missing": "Missing {{placeholders}}: that information won't reach the model."
+  },
+  "models": {
+    "listLabel": "{{provider}} models",
+    "showList": "Show models",
+    "loading": "Loading the models on your {{provider}} account…",
+    "needsKey": "Showing models with listed prices. Save a {{provider}} key below to see every model your account offers.",
+    "footAsr": "Per meeting hour: both sides of the call for the share of time with speech. Prices are from the provider's pricing page.",
+    "footLlm": "Per meeting hour: detection or hint calls for the questions in an hour. Prices are from the provider's pricing page.",
+    "perAudioHour": "{{price}} / audio hour",
+    "perMillion": "{{input}} in · {{output}} out / 1M tokens",
+    "perMeetingHour": "≈ {{price}} / meeting hour",
+    "noPrice": "No listed price",
+    "noPriceChosen": "No listed price for this model. Add one under Your own prices to track spending.",
+    "cheapest": "Cheapest",
+    "onAccount": "On your account",
+    "useTyped": "Use “{{model}}”",
+    "useTypedHint": "Any model name {{provider}} accepts",
+    "empty": "No models to show. Type the name of any {{provider}} model."
   }
 }

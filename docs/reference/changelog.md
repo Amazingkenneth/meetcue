@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- The **Model** field opens a list of the provider's models with each one's price and the estimated cost of a meeting hour, the cheapest marked. It works before a key is saved; once one is, the list adds every model your account offers. Type to filter, or enter any other model name.
+
 ## 0.3.4 — 2026-10-31
 
 ### Added

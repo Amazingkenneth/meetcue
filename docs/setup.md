@@ -34,7 +34,7 @@ With speakers, your microphone also picks up the other participants. MeetCue fil
 
 For each of the three tasks, choose a **Provider** and type a **Model** name. Any name the provider accepts works, including models released after this version of MeetCue; once the provider's key is saved, the names it reports appear as suggestions while you type. You can't continue until all three tasks have a provider and a model.
 
-MeetCue doesn't list models or prices. Each provider has an **Official pricing** link to its own price page; for OpenAI-compatible services, check the pricing page of the service you use.
+The **Model** field opens a list of models with their prices and the estimated cost of a meeting hour. Each provider also has an **Official pricing** link to its own price page; for OpenAI-compatible services, check the pricing page of the service you use.
 
 Below the tasks, **Addresses & keys** shows a row for each provider you chose:
 

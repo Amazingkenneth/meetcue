@@ -373,6 +373,162 @@ input[type="number"] {
   border-bottom: 0;
 }
 
+.model-fields .control {
+  flex-wrap: wrap;
+}
+
+/* Model field: a text box with a list of models and prices under it. */
+.combo {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+  max-width: 520px;
+}
+
+.combo-input {
+  display: flex;
+  align-items: stretch;
+}
+
+.combo-input input {
+  flex: 1;
+  width: 100%;
+  padding-right: 30px;
+}
+
+.combo-toggle {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.combo-toggle:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.combo-open .combo-toggle svg {
+  transform: rotate(180deg);
+}
+
+.combo-pop {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.combo-pop ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.combo-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.combo-custom {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 32px;
+}
+
+.combo-row[data-active] {
+  background: var(--surface-2);
+}
+
+.combo-row[aria-selected="true"] .combo-name {
+  color: var(--brand);
+}
+
+.combo-check {
+  color: var(--brand);
+  font-size: 12px;
+  text-align: center;
+}
+
+.combo-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.combo-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combo-id {
+  font-size: 12px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.combo-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.combo-hour {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.combo-unit {
+  font-size: 12px;
+}
+
+.combo-empty {
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.combo-foot {
+  padding: 7px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  background: var(--surface-2);
+}
+
+.model-price {
+  flex-basis: 100%;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 .assumptions {
   margin-top: 4px;
   font-size: 13px;

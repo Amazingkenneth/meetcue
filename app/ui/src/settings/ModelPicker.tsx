@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { ModelSlot } from "../backend/types";
@@ -7,6 +7,9 @@ import type { PriceEntry } from "../bindings/PriceEntry";
 import type { Settings } from "../bindings/Settings";
 import { Field } from "../design/components";
 import { KeyField } from "./Keys";
+import { ModelCombo, usePriceTable, useUnitPrice, type ListState } from "./ModelCombo";
+import { usd } from "../util/format";
+import { modelOptions } from "../util/models";
 import { baseUrlOf, providerMeta, providersFor, providersInUse, reachable, type ProviderMeta } from "./providers";
 
 type Update = (f: (s: Settings) => Settings) => Promise<void>;
@@ -75,7 +78,7 @@ export function ModelsPanel({
   );
 }
 
-/** Provider and model for one task. The model is typed freely; the provider's own list only suggests. */
+/** Provider and model for one task. The model comes from a list with prices, or is typed freely. */
 export function ModelPicker({
   slot,
   settings,
@@ -90,10 +93,21 @@ export function ModelPicker({
   const { t } = useTranslation();
   const choice = settings.providers[slot];
   const meta = providerMeta(choice.provider);
-  const suggestions = useModelList(meta, settings, credentials);
+  const { models: reported, state } = useModelList(meta, settings, credentials);
+  const table = usePriceTable();
+  const unitPrice = useUnitPrice();
   const providerId = `provider-${slot}`;
   const modelId = `model-${slot}`;
-  const listId = `models-${slot}`;
+  const options = useMemo(
+    () =>
+      meta
+        ? modelOptions(meta.id, slot, table?.entries ?? [], settings.providers.pricingOverrides, reported, settings.providers.estimate)
+        : [],
+    [meta, slot, table, settings.providers.pricingOverrides, reported, settings.providers.estimate],
+  );
+  const model = choice.model ?? "";
+  const chosen = options.find((o) => o.id === model) ?? null;
+  const chosenUnit = chosen?.price ? unitPrice(chosen.price) : null;
 
   return (
     <div className="model-fields">
@@ -115,59 +129,78 @@ export function ModelPicker({
         {meta && <PricingLink meta={meta} />}
       </Field>
       <Field label={t("providers.model")} htmlFor={modelId}>
-        <input
+        <ModelCombo
           id={modelId}
-          className="input-wide"
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
+          slot={slot}
+          value={model}
+          options={options}
+          listState={state}
+          providerName={meta?.name ?? ""}
           disabled={!meta}
-          list={suggestions.length ? listId : undefined}
           placeholder={meta?.modelExample ? t("providers.modelExample", { model: meta.modelExample }) : t("providers.modelPlaceholder")}
-          value={choice.model ?? ""}
-          onChange={(e) =>
+          onChange={(m) =>
             void update((s) => {
-              s.providers[slot] = { ...s.providers[slot], model: e.target.value.trim() || null };
+              s.providers[slot] = { ...s.providers[slot], model: m };
               return s;
             })
           }
         />
-        {suggestions.length > 0 && (
-          <datalist id={listId}>
-            {suggestions.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.displayName && m.displayName !== m.id ? m.displayName : undefined}
-              </option>
-            ))}
-          </datalist>
+        {meta && model && (
+          <span className="model-price">
+            {chosen?.perHour != null ? (
+              <>
+                <strong>{t("models.perMeetingHour", { price: usd(chosen.perHour) })}</strong>
+                {chosenUnit && <span className="muted"> · {chosenUnit}</span>}
+              </>
+            ) : (
+              <span className="muted">{t("models.noPriceChosen")}</span>
+            )}
+          </span>
         )}
       </Field>
     </div>
   );
 }
 
-/** Models the provider itself reports, once it can be reached. Nothing is built in. */
-function useModelList(meta: ProviderMeta | undefined, settings: Settings, credentials: Record<string, boolean>): ModelInfo[] {
+/** Models the provider itself reports, once it can be reached. */
+function useModelList(
+  meta: ProviderMeta | undefined,
+  settings: Settings,
+  credentials: Record<string, boolean>,
+): { models: ModelInfo[]; state: ListState } {
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [state, setState] = useState<ListState>("none");
   const id = meta?.id;
   const ready = !!meta && reachable(settings, meta) && (!!credentials[meta.id] || !!meta.keyOptional);
   const url = id ? baseUrlOf(settings, id) : null;
   useEffect(() => {
     setModels([]);
-    if (!id || !ready) return;
+    if (!id) {
+      setState("none");
+      return;
+    }
+    if (!ready) {
+      setState("needsKey");
+      return;
+    }
+    setState("loading");
     let alive = true;
     void backend()
       .invoke("list_models", { provider: id })
-      .then((m) => alive && setModels(m))
-      .catch(() => undefined);
+      .then((m) => {
+        if (!alive) return;
+        setModels(m);
+        setState("loaded");
+      })
+      .catch(() => alive && setState("none"));
     return () => {
       alive = false;
     };
   }, [id, ready, url]);
-  return models;
+  return { models, state };
 }
 
-/** A link to the provider's own price page; MeetCue never lists prices. */
+/** A link to the provider's own price page. */
 export function PricingLink({ meta }: { meta: ProviderMeta }) {
   const { t } = useTranslation();
   if (!meta.pricingUrl) return <span className="muted">{t("providers.pricingElsewhere")}</span>;

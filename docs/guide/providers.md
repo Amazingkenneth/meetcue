@@ -4,7 +4,7 @@ This page describes each supported provider: where to get a key, where to enter 
 
 All keys are stored only in Windows Credential Manager, in entries named `MeetCue`. They are never written to the settings file or the logs, and the interface only knows whether a key is configured.
 
-Choose the provider and type the model name for each task in **Settings › Providers & cost › Providers & models**. MeetCue doesn't list models or prices: once a key is saved, the names the provider reports appear as suggestions, and each provider has an **Official pricing** link to its own price page.
+Choose the provider and model for each task in **Settings › Providers & cost › Providers & models**. Clicking the **Model** field opens a list of the provider's models with their price and the estimated cost of a meeting hour. Once a key is saved, the list adds every model your account offers. You can also type any other model name, and each provider has an **Official pricing** link to its own price page.
 
 ## Soniox
 
@@ -48,7 +48,7 @@ Tencent Cloud's real-time recognition, with Mandarin, English, Cantonese and man
 2. **Enter it**: in **Settings › Providers & cost › Addresses & keys › Tencent Cloud ASR key**, paste all three as `AppID:SecretId:SecretKey`, then **Save and verify**.
 3. **Check**: verification opens a signed connection and closes it without sending audio.
 4. **Model**: `16k_zh_en` (default) recognises Chinese and English in one sentence plus 31 dialects. `16k_zh` is the cheaper standard Mandarin model, `16k_yue` is Cantonese and `16k_en` is English.
-5. **Outside the Chinese mainland**: a Chinese-site account may be refused from abroad. MeetCue reports this as a key error with Tencent's message; use an account on the international site instead.
+5. **Outside the Chinese mainland**: a Chinese-site account refuses requests from abroad until you turn on cross-border traffic (跨境流量) in the speech recognition console. It needs its own cross-border resource pack or pay-as-you-go billing, and recognition still runs in the mainland, so expect higher latency. Until then MeetCue reports a key error with Tencent's message. An account on the international site avoids this.
 
 Common errors: [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001) (signature rejected, service not activated, or overseas access), [MC-ASR-003](/troubleshooting/error-codes#mc-asr-003) (resource pack used up, arrears or too many streams).
 

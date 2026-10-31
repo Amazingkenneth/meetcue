@@ -19,6 +19,8 @@ import defaults from "../mock/default-settings.json";
 import { KnowledgeSection, PromptsSection } from "./Knowledge";
 import { LogView } from "./LogView";
 import { ModelsPanel, PriceEditor, SLOTS } from "./ModelPicker";
+import { usePriceTable } from "./ModelCombo";
+import { findPrice } from "../util/models";
 import { ProbePanel } from "./Probe";
 import { providerName } from "./providers";
 import { useDraft } from "./useDraft";
@@ -771,13 +773,15 @@ function Assumptions({ settings, update }: { settings: Settings; update: Update 
 
 /**
  * Prices the user entered for budget tracking; they win over any price MeetCue
- * knows. The model list never shows prices, so this is where they are added.
+ * lists. Models without a listed price can be given one here.
  */
 function OwnPrices({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState<ModelSlot | null>(null);
   const own = settings.providers.pricingOverrides;
-  const has = (provider: string, model: string) => own.some((e) => e.provider === provider && e.model === model);
+  const table = usePriceTable();
+  // Models with a listed or user price need nothing entered.
+  const has = (provider: string, model: string) => !!findPrice(table?.entries ?? [], own, provider, model);
   const seen = new Set<string>();
   const missing = SLOTS.filter((slot) => {
     const { provider, model } = settings.providers[slot];

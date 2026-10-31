@@ -215,7 +215,7 @@
     "cancelOverhead": "提前触发后取消的比例",
     "cancelOverheadHint": "为提前发出又被取消的请求额外计入的比例。",
     "ownPrices_other": "你填写的价格（{{count}}）",
-    "ownPricesLead": "MeetCue 不列出价格。如需按预算统计花费，请从供应商价格页查到所用模型的价格并填写在这里。",
+    "ownPricesLead": "如需按预算统计费用，可为没有公开价格的模型填写价格，或替换已列出的价格。",
     "provider": "供应商",
     "chooseProvider": "选择供应商",
     "model": "模型",
@@ -225,7 +225,7 @@
     "keysNone": "在上方选择供应商后，在这里填写接口地址和密钥。",
     "baseUrlFor": "{{provider}} 接口地址",
     "baseUrlDefault": "接口地址（默认 {{url}}）",
-    "modelsLead": "为每项任务选择供应商，并填写它提供的任意模型名；保存密钥后，供应商返回的模型名会作为输入建议。MeetCue 不列出价格，请通过各供应商的价格链接查看。"
+    "modelsLead": "选择供应商，然后从列表中选择模型，或输入它支持的任意模型名。列表会显示每个模型的价格和每会议小时的预估费用；保存密钥后，还会列出你的账户可用的全部模型。"
   },
   "probe": {
     "title": "延迟探测",
@@ -720,5 +720,23 @@
     "builtIn": "内置",
     "reset": "恢复内置",
     "missing": "缺少 {{placeholders}}：这部分信息不会发给模型。"
+  },
+  "models": {
+    "listLabel": "{{provider}} 模型",
+    "showList": "显示模型",
+    "loading": "正在读取你的 {{provider}} 账户可用的模型…",
+    "needsKey": "当前显示有公开价格的模型。在下方保存 {{provider}} 密钥后，可看到账户可用的全部模型。",
+    "footAsr": "每会议小时：按有人说话的时间比例，计算通话双方两路音频。价格来自供应商的官方价格页。",
+    "footLlm": "每会议小时：按每小时的问题数计算检测或要点调用。价格来自供应商的官方价格页。",
+    "perAudioHour": "{{price}} / 音频小时",
+    "perMillion": "输入 {{input}} · 输出 {{output}} / 百万 token",
+    "perMeetingHour": "≈ {{price}} / 会议小时",
+    "noPrice": "暂无公开价格",
+    "noPriceChosen": "此模型暂无公开价格。可在“你填写的价格”中填写，以便统计费用。",
+    "cheapest": "最便宜",
+    "onAccount": "账户可用",
+    "useTyped": "使用“{{model}}”",
+    "useTypedHint": "{{provider}} 支持的任意模型名",
+    "empty": "没有可显示的模型。可直接输入任意 {{provider}} 模型名。"
   }
 }
