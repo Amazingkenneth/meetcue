@@ -6,12 +6,15 @@ use meetcue_core::{codes, MeetCueError};
 
 use crate::provider::{AsrProvider, LlmProvider};
 
+pub mod alibaba;
 pub mod anthropic;
 pub mod deepgram;
 pub mod mock;
 pub mod openai;
+mod pad;
 pub mod soniox;
 pub mod sse;
+pub mod tencent;
 
 /// Everything needed to construct a provider client.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -43,6 +46,16 @@ pub fn asr(cfg: &ProviderConfig) -> Result<Arc<dyn AsrProvider>, MeetCueError> {
             cfg.proxy.clone(),
         ))),
         "deepgram" => Ok(Arc::new(deepgram::Deepgram::new(
+            key(cfg, codes::ASR_NOT_CONFIGURED)?,
+            cfg.host.clone(),
+            cfg.proxy.clone(),
+        ))),
+        alibaba::ID => Ok(Arc::new(alibaba::Alibaba::new(
+            key(cfg, codes::ASR_NOT_CONFIGURED)?,
+            cfg.host.clone(),
+            cfg.proxy.clone(),
+        ))),
+        tencent::ID => Ok(Arc::new(tencent::Tencent::new(
             key(cfg, codes::ASR_NOT_CONFIGURED)?,
             cfg.host.clone(),
             cfg.proxy.clone(),
@@ -99,7 +112,7 @@ mod tests {
 
     #[test]
     fn builds_every_offered_provider() {
-        for p in ["soniox", "deepgram", "mock"] {
+        for p in ["soniox", "deepgram", "alibaba", "tencent", "mock"] {
             assert_eq!(asr(&cfg(p)).map(|a| a.id()).ok(), Some(p), "{p}");
         }
         for p in ["anthropic", "openai-compatible", "mock"] {

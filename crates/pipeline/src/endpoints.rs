@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn catalog_is_complete() {
         let c = EndpointCatalog::builtin();
-        for p in ["soniox", "deepgram", "anthropic"] {
+        for p in ["soniox", "deepgram", "alibaba", "tencent", "anthropic"] {
             assert!(!c.hosts(p).is_empty(), "{p}");
             assert!(c.probe_model(p).is_some(), "{p}");
         }

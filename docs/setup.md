@@ -8,7 +8,7 @@ You need an account with one speech recognition provider and one language model 
 
 | Task | Providers in this release |
 | --- | --- |
-| Speech recognition | Soniox, Deepgram |
+| Speech recognition | Soniox, Deepgram, Alibaba Cloud (Fun-ASR), Tencent Cloud ASR |
 | Question detection and hints | Anthropic, any OpenAI-compatible API |
 
 Detection and hints can use different models, and even different providers. Detection is a simple yes/no task, so a cheaper model is usually enough.
@@ -45,6 +45,8 @@ How to get each key is described in [Providers and keys](/guide/providers):
 
 - [Soniox](/guide/providers#soniox)
 - [Deepgram](/guide/providers#deepgram)
+- [Alibaba Cloud (Fun-ASR)](/guide/providers#alibaba-cloud)
+- [Tencent Cloud ASR](/guide/providers#tencent-cloud)
 - [Anthropic](/guide/providers#anthropic)
 - [OpenAI-compatible APIs](/guide/providers#openai-compatible-apis)
 

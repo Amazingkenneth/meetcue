@@ -26,7 +26,7 @@ MeetCue runs entirely on your computer. It calls the speech recognition and lang
 
 | Task | Providers |
 | --- | --- |
-| Speech recognition | Soniox, Deepgram |
+| Speech recognition | Soniox, Deepgram, Alibaba Cloud (Fun-ASR), Tencent Cloud ASR |
 | Language models | Anthropic (Claude), any OpenAI-compatible API |
 
 ## Building from source

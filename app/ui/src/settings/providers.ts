@@ -10,6 +10,8 @@ export interface ProviderMeta {
   /** The address used when no base URL is set; shown as the placeholder. */
   defaultBaseUrl?: string;
   keyOptional?: boolean;
+  /** Locale key of the key field's placeholder, when the key isn't a single token. */
+  keyFormat?: string;
   /** One model name shown as an example in the empty model field. */
   modelExample?: string;
   consoleUrl?: string;
@@ -35,6 +37,25 @@ export const PROVIDERS: ProviderMeta[] = [
     modelExample: "nova-3",
     consoleUrl: "https://console.deepgram.com/",
     pricingUrl: "https://deepgram.com/pricing",
+    available: true,
+  },
+  {
+    id: "alibaba",
+    kind: "asr",
+    name: "Alibaba Cloud (Fun-ASR)",
+    modelExample: "fun-asr-realtime",
+    consoleUrl: "https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key",
+    pricingUrl: "https://www.alibabacloud.com/help/en/model-studio/model-pricing",
+    available: true,
+  },
+  {
+    id: "tencent",
+    kind: "asr",
+    name: "Tencent Cloud ASR",
+    modelExample: "16k_zh_en",
+    keyFormat: "providers.keyTencent",
+    consoleUrl: "https://console.cloud.tencent.com/cam/capi",
+    pricingUrl: "https://cloud.tencent.com/document/product/1093/35686",
     available: true,
   },
   { id: "azure-speech", kind: "asr", name: "Azure Speech", available: false },

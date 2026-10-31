@@ -26,7 +26,7 @@ MeetCue 完全在你的电脑上运行，直接调用你选择的语音识别和
 
 | 环节 | 供应商 |
 | --- | --- |
-| 语音识别 | Soniox、Deepgram |
+| 语音识别 | Soniox、Deepgram、阿里云（Fun-ASR）、腾讯云语音识别 |
 | 大模型 | Anthropic（Claude）、任意 OpenAI 兼容接口 |
 
 ## 从源码构建

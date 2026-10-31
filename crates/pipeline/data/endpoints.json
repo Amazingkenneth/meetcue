@@ -26,6 +26,21 @@
       ],
       "probeModel": "nova-3"
     },
+    "alibaba": {
+      "kind": "asr",
+      "hosts": [
+        "dashscope-intl.aliyuncs.com",
+        "dashscope.aliyuncs.com"
+      ],
+      "probeModel": "fun-asr-realtime"
+    },
+    "tencent": {
+      "kind": "asr",
+      "hosts": [
+        "asr.cloud.tencent.com"
+      ],
+      "probeModel": "16k_zh_en"
+    },
     "anthropic": {
       "kind": "llm",
       "hosts": [

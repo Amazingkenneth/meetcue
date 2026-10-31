@@ -28,6 +28,30 @@
 
 常见错误：[MC-ASR-001](/zh/troubleshooting/error-codes#mc-asr-001)、[MC-ASR-003](/zh/troubleshooting/error-codes#mc-asr-003)（请求被限流）。
 
+## 阿里云（Fun-ASR） {#alibaba-cloud}
+
+阿里云百炼（Model Studio）的实时语音识别，针对普通话设计，能识别夹杂的英文术语和多种方言。按音频秒数计费。
+
+1. **获取密钥**：在百炼控制台顶部选择地域（中国大陆以外选新加坡，大陆以内选北京），再在该地域创建 API Key。密钥只能在创建它的地域使用。
+2. **填写**：**设置 › 供应商与费用 › 接口地址与密钥 › Alibaba Cloud (Fun-ASR) 密钥**，然后点 **保存并验证**。
+3. **验证**：验证会开始并结束一个空的识别任务，不消耗音频。
+4. **接口地址**：MeetCue 内置两个地域的地址。如果所选地址拒绝密钥，会自动尝试另一个地域，并继续使用可用的那个。
+5. **模型**：`fun-asr-realtime`（默认）会把热词作为上下文使用。`paraformer-realtime-v2` 只在北京地域提供。
+
+常见错误：[MC-ASR-001](/zh/troubleshooting/error-codes#mc-asr-001)（两个地域都拒绝密钥）、[MC-ASR-003](/zh/troubleshooting/error-codes#mc-asr-003)（请求被限流或账户欠费）。
+
+## 腾讯云语音识别 {#tencent-cloud}
+
+腾讯云的实时语音识别，支持普通话、英语、粤语和多种方言。按音频时长计费。
+
+1. **获取密钥**：在腾讯云控制台开通语音识别，然后打开 **访问管理 › API 密钥管理**。需要 **AppID**（在同一页面和账号信息中可以看到）、**SecretId** 和对应的 **SecretKey**。
+2. **填写**：在 **设置 › 供应商与费用 › 接口地址与密钥 › Tencent Cloud ASR 密钥** 中，按 `AppID:SecretId:SecretKey` 的格式一次粘贴三项，然后点 **保存并验证**。
+3. **验证**：验证会建立一个签名连接，不发送音频就关闭。
+4. **模型**：`16k_zh_en`（默认）能识别同一句中的中英文以及 31 种方言。`16k_zh` 是更便宜的普通话标准版，`16k_yue` 为粤语，`16k_en` 为英语。
+5. **在中国大陆以外使用**：中国站账号在境外可能被拒绝。MeetCue 会以密钥错误的形式显示腾讯云的提示，此时请改用国际站账号。
+
+常见错误：[MC-ASR-001](/zh/troubleshooting/error-codes#mc-asr-001)（签名被拒绝、未开通服务或境外访问）、[MC-ASR-003](/zh/troubleshooting/error-codes#mc-asr-003)（资源包用完、欠费或并发超限）。
+
 ## Anthropic
 
 用 Claude 模型做问题检测和要点生成。

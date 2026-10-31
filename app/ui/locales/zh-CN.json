@@ -191,6 +191,7 @@
     "keyFor": "{{provider}} 密钥",
     "getKey": "获取密钥",
     "keyPlaceholder": "粘贴 API 密钥",
+    "keyTencent": "AppID:SecretId:SecretKey",
     "keySaved": "已保存 · 粘贴可替换",
     "saveVerify": "保存并验证",
     "baseUrl": "Base URL",

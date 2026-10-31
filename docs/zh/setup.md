@@ -8,7 +8,7 @@
 
 | 任务 | 本版本支持的供应商 |
 | --- | --- |
-| 语音识别 | Soniox、Deepgram |
+| 语音识别 | Soniox、Deepgram、阿里云（Fun-ASR）、腾讯云语音识别 |
 | 问题检测与要点生成 | Anthropic、任意 OpenAI 兼容接口 |
 
 问题检测和要点生成可以用不同的模型，甚至不同的供应商。检测只需判断“是不是问题”，通常选便宜的模型就够了。
@@ -45,6 +45,8 @@ MeetCue 不列出模型和价格。每个供应商旁都有 **查看官网价格
 
 - [Soniox](/zh/guide/providers#soniox)
 - [Deepgram](/zh/guide/providers#deepgram)
+- [阿里云（Fun-ASR）](/zh/guide/providers#alibaba-cloud)
+- [腾讯云语音识别](/zh/guide/providers#tencent-cloud)
 - [Anthropic](/zh/guide/providers#anthropic)
 - [OpenAI 兼容接口](/zh/guide/providers#openai-compatible-apis)
 

@@ -31,6 +31,8 @@ type Listener<T> = (e: T) => void;
 const HOSTS: Record<string, string[]> = {
   soniox: ["stt-rt.soniox.com", "stt-rt.eu.soniox.com", "stt-rt.jp.soniox.com", "stt-rt.in.soniox.com"],
   deepgram: ["api.deepgram.com", "api.eu.deepgram.com", "api.au.deepgram.com", "api.in.deepgram.com"],
+  alibaba: ["dashscope-intl.aliyuncs.com", "dashscope.aliyuncs.com"],
+  tencent: ["asr.cloud.tencent.com"],
   anthropic: ["api.anthropic.com"],
   "openai-compatible": [],
 };
@@ -268,7 +270,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     verify_provider: ({ provider }) =>
       credentials.has(provider) || provider === "openai-compatible"
         ? { ok: true, code: null, detail: null }
-        : { ok: false, code: provider === "soniox" || provider === "deepgram" ? "MC-ASR-001" : "MC-LLM-002", detail: "no key" },
+        : { ok: false, code: ["soniox", "deepgram", "alibaba", "tencent"].includes(provider) ? "MC-ASR-001" : "MC-LLM-002", detail: "no key" },
     list_models: ({ provider }) => [
       ...(pricing.entries as PriceEntry[])
         .filter((e) => e.provider === provider)

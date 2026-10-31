@@ -28,6 +28,30 @@ Streaming speech recognition, billed per minute of audio.
 
 Common errors: [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001), [MC-ASR-003](/troubleshooting/error-codes#mc-asr-003) (rate limited).
 
+## Alibaba Cloud (Fun-ASR) {#alibaba-cloud}
+
+Alibaba Cloud Model Studio's real-time recognition, built for Mandarin with English terms mixed in and several dialects. Billed per second of audio.
+
+1. **Get a key**: in the Model Studio console, choose the region at the top (Singapore for use outside the Chinese mainland, Beijing inside it) and create an API key there. Keys work only in the region that created them.
+2. **Enter it**: **Settings › Providers & cost › Addresses & keys › Alibaba Cloud (Fun-ASR) key**, then **Save and verify**.
+3. **Check**: verification starts and ends an empty recognition task, so it uses no audio.
+4. **Endpoint**: MeetCue knows both regions' addresses. If the chosen one rejects the key, it tries the other region and keeps using the one that works.
+5. **Model**: `fun-asr-realtime` (default) uses your hotwords as context. `paraformer-realtime-v2` is available only in Beijing.
+
+Common errors: [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001) (key rejected in both regions), [MC-ASR-003](/troubleshooting/error-codes#mc-asr-003) (rate limited or account in arrears).
+
+## Tencent Cloud ASR {#tencent-cloud}
+
+Tencent Cloud's real-time recognition, with Mandarin, English, Cantonese and many dialects. Billed per hour of audio.
+
+1. **Get a key**: activate speech recognition in the Tencent Cloud console, then open **Access management › API keys**. You need your **AppID** (shown on the same page and in account info), a **SecretId** and its **SecretKey**.
+2. **Enter it**: in **Settings › Providers & cost › Addresses & keys › Tencent Cloud ASR key**, paste all three as `AppID:SecretId:SecretKey`, then **Save and verify**.
+3. **Check**: verification opens a signed connection and closes it without sending audio.
+4. **Model**: `16k_zh_en` (default) recognises Chinese and English in one sentence plus 31 dialects. `16k_zh` is the cheaper standard Mandarin model, `16k_yue` is Cantonese and `16k_en` is English.
+5. **Outside the Chinese mainland**: a Chinese-site account may be refused from abroad. MeetCue reports this as a key error with Tencent's message; use an account on the international site instead.
+
+Common errors: [MC-ASR-001](/troubleshooting/error-codes#mc-asr-001) (signature rejected, service not activated, or overseas access), [MC-ASR-003](/troubleshooting/error-codes#mc-asr-003) (resource pack used up, arrears or too many streams).
+
 ## Anthropic
 
 Claude models for question detection and hints.

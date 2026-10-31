@@ -90,7 +90,13 @@ export function KeyField({
           spellCheck={false}
           aria-label={t("providers.keyFor", { provider: provider.name })}
           placeholder={
-            configured ? t("providers.keySaved") : provider.keyOptional ? t("providers.keyOptional") : t("providers.keyPlaceholder")
+            configured
+              ? t("providers.keySaved")
+              : provider.keyOptional
+                ? t("providers.keyOptional")
+                : provider.keyFormat
+                  ? t(provider.keyFormat)
+                  : t("providers.keyPlaceholder")
           }
           value={value}
           onChange={(e) => setValue(e.target.value)}

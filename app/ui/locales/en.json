@@ -192,6 +192,7 @@
     "keyFor": "{{provider}} key",
     "getKey": "Get a key",
     "keyPlaceholder": "Paste API key",
+    "keyTencent": "AppID:SecretId:SecretKey",
     "keySaved": "Saved · paste to replace",
     "saveVerify": "Save and verify",
     "baseUrl": "Base URL",

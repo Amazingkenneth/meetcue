@@ -39,7 +39,14 @@ fn io_err(e: impl std::fmt::Display) -> MeetCueError {
 }
 
 /// Provider ids whose credentials the interface may ask about.
-const PROVIDER_IDS: &[&str] = &["soniox", "deepgram", "anthropic", "openai-compatible"];
+const PROVIDER_IDS: &[&str] = &[
+    "soniox",
+    "deepgram",
+    "alibaba",
+    "tencent",
+    "anthropic",
+    "openai-compatible",
+];
 
 #[tauri::command]
 pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
@@ -222,7 +229,7 @@ pub async fn wipe_all_data(app: AppHandle) -> Res<()> {
 
 fn kind_of(provider: &str) -> &'static str {
     match provider {
-        "soniox" | "deepgram" | "azure-speech" | "mock" => "asr",
+        "soniox" | "deepgram" | "alibaba" | "tencent" | "azure-speech" | "mock" => "asr",
         _ => "llm",
     }
 }
