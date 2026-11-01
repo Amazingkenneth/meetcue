@@ -35,23 +35,27 @@ export function asrPerHour(p: PriceEntry, a: CostAssumptions): number {
 
 /**
  * A model task: one call per question (plus cancelled early triggers), with
- * the stable system prompt billed at the cache-read price.
+ * `cached` tokens of the prompt billed at the cache-read price.
  */
-export function llmPerHour(p: PriceEntry, input: number, output: number, a: CostAssumptions): number {
+export function llmPerHour(p: PriceEntry, input: number, output: number, cached: number, a: CostAssumptions): number {
   const k = perToken(p);
   const inputPrice = p.input ?? 0;
   const call = micros(
-    Math.trunc(input) * inputPrice * k + Math.trunc(output) * (p.output ?? 0) * k + Math.trunc(a.systemTokens) * (p.cacheRead ?? inputPrice) * k,
+    Math.trunc(input) * inputPrice * k + Math.trunc(output) * (p.output ?? 0) * k + Math.trunc(cached) * (p.cacheRead ?? inputPrice) * k,
   );
   return Math.round(call * a.questionsPerHour * (1 + a.cancelOverhead));
 }
 
-/** Estimated cost per hour of using `p` for one task, in micro-dollars. */
+/**
+ * Estimated cost per hour of using `p` for one task, in micro-dollars.
+ * Detection's instructions are too short to be cached; the hint prompt is
+ * written to the cache about once per meeting and read from it afterwards.
+ */
 export function estimateTask(p: PriceEntry, slot: ModelSlot, a: CostAssumptions): number {
   if (slot === "asr") return asrPerHour(p, a);
-  return slot === "detect"
-    ? llmPerHour(p, a.detectInputTokens, a.detectOutputTokens, a)
-    : llmPerHour(p, a.hintInputTokens, a.hintOutputTokens, a);
+  if (slot === "detect") return llmPerHour(p, a.detectInputTokens, a.detectOutputTokens, 0, a);
+  const write = micros(Math.trunc(a.systemTokens) * (p.cacheWrite ?? p.input ?? 0) * perToken(p));
+  return llmPerHour(p, a.hintInputTokens, a.hintOutputTokens, a.systemTokens, a) + write;
 }
 
 /** Estimated cost per hour of a whole setup; unknown parts are left out of the total. */

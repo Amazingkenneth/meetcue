@@ -10,7 +10,7 @@ export type CostAssumptions = {
  */
 speechRatio: number, questionsPerHour: number, 
 /**
- * Static system prompt (role, materials) billed at the cache-read price.
+ * Hint instructions, role and materials, read from the prompt cache.
  */
 systemTokens: number, detectInputTokens: number, detectOutputTokens: number, hintInputTokens: number, hintOutputTokens: number, 
 /**

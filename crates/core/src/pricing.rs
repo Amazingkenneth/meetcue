@@ -263,7 +263,7 @@ pub struct CostAssumptions {
     /// Share of time that contains speech after voice activity detection.
     pub speech_ratio: f64,
     pub questions_per_hour: f64,
-    /// Static system prompt (role, materials) billed at the cache-read price.
+    /// Hint instructions, role and materials, read from the prompt cache.
     pub system_tokens: f64,
     pub detect_input_tokens: f64,
     pub detect_output_tokens: f64,
@@ -315,17 +315,34 @@ pub fn estimate_hourly(
         let ms = (3_600_000.0 * 2.0 * a.speech_ratio) as u64;
         p.cost(&UsageKind::Audio { ms })
     });
-    let llm = |p: &PriceEntry, input: f64, output: f64| {
+    let llm = |p: &PriceEntry, input: f64, output: f64, cached: f64| {
         let per_call = p.cost(&UsageKind::Llm {
             input: input as u64,
             output: output as u64,
-            cache_read: a.system_tokens as u64,
+            cache_read: cached as u64,
             cache_write: 0,
         });
         (per_call as f64 * a.questions_per_hour * (1.0 + a.cancel_overhead)).round() as Usd
     };
-    let detect_cost = detect.map(|p| llm(p, a.detect_input_tokens, a.detect_output_tokens));
-    let hints_cost = hints.map(|p| llm(p, a.hint_input_tokens, a.hint_output_tokens));
+    // Detection's instructions are shorter than the providers' minimum for
+    // caching, so all of its input is billed in full.
+    let detect_cost = detect.map(|p| llm(p, a.detect_input_tokens, a.detect_output_tokens, 0.0));
+    // The hint prompt (role, materials) is read from the cache, which is
+    // written about once per meeting and then kept warm.
+    let hints_cost = hints.map(|p| {
+        let write = p.cost(&UsageKind::Llm {
+            input: 0,
+            output: 0,
+            cache_read: 0,
+            cache_write: a.system_tokens as u64,
+        });
+        llm(
+            p,
+            a.hint_input_tokens,
+            a.hint_output_tokens,
+            a.system_tokens,
+        ) + write
+    });
     let parts = [asr_cost, detect_cost, hints_cost];
     HourlyEstimate {
         asr: asr_cost,
@@ -495,10 +512,13 @@ mod tests {
         let est = estimate_hourly(Some(&asr), Some(&llm), None, &a);
         // 2 channels x 0.6 x $0.12 = $0.144
         assert_eq!(est.asr, Some(144_000));
-        // (900 x $1 + 80 x $5 + 1500 x $0.10) per MTok x 20 questions x 1.1;
-        // app/ui/src/util/cost.test.ts checks the interface gives the same.
-        assert_eq!(est.detect, Some(31_900));
+        // (900 x $1 + 80 x $5) per MTok x 20 questions x 1.1: detection is
+        // not cached. app/ui/src/util/cost.test.ts checks the interface gives the same.
+        assert_eq!(est.detect, Some(28_600));
         assert!(!est.complete);
         assert_eq!(est.total, est.asr.unwrap() + est.detect.unwrap());
+        // Hints read 1500 cached tokens per call and write them once.
+        let est = estimate_hourly(None, None, Some(&llm), &a);
+        assert_eq!(est.hints, Some(84_700 + 1_875));
     }
 }

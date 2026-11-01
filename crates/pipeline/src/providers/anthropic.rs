@@ -124,6 +124,17 @@ pub fn request_body(req: &LlmRequest, minimal: bool) -> Value {
     body
 }
 
+/// A request that only writes the cache at the system prompt's breakpoint:
+/// `max_tokens: 0` returns straight after reading the prompt, and is not
+/// accepted with streaming. Model settings stay as in real requests, because
+/// they are part of what the cache is keyed on.
+pub fn warm_body(req: &LlmRequest) -> Value {
+    let mut body = request_body(req, false);
+    body["max_tokens"] = json!(0);
+    body["stream"] = json!(false);
+    body
+}
+
 /// Cumulative usage tracked across `message_start` and `message_delta`.
 #[derive(Debug, Default, Clone, Copy)]
 struct Usage {
@@ -362,6 +373,42 @@ impl LlmProvider for Anthropic {
         });
         Ok(rx.boxed())
     }
+
+    async fn warm(&self, req: LlmRequest) -> Result<Option<LlmChunk>, MeetCueError> {
+        if !req.cache_system || req.system.is_empty() {
+            return Ok(None);
+        }
+        let client = net::http_client(self.proxy.as_deref())?;
+        let resp = client
+            .post(format!("{}/messages", self.base()))
+            .header("x-api-key", &self.key)
+            .header("anthropic-version", API_VERSION)
+            .header("content-type", "application/json")
+            .json(&warm_body(&req))
+            .send()
+            .await
+            .map_err(|e| net::reqwest_error(&e))?;
+        let status = resp.status().as_u16();
+        if status != 200 {
+            let text = resp.text().await.unwrap_or_default();
+            return Err(MeetCueError::new(
+                net::llm_status_code(status),
+                format!(
+                    "HTTP {status}: {}",
+                    text.chars().take(400).collect::<String>()
+                ),
+            ));
+        }
+        let v: Value = resp
+            .json()
+            .await
+            .map_err(|e| MeetCueError::new(codes::LLM_REQUEST, e.to_string()))?;
+        let mut usage = Usage::default();
+        if let Some(u) = v.get("usage") {
+            usage.update(u);
+        }
+        Ok(Some(usage.chunk()))
+    }
 }
 
 #[cfg(test)]
@@ -393,6 +440,18 @@ mod tests {
             .user("transcript and question")
             .max_tokens(700)
             .temperature(0.3)
+    }
+
+    #[test]
+    fn warm_body_writes_the_cache_without_a_reply() {
+        let b = warm_body(&req("claude-sonnet-5-5"));
+        assert_eq!(b["max_tokens"], 0);
+        assert_eq!(b["stream"], false);
+        assert_eq!(b["system"][0]["cache_control"]["type"], "ephemeral");
+        // Same model settings as the real request, so the cache entry matches.
+        let real = request_body(&req("claude-sonnet-5-5"), false);
+        assert_eq!(b["thinking"], real["thinking"]);
+        assert_eq!(b["output_config"], real["output_config"]);
     }
 
     #[test]

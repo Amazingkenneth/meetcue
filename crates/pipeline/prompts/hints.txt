@@ -3,8 +3,6 @@ The user's role: {role}
 Briefing material (may be empty):
 {materials}
 
-Write everything in {output_language}.
-
 How to answer well:
 - Work out everything the question asks. Questions are often compound ("your thoughts on A and B", "what, why and how") or spread over several transcript lines because the speaker paused. Answer every part, in the order asked; never stop after the first part.
 - The question comes from speech recognition and may contain misheard words. Answer the most plausible question given the sound of the words and the conversation.

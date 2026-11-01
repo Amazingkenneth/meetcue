@@ -33,21 +33,22 @@ describe("estimated cost per hour", () => {
   it("matches the shell's estimate_hourly (same figures as its test)", () => {
     const est = estimateHourly(entry("per_audio_hour"), entry("per_million_tokens"), null, a);
     expect(est.asr).toBe(144_000);
-    expect(est.detect).toBe(31_900);
+    expect(est.detect).toBe(28_600);
     expect(est.hints).toBeNull();
     expect(est.complete).toBe(false);
-    expect(est.total).toBe(144_000 + 31_900);
+    expect(est.total).toBe(144_000 + 28_600);
   });
 
   it("converts every price unit", () => {
     expect(estimateTask(entry("per_audio_minute"), "asr", a)).toBe(8_640_000);
-    expect(estimateTask(entry("per_thousand_tokens"), "detect", a)).toBe(31_900_000);
-    // Hints: (1200 × $1 + 500 × $5 + 1500 × $0.10) per million tokens, 20 questions, +10%.
-    expect(estimateTask(entry("per_million_tokens"), "hints", a)).toBe(84_700);
+    expect(estimateTask(entry("per_thousand_tokens"), "detect", a)).toBe(28_600_000);
+    // Hints: (1200 × $1 + 500 × $5 + 1500 × $0.10) per million tokens, 20 questions, +10%,
+    // plus writing the 1500-token prompt to the cache once at $1.25.
+    expect(estimateTask(entry("per_million_tokens"), "hints", a)).toBe(84_700 + 1_875);
   });
 
   it("bills the system prompt at the input price when there is no cache price", () => {
-    const p = { ...entry("per_million_tokens"), cacheRead: undefined };
-    expect(estimateTask(p, "detect", a)).toBe(Math.round(2_800 * 20 * 1.1));
+    const p = { ...entry("per_million_tokens"), cacheRead: undefined, cacheWrite: undefined };
+    expect(estimateTask(p, "hints", a)).toBe(Math.round(5_200 * 20 * 1.1) + 1_500);
   });
 });

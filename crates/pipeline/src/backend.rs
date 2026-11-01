@@ -578,6 +578,25 @@ fn execute(
                     first_token_timeout: ctx.first_token_timeout,
                 }));
             }
+            Output::WarmHints { request } => {
+                let llm = ctx.hints_llm.clone();
+                let model = ctx.hints_model.clone();
+                let input = ctx.input_tx.clone();
+                tokio::spawn(async move {
+                    let purpose = request.purpose;
+                    let warmed = tokio::time::timeout(WARM_TIMEOUT, llm.warm(request)).await;
+                    match warmed {
+                        Ok(Ok(Some(usage))) => {
+                            if let Some(i) = usage_input(&model, purpose, &usage) {
+                                let _ = input.send(i);
+                            }
+                        }
+                        Ok(Ok(None)) => {}
+                        Ok(Err(e)) => tracing::debug!("hint prompt warm-up failed: {e}"),
+                        Err(_) => tracing::debug!("hint prompt warm-up timed out"),
+                    }
+                });
+            }
             Output::Cancel { req } => {
                 if let Some(t) = tasks.remove(&req) {
                     t.cancel();
@@ -592,7 +611,27 @@ fn execute(
     }
 }
 
+/// A cache warm-up that takes longer than this is not waited for.
+const WARM_TIMEOUT: Duration = Duration::from_secs(20);
+
 fn usage_input(model: &ModelRef, purpose: UsagePurpose, chunk: &LlmChunk) -> Option<Input> {
+    if let LlmChunk::Usage {
+        input,
+        cache_read: 0,
+        cache_write: 0,
+        ..
+    } = chunk
+    {
+        if *input > 0 && model.provider == "anthropic" {
+            // Usually a system prompt shorter than the model's minimum for caching.
+            tracing::debug!(
+                model = %model.model,
+                ?purpose,
+                input,
+                "request was not served from or written to the prompt cache"
+            );
+        }
+    }
     match chunk {
         LlmChunk::Usage {
             input,

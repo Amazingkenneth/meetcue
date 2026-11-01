@@ -179,6 +179,12 @@ pub trait LlmProvider: Send + Sync {
     fn id(&self) -> &'static str;
     async fn list_models(&self) -> Result<Vec<ModelInfo>, MeetCueError>;
     async fn stream(&self, req: LlmRequest) -> Result<LlmStream, MeetCueError>;
+    /// Writes the request's cached system prompt without generating a reply,
+    /// so the next real request starts from the cache. Returns what was
+    /// billed; `None` where the provider has no such request.
+    async fn warm(&self, _req: LlmRequest) -> Result<Option<LlmChunk>, MeetCueError> {
+        Ok(None)
+    }
 }
 
 /// Runs a request to completion and returns the full text plus usage.

@@ -41,15 +41,19 @@ mod tests {
             ],
         );
         assert!(s.contains("The user's role: SRE"));
-        assert!(s.contains("Write everything in English."));
         assert!(s.contains(r#"{"n":1,"head":"key phrase","rest":"supporting words"}"#));
         assert!(!s.contains("{role}"));
     }
 
     #[test]
     fn templates_have_their_placeholders() {
-        assert!(DETECT.contains("{output_language}"));
+        // The language is in the per-request message so the cached
+        // instructions are the same in every language.
+        assert!(
+            !DETECT.contains("{output_language}") && !HINTS_SYSTEM.contains("{output_language}")
+        );
         assert!(HINTS_USER.contains("{transcript}") && HINTS_USER.contains("{question}"));
+        assert!(HINTS_USER.contains("{output_language}"));
         assert!(HINTS_USER.contains("{knowledge}") && HINTS_SYSTEM.contains("{materials}"));
         assert!(FOLLOW_UP.contains("{answer}"));
         assert!(REVIEW.contains("{reference}"));
