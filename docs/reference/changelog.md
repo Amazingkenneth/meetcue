@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.3.7 — 2026-11-01
+
 ### Changed
 
 - Hints start faster. MeetCue now loads the hint instructions into Claude's prompt cache when a session starts and keeps them there while people are talking, so the first question of a meeting no longer waits for the whole prompt to be read. The output language moved from the instructions to the question message, so one cache entry serves questions in every language. If you edited the hint prompts, `{output_language}` now belongs in the question message; old instructions that still use it keep working.
