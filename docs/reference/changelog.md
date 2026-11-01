@@ -7,6 +7,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 ### Changed
 
 - In a long meeting the panel's list of other questions stays short: only the three most recent earlier questions are shown, older ones fold behind **Show earlier questions**, and **Clear earlier** hides them from the list until you restore them.
+- Ticking off talking points from your microphone is now off by default, also for existing installs, because it could tick or miss points when your wording differed from the list. Click a point to tick it, or turn the setting back on under **Settings › Hints › Tick off points as I speak**.
 
 ## 0.3.5 — 2026-10-31
 

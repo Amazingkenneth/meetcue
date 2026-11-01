@@ -10,7 +10,8 @@ use ts_rs::TS;
 
 use crate::pricing::{CostAssumptions, PriceEntry};
 
-pub const SETTINGS_VERSION: u32 = 1;
+/// Version 2 turned answer tracking (`hints.trackCoverage`) off by default.
+pub const SETTINGS_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -47,6 +48,11 @@ impl Settings {
     /// Parses a settings file, falling back to defaults for missing fields.
     pub fn from_json(json: &str) -> serde_json::Result<Self> {
         let mut s: Settings = serde_json::from_str(json)?;
+        // Version 1 saved answer tracking as on for everyone, since that was
+        // the default. It is now opt-in, so it starts off once.
+        if s.version < 2 {
+            s.hints.track_coverage = false;
+        }
         s.version = SETTINGS_VERSION;
         s.overlay.normalize();
         // Older files kept one base URL, for the OpenAI-compatible provider only.
@@ -297,6 +303,9 @@ pub struct HintSettings {
     pub materials: Vec<Material>,
     pub only_directed_to_me: bool,
     pub queue_interruptions: bool,
+    /// Listen to the user's microphone while they answer and tick the
+    /// talking points they have said. Off by default: loose matching ticks
+    /// or misses points when the user rephrases.
     pub track_coverage: bool,
     pub early_trigger: bool,
     /// Write hints while detection is still checking the sentence, and
@@ -312,7 +321,7 @@ impl Default for HintSettings {
             materials: Vec::new(),
             only_directed_to_me: false,
             queue_interruptions: true,
-            track_coverage: true,
+            track_coverage: false,
             early_trigger: true,
             speculative_hints: true,
             prompts: PromptSettings::default(),
@@ -607,6 +616,18 @@ mod tests {
                 std::fs::write(path, Settings::default().to_json() + "\n").unwrap();
             }
         }
+    }
+
+    #[test]
+    fn answer_tracking_starts_off_after_upgrade() {
+        let old = r#"{"version":1,"hints":{"trackCoverage":true}}"#;
+        assert!(!Settings::from_json(old).unwrap().hints.track_coverage);
+        assert!(!Settings::default().hints.track_coverage);
+
+        let mut on = Settings::default();
+        on.hints.track_coverage = true;
+        let back = Settings::from_json(&on.to_json()).unwrap();
+        assert!(back.hints.track_coverage, "a choice made now is kept");
     }
 
     #[test]

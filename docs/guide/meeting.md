@@ -53,7 +53,9 @@ The font for every window, the panel's text size and opacity can also be set in 
 
 ## Coverage ticks
 
-With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough.
+Click a point to tick it once you've covered it, and click it again to untick it.
+
+To have MeetCue tick points for you, turn on **Settings › Hints › Tick off points as I speak** (off by default). MeetCue then listens to your microphone and compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough. When your wording strays further from the list, points can be ticked or missed; if that gets in your way, leave the setting off and tick points by hand.
 
 If you use speakers instead of headphones, your microphone also hears the other participants. MeetCue ignores microphone text that closely matches what was just played, so their words don't tick off your points.
 

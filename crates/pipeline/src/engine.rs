@@ -97,7 +97,7 @@ impl Default for EngineConfig {
             hint_language: HintLanguage::FollowQuestion,
             only_directed_to_me: false,
             queue_interruptions: true,
-            track_coverage: true,
+            track_coverage: false,
             early_trigger: true,
             speculative_hints: false,
         }
@@ -1790,6 +1790,7 @@ mod tests {
     fn no_early() -> EngineConfig {
         EngineConfig {
             early_trigger: false,
+            track_coverage: true,
             ..Default::default()
         }
     }
@@ -1879,6 +1880,25 @@ mod tests {
             _ => None,
         });
         assert_eq!(second, Some(PointStatus::Next));
+    }
+
+    #[test]
+    fn points_stay_unticked_when_tracking_is_off() {
+        let mut h = Harness::new(EngineConfig {
+            track_coverage: false,
+            ..no_early()
+        });
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        h.say(Channel::Me, 4000, 5000, "我们做了两地双活");
+        assert_eq!(h.last_coverage(1), None, "speech must not tick points");
+        // Ticking by hand still works.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 0 }));
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Done, PointStatus::Next])
+        );
     }
 
     #[test]
