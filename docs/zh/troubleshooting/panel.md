@@ -56,7 +56,8 @@
 
 **解决**
 
-1. 右键托盘图标，选择 **重置面板位置**。
+1. 点击托盘图标，选择 **显示或隐藏面板**。重新显示的面板会被移回已连接的屏幕上。
+2. 如果仍然找不到，打开 **设置 › 通用**，在 **面板位置** 中点击 **重置面板位置**。
 
 **仍未解决？** [导出诊断信息](/zh/troubleshooting/diagnostics)并[提交 Issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml)。
 

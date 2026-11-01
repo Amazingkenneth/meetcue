@@ -25,7 +25,7 @@ Start with the demo if you haven't set up any keys yet. Use the mock interview f
 
 You can open it from any of these places:
 
-- **Tray menu**: click the MeetCue icon in the taskbar notification area and choose **Mock interview…** (third item from the top).
+- **Tray menu**: click the MeetCue icon in the taskbar notification area and choose **Mock interview…**.
 - **Panel**: while MeetCue isn't listening, the panel shows **Try a mock interview** under the start hint.
 - **Settings › General › Mock interview**: click **Open mock interview**.
 - **End of setup**: on the last step of the setup window, click **Finish and try a mock interview**.

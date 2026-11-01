@@ -8,6 +8,7 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 - In a long meeting the panel's list of other questions stays short: only the three most recent earlier questions are shown, older ones fold behind **Show earlier questions**, and **Clear earlier** hides them from the list until you restore them.
 - Ticking off talking points from your microphone is now off by default, also for existing installs, because it could tick or miss points when your wording differed from the list. Click a point to tick it, or turn the setting back on under **Settings › Hints › Tick off points as I speak**.
+- The tray menu is shorter and keeps only what you need during a meeting: start or pause, show or hide the panel, click-through, mock interview, settings, help and quit. **Show or hide the panel** now does exactly that in one click and brings back the layout you last used, instead of stepping through full, mini and hidden. **Reset panel position** is in **Settings › General**, and the activity log and diagnostics export are in **Settings › Diagnostics**. **Settings › General** also has a link to the help pages.
 
 ## 0.3.5 — 2026-10-31
 

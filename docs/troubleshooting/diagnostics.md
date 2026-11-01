@@ -4,8 +4,8 @@ This page shows how to collect the information needed to look into a problem, an
 
 ## Export the file
 
-1. Right-click the MeetCue tray icon and choose **Export diagnostics…**, or open **Settings › Diagnostics** and click **Export…**.
-2. Click **Show what will be included** to see the file list.
+1. Open **Settings › Diagnostics** (from the tray icon, choose **Settings…**).
+2. Under **Export diagnostics**, click **Show what will be included** to see the file list, then **Export…**.
 3. Choose where to save the zip file.
 
 ## What is included
