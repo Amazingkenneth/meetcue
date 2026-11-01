@@ -4,6 +4,17 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- In a long meeting the panel's list of other questions stays short: only the three most recent earlier questions are shown, older ones fold behind **Show earlier questions**, and **Clear earlier** hides them from the list until you restore them.
+- Ticking off talking points from your microphone is now off by default, also for existing installs, because it could tick or miss points when your wording differed from the list. Click a point to tick it, or turn the setting back on under **Settings › Hints › Tick off points as I speak**.
+- The tray menu is shorter and keeps only what you need during a meeting: start or pause, show or hide the panel, click-through, mock interview, settings, help and quit. **Show or hide the panel** now does exactly that in one click and brings back the layout you last used, instead of stepping through full, mini and hidden. **Reset panel position** is in **Settings › General**, and the activity log and diagnostics export are in **Settings › Diagnostics**. **Settings › General** also has a link to the help pages.
+
+### Fixed
+
+- Hints keep coming in long meetings. A hint reply that stops half way now times out after 15 seconds and keeps the points it already got, so stalled replies no longer leave later questions stuck on **Generating hints…**. A question still waiting when a new one arrives more than two minutes later is set aside, and the session history keeps recording for the whole meeting.
+- Word knowledge base files with tables, text boxes, charts, SmartArt and pictures now import cleanly: tables keep one line per row, chart and SmartArt text and picture alt text are included, and layout numbers, duplicated text boxes and deleted text no longer leak in. Files that can't be read say why, such as password protection, an old .doc file renamed to .docx, or a damaged file.
+
 ## 0.3.5 — 2026-10-31
 
 ### Changed

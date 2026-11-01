@@ -8,7 +8,7 @@ use meetcue_core::SessionState;
 
 use crate::i18n::t;
 use crate::state::{AppState, DOCS_URL};
-use crate::{diagnostics, session, windows};
+use crate::{session, windows};
 
 const TRAY_ID: &str = "main";
 
@@ -30,18 +30,17 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         state.settings().overlay.click_through,
         None::<&str>,
     )?;
+    // Only what is needed mid-meeting, or to get back into the app. Panel
+    // position, the activity log and diagnostics live in the settings.
     Menu::with_items(
         app,
         &[
             &MenuItem::with_id(app, "toggle", toggle_label, true, None::<&str>)?,
             &item("panel", "tray.panel")?,
             &click_through,
-            &item("practice", "tray.practice")?,
             &PredefinedMenuItem::separator(app)?,
+            &item("practice", "tray.practice")?,
             &item("settings", "tray.settings")?,
-            &item("reset", "tray.resetPanel")?,
-            &item("log", "tray.log")?,
-            &item("diagnostics", "tray.exportDiagnostics")?,
             &item("help", "tray.help")?,
             &PredefinedMenuItem::separator(app)?,
             &item("quit", "tray.quit")?,
@@ -62,22 +61,13 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
                         let _ = session::reported(&app, session::toggle(&app).await);
                     });
                 }
-                "panel" => windows::cycle_mode(&app),
+                "panel" => windows::toggle_visible(&app),
                 "clickThrough" => windows::toggle_click_through(&app),
                 "settings" => {
                     let _ = windows::open_view(&app, "settings", None);
                 }
                 "practice" => {
                     let _ = windows::open_view(&app, "practice", None);
-                }
-                "log" => {
-                    let _ = windows::open_view(&app, "settings", Some("log"));
-                }
-                "reset" => windows::reset_position(&app),
-                "diagnostics" => {
-                    tauri::async_runtime::spawn(async move {
-                        let _ = diagnostics::export_interactive(&app).await;
-                    });
                 }
                 "help" => {
                     use tauri_plugin_opener::OpenerExt;

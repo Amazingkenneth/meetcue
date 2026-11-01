@@ -74,7 +74,7 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Prompt question message | `hints.prompts.hintsUser` (empty uses the built-in prompt) | empty |
 | Only questions directed at me | `hints.onlyDirectedToMe` | `false` |
 | Queue interruptions | `hints.queueInterruptions` | `true` |
-| Track what I've said | `hints.trackCoverage` | `true` |
+| Tick off points as I speak | `hints.trackCoverage` | `false` |
 | Early trigger | `hints.earlyTrigger` | `true` |
 | Write hints while checking the question | `hints.speculativeHints` | `true` |
 

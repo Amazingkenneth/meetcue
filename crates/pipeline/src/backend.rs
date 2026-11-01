@@ -119,7 +119,11 @@ pub fn now_ms() -> i64 {
     meetcue_core::clock::since_epoch_ms(Instant::now().into_std())
 }
 
-const HISTORY_LIMIT: usize = 5_000;
+/// Events kept for windows opened mid-session. Answer text is folded into
+/// one event per reply, so this lasts many hours of meeting.
+const HISTORY_LIMIT: usize = 20_000;
+/// How far back a piece of answer text looks for the earlier text of its reply.
+const HISTORY_FOLD_WINDOW: usize = 200;
 
 struct Running {
     input: mpsc::UnboundedSender<Input>,
@@ -387,15 +391,52 @@ impl LoopCtx {
         );
         if keep {
             let mut h = self.history.lock().unwrap();
-            if h.len() < HISTORY_LIMIT {
-                h.push(TimedEvent {
-                    t_ms: now_ms() - start,
-                    event: event.clone(),
-                });
+            if !fold_answer_text(&mut h, &event) {
+                if h.len() < HISTORY_LIMIT {
+                    h.push(TimedEvent {
+                        t_ms: now_ms() - start,
+                        event: event.clone(),
+                    });
+                } else if h.len() == HISTORY_LIMIT {
+                    tracing::warn!(
+                        "session history is full; windows opened from now on miss later events"
+                    );
+                }
             }
         }
         let _ = self.events.send(event);
     }
+}
+
+/// Appends a piece of answer text to the earlier text of the same reply
+/// already in the history, instead of keeping every piece as its own event.
+/// Replaying gives the same answer, and a long meeting doesn't fill the
+/// history with hundreds of small pieces per question.
+fn fold_answer_text(history: &mut [TimedEvent], event: &MeetCueEvent) -> bool {
+    let MeetCueEvent::AnswerDelta { id, version, text } = event else {
+        return false;
+    };
+    for t in history.iter_mut().rev().take(HISTORY_FOLD_WINDOW) {
+        match &mut t.event {
+            MeetCueEvent::AnswerDelta {
+                id: i,
+                version: v,
+                text: earlier,
+            } if i == id && v == version => {
+                earlier.push_str(text);
+                return true;
+            }
+            // Nothing after the end of the reply or a newer version may move
+            // in front of it.
+            MeetCueEvent::AnswerDone { id: i, .. } | MeetCueEvent::QuestionNew { id: i, .. }
+                if i == id =>
+            {
+                return false;
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// New models and settings for a running session.
@@ -644,8 +685,12 @@ struct HintsTask {
     first_token_timeout: Duration,
 }
 
+/// Longest gap between two pieces of a hint reply once it has started.
+const HINTS_STALL_TIMEOUT: Duration = Duration::from_secs(15);
+
 /// Streams hints; if no text arrives within the first-token timeout the
-/// request is cancelled and retried once.
+/// request is cancelled and retried once. A reply that stops arriving for
+/// [`HINTS_STALL_TIMEOUT`] ends with a timeout, keeping what came so far.
 async fn hints_task(t: HintsTask) {
     let purpose = t.request.purpose;
     let send = |i: Input| {
@@ -681,6 +726,7 @@ async fn hints_task(t: HintsTask) {
         let mut parser = HintStreamParser::default();
         let mut got_text = false;
         let mut usage: Option<LlmChunk> = None;
+        let mut stall_deadline = Instant::now() + HINTS_STALL_TIMEOUT;
         loop {
             tokio::select! {
                 _ = t.token.cancelled() => {
@@ -692,14 +738,35 @@ async fn hints_task(t: HintsTask) {
                     last_error = MeetCueError::new(codes::LLM_TIMEOUT, "no hint text before the timeout");
                     break;
                 }
+                // A reply that stops arriving half way would otherwise hold
+                // one of the two hint slots for the rest of the meeting, and
+                // once both are held no question gets hints any more.
+                _ = sleep_until(stall_deadline), if got_text => {
+                    report_usage(&usage);
+                    for item in parser.finish() {
+                        send(Input::Hint { req: t.req, item });
+                    }
+                    send(Input::HintsFailed {
+                        req: t.req,
+                        error: MeetCueError::new(
+                            codes::LLM_TIMEOUT,
+                            format!("hint reply stalled for {} s", HINTS_STALL_TIMEOUT.as_secs()),
+                        ),
+                    });
+                    return;
+                }
                 item = stream.next() => match item {
                     Some(Ok(LlmChunk::Text(s))) => {
+                        stall_deadline = Instant::now() + HINTS_STALL_TIMEOUT;
                         got_text = true;
                         for item in parser.push(&s) {
                             send(Input::Hint { req: t.req, item });
                         }
                     }
-                    Some(Ok(u @ LlmChunk::Usage { .. })) => usage = Some(u),
+                    Some(Ok(u @ LlmChunk::Usage { .. })) => {
+                        stall_deadline = Instant::now() + HINTS_STALL_TIMEOUT;
+                        usage = Some(u);
+                    }
                     Some(Err(e)) => {
                         report_usage(&usage);
                         if got_text {
@@ -1289,5 +1356,49 @@ fn push_preroll(preroll: &mut VecDeque<AudioFrame>, frame: AudioFrame) {
             Some(f) => kept -= f.duration_ms(),
             None => break,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn at(event: MeetCueEvent) -> TimedEvent {
+        TimedEvent { t_ms: 0, event }
+    }
+
+    fn delta(id: u32, version: u32, text: &str) -> MeetCueEvent {
+        MeetCueEvent::AnswerDelta {
+            id,
+            version,
+            text: text.into(),
+        }
+    }
+
+    fn record(history: &mut Vec<TimedEvent>, event: MeetCueEvent) {
+        if !fold_answer_text(history, &event) {
+            history.push(at(event));
+        }
+    }
+
+    #[test]
+    fn answer_text_is_kept_as_one_event_per_reply() {
+        let mut h = Vec::new();
+        record(&mut h, delta(1, 1, "Hello"));
+        record(&mut h, delta(2, 1, "Other"));
+        record(&mut h, delta(1, 1, ", world"));
+        record(&mut h, delta(1, 2, "New"));
+        assert_eq!(h.len(), 3);
+        assert_eq!(h[0].event, delta(1, 1, "Hello, world"));
+        assert_eq!(h[2].event, delta(1, 2, "New"));
+    }
+
+    #[test]
+    fn answer_text_never_moves_before_the_end_of_its_reply() {
+        let mut h = Vec::new();
+        record(&mut h, delta(1, 1, "a"));
+        record(&mut h, MeetCueEvent::AnswerDone { id: 1, version: 1 });
+        record(&mut h, delta(1, 1, "b"));
+        assert_eq!(h.len(), 3);
     }
 }

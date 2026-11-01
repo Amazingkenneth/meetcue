@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "general": {
     "uiLanguage": "system",
     "hintLanguage": "followQuestion",
@@ -67,7 +67,7 @@
     "materials": [],
     "onlyDirectedToMe": false,
     "queueInterruptions": true,
-    "trackCoverage": true,
+    "trackCoverage": false,
     "earlyTrigger": true,
     "speculativeHints": true,
     "prompts": {

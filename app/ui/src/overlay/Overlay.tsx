@@ -261,6 +261,8 @@ function StatusText({ q }: { q: QuestionView }) {
   return <span className={`st st-${q.status}`}>{t(key)}</span>;
 }
 
+const NONE: ReadonlySet<number> = new Set();
+
 const focus = (id: number) => void backend().invoke("user_action", { action: { type: "focus", id } });
 
 function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
@@ -270,6 +272,9 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
   const listRef = useRef<HTMLDivElement>(null);
   // When each question was first shown, so delayed hints don't wait again after looking elsewhere.
   const shown = useRef(new Map<string, number>());
+  // Older questions fold away; "Clear earlier" hides them for this meeting only.
+  const [expanded, setExpanded] = useState(false);
+  const [cleared, setCleared] = useState<{ session: number | null; ids: ReadonlySet<number> }>({ session: null, ids: NONE });
   // The question shown in full is first in the list, so switching scrolls to the top.
   useEffect(() => {
     listRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
@@ -299,6 +304,9 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
     );
   }
   const [top, ...others] = displayOrder(view);
+  const clearedIds = cleared.session === view.startedAt ? cleared.ids : NONE;
+  const rows = compactRows(view, others, live, clearedIds);
+  const visible = [...rows.keep, ...rows.recent, ...(expanded ? rows.older : [])];
   const q = view.questions[top];
   const key = `${view.startedAt}:${top}`;
   if (!shown.current.has(key)) shown.current.set(key, Date.now());
@@ -313,16 +321,73 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
         </div>
       )}
       {q && <ChatBlock key={key} q={q} view={view} display={display} shownAt={shown.current.get(key) ?? 0} isLive={top === live} />}
-      {others.length > 0 && (
+      {visible.length > 0 && (
         <nav className="ov-rows" aria-label={t("overlay.otherQuestions")}>
-          {others.map((id) => {
+          {visible.map((id) => {
             const o = view.questions[id];
             return o ? <QuestionRow key={id} q={o} view={view} isLive={id === live} /> : null;
           })}
         </nav>
       )}
+      {(rows.older.length > 0 || rows.earlier.length > 0 || rows.cleared > 0) && (
+        <div className="ov-compact">
+          {rows.older.length > 0 && (
+            <button className="ov-link" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+              {expanded ? t("overlay.showFewer") : t("overlay.showEarlier", { count: rows.older.length })}
+            </button>
+          )}
+          <span className="grow" />
+          {rows.cleared > 0 && (
+            <>
+              <span className="ov-muted">{t("overlay.clearedCount", { count: rows.cleared })}</span>
+              <button className="ov-link" onClick={() => setCleared({ session: view.startedAt, ids: new Set() })}>
+                {t("overlay.restore")}
+              </button>
+            </>
+          )}
+          {rows.earlier.length > 0 && (
+            <button
+              className="ov-link"
+              title={t("overlay.clearEarlierTitle")}
+              onClick={() => {
+                setCleared({ session: view.startedAt, ids: new Set([...clearedIds, ...rows.earlier]) });
+                setExpanded(false);
+              }}
+            >
+              {t("overlay.clearEarlier")}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+/** How many earlier questions stay visible before the rest fold away. */
+export const RECENT_ROWS = 3;
+
+/**
+ * Splits the one-line rows so a long meeting stays easy to scan: the live and
+ * waiting questions always show, then the most recent earlier ones; older
+ * ones fold behind "Show earlier", and cleared ones are left out until restored.
+ */
+export function compactRows(
+  view: SessionView,
+  others: number[],
+  live: number | null,
+  cleared: ReadonlySet<number>,
+): { keep: number[]; earlier: number[]; recent: number[]; older: number[]; cleared: number } {
+  const keep: number[] = [];
+  const earlier: number[] = [];
+  let hidden = 0;
+  for (const id of others) {
+    const q = view.questions[id];
+    if (!q) continue;
+    if (id === live || q.status === "pending") keep.push(id);
+    else if (cleared.has(id)) hidden++;
+    else earlier.push(id);
+  }
+  return { keep, earlier, recent: earlier.slice(0, RECENT_ROWS), older: earlier.slice(RECENT_ROWS), cleared: hidden };
 }
 
 /** One line for a question that isn't shown in full; a click shows it in full. */

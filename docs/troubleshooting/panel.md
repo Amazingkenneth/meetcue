@@ -56,7 +56,8 @@ This page helps when shortcuts don't work, or the panel takes focus, disappears 
 
 **Fix**
 
-1. Right-click the tray icon and choose **Reset panel position**.
+1. Click the tray icon and choose **Show or hide the panel**. A panel that is shown again is moved back onto a connected screen.
+2. If it is still out of reach, open **Settings › General** and click **Reset panel position** under **Panel position**.
 
 **Still not solved?** [Export diagnostics](/troubleshooting/diagnostics) and [open an issue](https://github.com/Amazingkenneth/meetcue/issues/new?template=bug.yml).
 

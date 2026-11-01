@@ -100,6 +100,18 @@ impl QuestionQueue {
         changes
     }
 
+    /// Takes questions out of the waiting line without answering them: the
+    /// conversation moved on, so they no longer wait for their turn.
+    pub fn set_aside(&mut self, ids: &[QuestionId]) -> Changes {
+        let mut changes = Vec::new();
+        for id in ids {
+            if self.status(*id) == Some(QuestionStatus::Pending) {
+                self.set(*id, QuestionStatus::Answered, &mut changes);
+            }
+        }
+        changes
+    }
+
     /// Removes a question that turned out not to be one.
     pub fn remove(&mut self, id: QuestionId) -> Changes {
         let mut changes = Vec::new();
@@ -187,6 +199,17 @@ mod tests {
         assert_eq!(q.finish_active(), vec![(3, Answered)]);
         assert_eq!(q.active(), None);
         assert!(q.finish_active().is_empty());
+    }
+
+    #[test]
+    fn set_aside_only_takes_waiting_questions_out_of_line() {
+        let mut q = QuestionQueue::default();
+        q.add(1, Admission::Queue);
+        q.add(2, Admission::Queue);
+        q.add(3, Admission::Queue);
+        assert_eq!(q.set_aside(&[1, 2]), vec![(2, Answered)]);
+        assert_eq!(q.active(), Some(1));
+        assert_eq!(q.finish_active(), vec![(1, Answered), (3, Active)]);
     }
 
     #[test]

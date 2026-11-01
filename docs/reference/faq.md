@@ -32,4 +32,4 @@ Yes, if it offers an OpenAI-compatible API with streaming. Enter its base URL un
 
 ## Why does MeetCue need my microphone?
 
-To know when you start and stop answering, to queue questions while you speak, and to tick off talking points you've covered. Turn off **Track what I've said** if you only want hints.
+To know when you start and stop answering and to queue questions while you speak. If you turn on **Tick off points as I speak**, it also ticks the talking points you've covered.

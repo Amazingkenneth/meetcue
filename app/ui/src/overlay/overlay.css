@@ -205,6 +205,15 @@ html.overlay-view body {
 .ov-row .mono { color: var(--ov-text-3); flex: none; }
 .ov-row .short { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-row .ov-muted, .ov-row .st { flex: none; font-size: calc(11px * var(--ov-scale, 1)); }
+.ov-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 10px;
+  font-size: calc(12px * var(--ov-scale, 1));
+}
+.ov-compact .ov-link { margin-top: 0; }
+.ov-compact .grow { flex: 1; }
 .ov-live { flex: none; color: var(--accent); font-weight: 600; }
 
 .ov-block {

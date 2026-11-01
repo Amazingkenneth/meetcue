@@ -28,6 +28,8 @@ From top to bottom, the full panel shows:
 2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
 3. **Conversation**: the question you are answering is shown in full at the top, with its talking points. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
 4. **Other questions**: one line each below it, with the time, a short summary, coverage and status. Questions waiting their turn come first, then earlier ones, newest first. Click a line to show that question in full; a bar at the top then offers **Back to the current question**, and a new question brings you back on its own.
+
+   In a long meeting the list stays short: the questions waiting their turn and the three most recent earlier ones are always shown, and older ones fold behind **Show N earlier questions**. **Clear earlier** hides every earlier question from the list for the rest of the meeting; they are still there for `Ctrl+Alt+[` and `Ctrl+Alt+]`, and **Restore** brings them back.
 5. **Footer**: shortcut reminders and the latency of the last hint.
 
 The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, the next point to cover in large type, and how many questions are waiting.
@@ -51,13 +53,15 @@ The font for every window, the panel's text size and opacity can also be set in 
 
 ## Coverage ticks
 
-With **Track what I've said** on, MeetCue compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough.
+Click a point to tick it once you've covered it, and click it again to untick it.
+
+To have MeetCue tick points for you, turn on **Settings › Hints › Tick off points as I speak** (off by default). MeetCue then listens to your microphone and compares what you say with the talking points. A point you've covered gets a green check mark, and the next uncovered point is marked **Next**. Points tick while you are still talking, not only when you pause. If a point is ticked wrongly or missed, click it to tick or untick it; MeetCue then leaves that point as you set it. Matching uses words for English (plurals and tenses count as the same word) and character pairs for Chinese, so paraphrasing a point closely is enough. When your wording strays further from the list, points can be ticked or missed; if that gets in your way, leave the setting off and tick points by hand.
 
 If you use speakers instead of headphones, your microphone also hears the other participants. MeetCue ignores microphone text that closely matches what was just played, so their words don't tick off your points.
 
 ## Several questions at once
 
-- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question.
+- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question. A question still waiting when a new one comes more than two minutes later is set aside, so new questions don't pile up behind it; set-aside questions stay in the list with their hints.
 - A question asked while you are not speaking replaces the current one, which moves down to the earlier questions. This includes a question asked before you said anything about the previous one.
 - Use `Ctrl+Alt+[` and `Ctrl+Alt+]` to move between questions, and `Ctrl+Alt+Enter` to mark the current one answered.
 

@@ -2,7 +2,13 @@
 import type { Material } from "./Material";
 import type { PromptSettings } from "./PromptSettings";
 
-export type HintSettings = { role: string, materials: Array<Material>, onlyDirectedToMe: boolean, queueInterruptions: boolean, trackCoverage: boolean, earlyTrigger: boolean, 
+export type HintSettings = { role: string, materials: Array<Material>, onlyDirectedToMe: boolean, queueInterruptions: boolean, 
+/**
+ * Listen to the user's microphone while they answer and tick the
+ * talking points they have said. Off by default: loose matching ticks
+ * or misses points when the user rephrases.
+ */
+trackCoverage: boolean, earlyTrigger: boolean, 
 /**
  * Write hints while detection is still checking the sentence, and
  * discard them if it isn't a question.

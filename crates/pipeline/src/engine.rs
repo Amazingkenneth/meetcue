@@ -53,6 +53,13 @@ pub const STALE_UTTERANCE_MS: i64 = 2_000;
 /// Minimum spacing of partial transcript events per channel.
 const PARTIAL_EMIT_MS: i64 = 100;
 const MAX_QUESTIONS: usize = 50;
+/// A question still waiting its turn when a new one arrives this much later
+/// is set aside: the conversation has moved on, and leaving it in line would
+/// put every later question behind it.
+pub const PENDING_STALE_MS: i64 = 120_000;
+/// A hint request still running after this long is given up, so a reply that
+/// never ends cannot hold a hint slot for the rest of the meeting.
+pub const HINTS_GIVE_UP_MS: i64 = 120_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModelRef {
@@ -97,7 +104,7 @@ impl Default for EngineConfig {
             hint_language: HintLanguage::FollowQuestion,
             only_directed_to_me: false,
             queue_interruptions: true,
-            track_coverage: true,
+            track_coverage: false,
             early_trigger: true,
             speculative_hints: false,
         }
@@ -296,6 +303,8 @@ pub struct Engine {
     queue: QuestionQueue,
     hints_waiting: VecDeque<QuestionId>,
     hints_running: usize,
+    /// When each running hint request (speculative or not) started.
+    hints_started: HashMap<ReqId, i64>,
     hints_paused: bool,
     meter: CostMeter,
     latency: LatencyMonitor,
@@ -327,6 +336,7 @@ impl Engine {
             queue: QuestionQueue::default(),
             hints_waiting: VecDeque::new(),
             hints_running: 0,
+            hints_started: HashMap::new(),
             hints_paused: false,
             meter,
             latency: LatencyMonitor::default(),
@@ -798,6 +808,7 @@ impl Engine {
             let request = self.hints_request(&line.text, lang, now);
             let spec = self.alloc_req(Req::Speculative { detect: req });
             self.hints_running += 1;
+            self.hints_started.insert(spec, now);
             self.speculative.insert(
                 req,
                 Speculation {
@@ -958,6 +969,7 @@ impl Engine {
             return Some(id);
         }
 
+        self.set_aside_stale(cand.speech_end, out);
         let id = self.next_question;
         self.next_question += 1;
         let me_busy = !self.utterances[idx(Channel::Me)].is_empty()
@@ -1046,6 +1058,7 @@ impl Engine {
         let request = self.hints_request(&question, lang, now);
         let req = self.alloc_req(Req::Hints { id, version });
         self.hints_running += 1;
+        self.hints_started.insert(req, now);
         if let Some(q) = self.question_mut(id) {
             q.hints = HintsState::Running(req);
             q.latency.hint_start = now;
@@ -1395,6 +1408,50 @@ impl Engine {
         out.push(Output::Emit(self.queue_event()));
     }
 
+    /// Takes questions that have waited since long before `now` out of the
+    /// line, so a question asked now is not shown behind them.
+    fn set_aside_stale(&mut self, now: i64, out: &mut Vec<Output>) {
+        let stale: Vec<QuestionId> = self
+            .queue
+            .items()
+            .iter()
+            .filter(|(_, s)| *s == QuestionStatus::Pending)
+            .filter_map(|(id, _)| self.question(*id))
+            .filter(|q| now - q.last_part_end > PENDING_STALE_MS)
+            .map(|q| q.id)
+            .collect();
+        if stale.is_empty() {
+            return;
+        }
+        tracing::info!("set aside {} questions that waited too long", stale.len());
+        let changes = self.queue.set_aside(&stale);
+        self.apply_status_changes(changes, out);
+    }
+
+    /// Ends hint requests that have run far longer than any reply takes. The
+    /// driver times out stalled replies itself; this keeps the slots free
+    /// even if a request is never reported back.
+    fn give_up_slow_hints(&mut self, now: i64, out: &mut Vec<Output>) {
+        let reqs = &self.reqs;
+        self.hints_started.retain(|r, _| reqs.contains_key(r));
+        let slow: Vec<ReqId> = self
+            .hints_started
+            .iter()
+            .filter(|(_, started)| now - **started > HINTS_GIVE_UP_MS)
+            .map(|(r, _)| *r)
+            .collect();
+        for req in slow {
+            self.hints_started.remove(&req);
+            tracing::warn!("hint request {req} gave no result in time; giving up");
+            out.push(Output::Cancel { req });
+            if self.speculation_ended(req, false, now, out) {
+                continue;
+            }
+            let error = MeetCueError::new(codes::LLM_TIMEOUT, "hint reply took too long");
+            self.on_hints_failed(req, error, now, out);
+        }
+    }
+
     fn finish_active(&mut self, out: &mut Vec<Output>) {
         let changes = self.queue.finish_active();
         if !changes.is_empty() {
@@ -1515,6 +1572,8 @@ impl Engine {
     }
 
     fn on_tick(&mut self, now: i64, out: &mut Vec<Output>) {
+        self.give_up_slow_hints(now, out);
+
         // Close sentences whose provider never sent an endpoint.
         for ch in [Channel::Me, Channel::Remote] {
             let u = &self.utterances[idx(ch)];
@@ -1790,6 +1849,7 @@ mod tests {
     fn no_early() -> EngineConfig {
         EngineConfig {
             early_trigger: false,
+            track_coverage: true,
             ..Default::default()
         }
     }
@@ -1882,6 +1942,25 @@ mod tests {
     }
 
     #[test]
+    fn points_stay_unticked_when_tracking_is_off() {
+        let mut h = Harness::new(EngineConfig {
+            track_coverage: false,
+            ..no_early()
+        });
+        let req = asked_and_active(&mut h);
+        h.at(3700)
+            .hint_points(req, &[("双活", "两地 分担"), ("冗余", "堆叠 双电源")]);
+        h.say(Channel::Me, 4000, 5000, "我们做了两地双活");
+        assert_eq!(h.last_coverage(1), None, "speech must not tick points");
+        // Ticking by hand still works.
+        h.input(Input::Action(UserAction::TogglePoint { id: 1, index: 0 }));
+        assert_eq!(
+            h.last_coverage(1),
+            Some(vec![PointStatus::Done, PointStatus::Next])
+        );
+    }
+
+    #[test]
     fn points_can_be_ticked_by_hand() {
         let mut h = Harness::new(no_early());
         let req = asked_and_active(&mut h);
@@ -1969,6 +2048,81 @@ mod tests {
             h.statuses()[4..].to_vec(),
             vec![(2, QuestionStatus::Answered), (3, QuestionStatus::Active)]
         );
+    }
+
+    /// Asks a question while the user is mid-sentence, so it waits its turn.
+    fn interrupt(h: &mut Harness, t: i64, text: &str) {
+        h.at(t).input(Input::Asr {
+            channel: Channel::Me,
+            result: AsrResult::Partial {
+                text: "我觉得".into(),
+                t0_ms: t,
+                t1_ms: t,
+            },
+        });
+        h.say(Channel::Remote, t + 100, t + 800, text);
+        h.detect_reply(YES);
+        h.input(Input::Asr {
+            channel: Channel::Me,
+            result: AsrResult::Final {
+                text: "我觉得可以".into(),
+                t0_ms: t,
+                t1_ms: t + 1500,
+            },
+        });
+        h.at(t + 1600).input(Input::Asr {
+            channel: Channel::Me,
+            result: AsrResult::Endpoint { t_ms: t + 1500 },
+        });
+    }
+
+    #[test]
+    fn questions_that_waited_too_long_do_not_hold_up_new_ones() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 1000, "第一个问题是什么？");
+        h.detect_reply(YES);
+        interrupt(&mut h, 2000, "等等，这个会不会有风险？");
+        assert_eq!(h.engine.queue.status(2), Some(QuestionStatus::Pending));
+        // Minutes later the other side moves on to a new question. The one
+        // that has waited since is set aside, and the new one is shown.
+        h.say(
+            Channel::Remote,
+            200_000,
+            201_000,
+            "下一个问题，你怎么排期？",
+        );
+        h.detect_reply(YES);
+        assert_eq!(h.engine.queue.status(2), Some(QuestionStatus::Answered));
+        assert_eq!(h.engine.queue.active(), Some(3));
+        assert_eq!(h.engine.queue.pending_count(), 0);
+    }
+
+    #[test]
+    fn a_hint_request_that_never_ends_frees_its_slot() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 1000, "第一个问题是什么？");
+        h.detect_reply(YES);
+        h.say(Channel::Remote, 3000, 4000, "第二个问题是什么？");
+        h.detect_reply(YES);
+        h.say(Channel::Remote, 6000, 7000, "第三个问题是什么？");
+        h.detect_reply(YES);
+        // Both slots are taken by replies that never end; the third waits.
+        assert_eq!(h.hints.len(), 2);
+        let (first, second) = (h.hints[0].0, h.hints[1].0);
+        h.at(10_000 + HINTS_GIVE_UP_MS);
+        assert!(h.cancelled.contains(&first));
+        assert!(h.cancelled.contains(&second));
+        assert_eq!(h.hints.len(), 3, "the waiting question gets its hints");
+        assert!(h.events.iter().any(|e| matches!(
+            e,
+            MeetCueEvent::HintsFailed { code, .. } if code == codes::LLM_TIMEOUT
+        )));
+        let third = h.hints[2].0;
+        h.hint_points(third, &[("要点", "细节")]);
+        assert!(h
+            .events
+            .iter()
+            .any(|e| matches!(e, MeetCueEvent::AnswerDone { id: 3, .. })));
     }
 
     #[test]
