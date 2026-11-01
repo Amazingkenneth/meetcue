@@ -25,6 +25,7 @@ pub async fn run_sdn() -> (
         detect: model.clone(),
         hints: model,
         role: "网络架构师".into(),
+        track_coverage: true,
         ..Default::default()
     };
     let mut cfg = SessionConfig::new(engine, Some(Arc::new(MockAsr::sdn())), llm.clone(), llm);

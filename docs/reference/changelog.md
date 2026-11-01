@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Ticking off talking points from your microphone is now off by default, also for existing installs, because it could tick or miss points when your wording differed from the list. Click a point to tick it, or turn the setting back on under **Settings › Hints › Tick off points as I speak**.
+
 ## 0.3.5 — 2026-10-31
 
 ### Changed
