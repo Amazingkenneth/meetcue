@@ -395,8 +395,8 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     usage_summary: () => ({
       month: new Date().toISOString().slice(0, 7),
       rows: [
-        { provider: "soniox", model: "stt-rt-v5", calls: 4, inputTokens: 0, outputTokens: 0, audioMs: 5_400_000, micros: 180_000 },
-        { provider: "anthropic", model: "claude-haiku-5-5", calls: 61, inputTokens: 118_000, outputTokens: 21_500, audioMs: 0, micros: 22_550 },
+        { provider: "soniox", model: "stt-rt-v5", calls: 4, inputTokens: 0, outputTokens: 0, cachedTokens: 0, audioMs: 5_400_000, micros: 180_000 },
+        { provider: "anthropic", model: "claude-haiku-5-5", calls: 61, inputTokens: 118_000, outputTokens: 21_500, cachedTokens: 74_000, audioMs: 0, micros: 22_550 },
       ],
       totalMicros: 202_550,
     }),

@@ -53,8 +53,8 @@ To try it with a mock interview, use one of the sample job descriptions: [jd-sof
 
 **Settings › Hints › Prompts** shows the two prompts the hint model gets, and lets you edit them:
 
-- **Instructions** are the same for every question. Placeholders: `{role}` (your role), `{materials}` (the knowledge base overview), `{output_language}`.
-- **Question message** is sent with each question. Placeholders: `{knowledge}` (the matching passages), `{transcript}` (the recent conversation), `{question}`.
+- **Instructions** are the same for every question, so providers can serve them from their prompt cache. Placeholders: `{role}` (your role), `{materials}` (the knowledge base overview).
+- **Question message** is sent with each question. Placeholders: `{knowledge}` (the matching passages), `{transcript}` (the recent conversation), `{question}`, `{output_language}`. If neither part names `{output_language}`, the language is added to the end of the question message.
 
 A placeholder you remove means that information no longer reaches the model; MeetCue warns you when one is missing. Keep the reply format described in the instructions (numbered JSON lines, a line with `---`, then the sample answer), or the panel can't show the hints.
 

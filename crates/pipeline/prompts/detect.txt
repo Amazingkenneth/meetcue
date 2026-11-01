@@ -10,6 +10,6 @@ Look at the last [Them] line and decide:
 6. short: a short title for the whole question, at most 14 Chinese characters or 7 English words.
 7. tags: 1 to 3 short labels such as "Directed at you", "Compound · 2 questions", "Interruption" or "Related: <material name>".
 
-Write "short", "tags" and "subQuestions" in {output_language}.
+Write "short", "tags" and "subQuestions" in the language named at the end of the message.
 Reply with one JSON object and nothing else:
 {"isQuestion":true,"directedToMe":true,"merged":false,"interruption":false,"short":"…","subQuestions":[],"tags":["…"]}

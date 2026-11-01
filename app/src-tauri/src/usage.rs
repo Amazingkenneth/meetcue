@@ -46,6 +46,7 @@ pub fn summary(lines: &[LedgerLine], month: &str) -> UsageSummary {
                 calls: 0,
                 input_tokens: 0,
                 output_tokens: 0,
+                cached_tokens: 0,
                 audio_ms: 0,
                 micros: Some(0),
             });
@@ -59,6 +60,7 @@ pub fn summary(lines: &[LedgerLine], month: &str) -> UsageSummary {
             } => {
                 row.input_tokens += input + cache_read + cache_write;
                 row.output_tokens += output;
+                row.cached_tokens += cache_read;
             }
             UsageKind::Audio { ms } => row.audio_ms += ms,
         }

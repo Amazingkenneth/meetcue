@@ -144,6 +144,10 @@ pub struct UsageRow {
     pub input_tokens: u64,
     #[ts(type = "number")]
     pub output_tokens: u64,
+    /// The part of `input_tokens` read from the provider's prompt cache.
+    #[serde(default)]
+    #[ts(type = "number")]
+    pub cached_tokens: u64,
     #[ts(type = "number")]
     pub audio_ms: u64,
     /// `None` when the price of this model is unknown.

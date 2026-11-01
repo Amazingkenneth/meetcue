@@ -951,6 +951,9 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
                 <th>{t("usage.provider")}</th>
                 <th className="num">{t("usage.calls")}</th>
                 <th className="num">{t("usage.tokens")}</th>
+                <th className="num" title={t("usage.cachedHint")}>
+                  {t("usage.cached")}
+                </th>
                 <th className="num">{t("usage.audio")}</th>
                 <th className="num">{t("usage.cost")}</th>
               </tr>
@@ -963,6 +966,9 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
                   </td>
                   <td className="num">{r.calls}</td>
                   <td className="num">{r.inputTokens + r.outputTokens ? millis(r.inputTokens + r.outputTokens) : "—"}</td>
+                  <td className="num">
+                    {r.inputTokens ? `${Math.round((100 * r.cachedTokens) / r.inputTokens)}%` : "—"}
+                  </td>
                   <td className="num">{r.audioMs ? t("usage.minutes", { value: millis(r.audioMs / 60000) }) : "—"}</td>
                   <td className="num">{r.micros === null ? "—" : usd(r.micros)}</td>
                 </tr>
@@ -971,7 +977,7 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
                 <td>
                   <strong>{t("usage.total")}</strong>
                 </td>
-                <td colSpan={3} />
+                <td colSpan={4} />
                 <td className="num">
                   <strong>{usd(usage?.totalMicros ?? 0)}</strong>
                 </td>

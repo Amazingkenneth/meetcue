@@ -4,6 +4,12 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Hints start faster. MeetCue now loads the hint instructions into Claude's prompt cache when a session starts and keeps them there while people are talking, so the first question of a meeting no longer waits for the whole prompt to be read. The output language moved from the instructions to the question message, so one cache entry serves questions in every language. If you edited the hint prompts, `{output_language}` now belongs in the question message; old instructions that still use it keep working.
+- **Settings › Providers & cost › Usage** shows the share of input tokens served from the prompt cache for each model. Cache hits reported by DeepSeek and Kimi are now counted and priced as such.
+- The hourly cost estimate no longer assumes detection is served from the cache, and counts the cost of writing the hint prompt to it.
+
 ## 0.3.6 — 2026-11-01
 
 ### Changed

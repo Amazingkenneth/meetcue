@@ -46,6 +46,9 @@ pub const MAX_CONCURRENT_HINTS: usize = 2;
 pub const DETECT_WINDOW_MS: i64 = 60_000;
 /// Hint generation sees this much transcript.
 pub const HINTS_WINDOW_MS: i64 = 180_000;
+/// The hint prompt's cache entry lives 5 minutes from its last use; it is
+/// refreshed a little before that while the conversation goes on.
+pub const HINTS_WARM_MS: i64 = 270_000;
 /// Echo filter tolerance between the two channels.
 pub const ECHO_WINDOW_MS: i64 = 2_000;
 /// A sentence with final text but no endpoint is closed after this long.
@@ -157,9 +160,22 @@ pub enum Input {
 #[derive(Debug, Clone)]
 pub enum Output {
     Emit(MeetCueEvent),
-    Detect { req: ReqId, request: LlmRequest },
-    Hints { req: ReqId, request: LlmRequest },
-    Cancel { req: ReqId },
+    Detect {
+        req: ReqId,
+        request: LlmRequest,
+    },
+    Hints {
+        req: ReqId,
+        request: LlmRequest,
+    },
+    /// Write the hint prompt's cache without asking for hints, so the next
+    /// question starts from the cache.
+    WarmHints {
+        request: LlmRequest,
+    },
+    Cancel {
+        req: ReqId,
+    },
     SetCapturePaused(bool),
     EndSession,
 }
@@ -306,6 +322,9 @@ pub struct Engine {
     /// When each running hint request (speculative or not) started.
     hints_started: HashMap<ReqId, i64>,
     hints_paused: bool,
+    /// When the hint prompt last reached the provider (a hint request or a
+    /// cache warm-up); `None` until the first one.
+    hints_prefix_at: Option<i64>,
     meter: CostMeter,
     latency: LatencyMonitor,
 }
@@ -338,6 +357,7 @@ impl Engine {
             hints_running: 0,
             hints_started: HashMap::new(),
             hints_paused: false,
+            hints_prefix_at: None,
             meter,
             latency: LatencyMonitor::default(),
         }
@@ -355,7 +375,13 @@ impl Engine {
         overrides: Vec<PriceEntry>,
         budget: BudgetSettings,
     ) {
+        let old_system = self.hints_system(Lang::En.prompt_name());
+        let old_model = self.cfg.hints.clone();
         self.cfg = cfg;
+        if self.hints_system(Lang::En.prompt_name()) != old_system || self.cfg.hints != old_model {
+            // A new prompt or model starts a new cache entry: warm it again.
+            self.hints_prefix_at = None;
+        }
         self.meter.set_rules(overrides, budget);
     }
 
@@ -818,6 +844,7 @@ impl Engine {
                     finished: None,
                 },
             );
+            self.hints_prefix_at = Some(now);
             out.push(Output::Hints { req: spec, request });
         }
         req
@@ -1063,11 +1090,15 @@ impl Engine {
             q.hints = HintsState::Running(req);
             q.latency.hint_start = now;
         }
+        self.hints_prefix_at = Some(now);
         out.push(Output::Hints { req, request });
     }
 
-    /// The hint generation request for a question (with its numbered parts).
-    fn hints_request(&self, question: &str, lang: &str, now: i64) -> LlmRequest {
+    /// The hint instructions: the stable, cached part of every hint request.
+    /// `lang` only matters to custom instructions that still name
+    /// `{output_language}`; the built-in ones leave it to the question message
+    /// so one cache entry serves questions in every language.
+    fn hints_system(&self, lang: &str) -> String {
         let role = if self.cfg.role.trim().is_empty() {
             "not specified".to_string()
         } else {
@@ -1078,6 +1109,18 @@ impl Engine {
         } else {
             self.cfg.materials.clone()
         };
+        prompts::render(
+            template(&self.cfg.hints_system, prompts::HINTS_SYSTEM),
+            &[
+                ("role", &role),
+                ("materials", &materials),
+                ("output_language", lang),
+            ],
+        )
+    }
+
+    /// The hint generation request for a question (with its numbered parts).
+    fn hints_request(&self, question: &str, lang: &str, now: i64) -> LlmRequest {
         let knowledge = knowledge::render(
             &self
                 .cfg
@@ -1089,28 +1132,53 @@ impl Engine {
         } else {
             knowledge
         };
-        let system = prompts::render(
-            template(&self.cfg.hints_system, prompts::HINTS_SYSTEM),
-            &[
-                ("role", &role),
-                ("materials", &materials),
-                ("output_language", lang),
-            ],
-        );
+        let system_template = template(&self.cfg.hints_system, prompts::HINTS_SYSTEM);
+        let user_template = template(&self.cfg.hints_user, prompts::HINTS_USER);
         let transcript = format_for_prompt(self.transcript.since(now - HINTS_WINDOW_MS));
-        let user = prompts::render(
-            template(&self.cfg.hints_user, prompts::HINTS_USER),
+        let mut user = prompts::render(
+            user_template,
             &[
                 ("knowledge", &knowledge),
                 ("transcript", transcript.trim_end()),
                 ("question", question),
+                ("output_language", lang),
             ],
         );
+        if !system_template.contains("{output_language}")
+            && !user_template.contains("{output_language}")
+        {
+            // A custom question message written before the language moved
+            // there: keep telling the model which language to write in.
+            user.push_str(&format!("\n\nWrite everything in {lang}."));
+        }
         LlmRequest::new(&self.cfg.hints.model, UsagePurpose::Hints)
-            .system(system, true)
+            .system(self.hints_system(lang), true)
             .user(user)
             .max_tokens(prompts::HINTS_MAX_TOKENS)
             .temperature(0.3)
+    }
+
+    /// Keeps the hint prompt in the provider's cache: once when the session
+    /// starts, and again before the entry expires while people are talking,
+    /// so the next question's hints don't wait for the prompt to be read.
+    fn warm_hints(&mut self, now: i64, out: &mut Vec<Output>) {
+        if self.state != SessionState::Running || self.hints_paused {
+            return;
+        }
+        let due = match self.hints_prefix_at {
+            None => true,
+            Some(at) => {
+                now - at >= HINTS_WARM_MS
+                    && self.transcript.since(now - HINTS_WARM_MS).next().is_some()
+            }
+        };
+        if !due {
+            return;
+        }
+        self.hints_prefix_at = Some(now);
+        let lang = self.output_language("");
+        let request = self.hints_request("", lang, now);
+        out.push(Output::WarmHints { request });
     }
 
     /// Gives a confirmed question its hints: the speculative ones started
@@ -1573,6 +1641,7 @@ impl Engine {
 
     fn on_tick(&mut self, now: i64, out: &mut Vec<Output>) {
         self.give_up_slow_hints(now, out);
+        self.warm_hints(now, out);
 
         // Close sentences whose provider never sent an endpoint.
         for ch in [Channel::Me, Channel::Remote] {
@@ -1722,6 +1791,7 @@ mod tests {
         events: Vec<MeetCueEvent>,
         detects: Vec<(ReqId, LlmRequest)>,
         hints: Vec<(ReqId, LlmRequest)>,
+        warms: Vec<LlmRequest>,
         cancelled: Vec<ReqId>,
         ended: bool,
     }
@@ -1738,6 +1808,7 @@ mod tests {
                 events: vec![],
                 detects: vec![],
                 hints: vec![],
+                warms: vec![],
                 cancelled: vec![],
                 ended: false,
             };
@@ -1752,6 +1823,7 @@ mod tests {
                     Output::Emit(e) => self.events.push(e),
                     Output::Detect { req, request } => self.detects.push((req, request)),
                     Output::Hints { req, request } => self.hints.push((req, request)),
+                    Output::WarmHints { request } => self.warms.push(request),
                     Output::Cancel { req } => self.cancelled.push(req),
                     Output::SetCapturePaused(_) => {}
                     Output::EndSession => self.ended = true,
@@ -1862,7 +1934,7 @@ mod tests {
         let (_, req) = &h.detects[0];
         assert!(req.messages[0]
             .content
-            .ends_with("[Them] 你们是怎么做高可用的？\n"));
+            .contains("[Them] 你们是怎么做高可用的？\n\nOutput language:"));
         h.at(3400).detect_reply(YES);
         assert_eq!(h.statuses(), vec![(1, QuestionStatus::Active)]);
         let hint_req = h.hints[0].0;
@@ -2303,7 +2375,7 @@ mod tests {
         let (_, req) = &h.detects[0];
         assert!(req.messages[0]
             .content
-            .ends_with("[Them] 控制器挂了还能转发吗\n"));
+            .contains("[Them] 控制器挂了还能转发吗\n\nOutput language:"));
         h.detect_reply(YES);
         assert_eq!(h.hints.len(), 1);
         // The final adds only punctuation: same question, no new detection.
@@ -2775,7 +2847,7 @@ mod tests {
         assert_eq!(h.hints[0].1.system, "Coach for SRE.");
         assert_eq!(
             h.hints[0].1.messages[0].content,
-            "Q: How do you handle failover?\nNotes: (none)"
+            "Q: How do you handle failover?\nNotes: (none)\n\nWrite everything in English."
         );
     }
 
@@ -2787,7 +2859,11 @@ mod tests {
             t_ms: 0,
             known_question: true,
         });
-        assert!(h.hints[0].1.system.contains("Write everything in English."));
+        let en = h.hints[0].1.clone();
+        assert!(en.messages[0]
+            .content
+            .trim_end()
+            .ends_with("Write everything in English."));
         let mut h = Harness::new(EngineConfig {
             hint_language: HintLanguage::ZhCn,
             ..no_early()
@@ -2797,6 +2873,33 @@ mod tests {
             t_ms: 0,
             known_question: true,
         });
-        assert!(h.hints[0].1.system.contains("Simplified Chinese"));
+        let zh = &h.hints[0].1;
+        assert!(zh.messages[0].content.contains("Simplified Chinese"));
+        // One cached system prompt serves both languages.
+        assert_eq!(zh.system, en.system);
+    }
+
+    #[test]
+    fn hint_prompt_is_warmed_at_start_and_kept_warm_while_people_talk() {
+        let mut h = Harness::new(no_early());
+        h.at(100);
+        assert_eq!(h.warms.len(), 1, "warmed when the session starts");
+        assert!(h.warms[0].cache_system);
+        h.at(HINTS_WARM_MS - 1_000);
+        assert_eq!(h.warms.len(), 1);
+        // A question uses the prompt, which keeps the entry alive by itself.
+        h.input(Input::RemoteText {
+            text: "How do you handle failover?".into(),
+            t_ms: HINTS_WARM_MS - 1_000,
+            known_question: true,
+        });
+        assert_eq!(h.warms[0].system, h.hints[0].1.system);
+        h.at(HINTS_WARM_MS + 1_000);
+        assert_eq!(h.warms.len(), 1, "the question refreshed the cache");
+        h.at(2 * HINTS_WARM_MS);
+        assert_eq!(h.warms.len(), 2, "refreshed while the conversation goes on");
+        // Nobody has spoken for a while: let the entry expire.
+        h.at(5 * HINTS_WARM_MS);
+        assert_eq!(h.warms.len(), 2);
     }
 }

@@ -89,10 +89,19 @@ pub fn handle_data(data: &str) -> Option<Result<Vec<LlmChunk>, MeetCueError>> {
     }
     if let Some(u) = v.get("usage").filter(|u| u.is_object()) {
         let prompt = u["prompt_tokens"].as_u64().unwrap_or(0);
-        let cached = u
-            .pointer("/prompt_tokens_details/cached_tokens")
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
+        // Servers report cache hits in different places: OpenAI and most
+        // others in `prompt_tokens_details`, DeepSeek as
+        // `prompt_cache_hit_tokens`, some (such as Kimi) at the top level.
+        let cached = [
+            "/prompt_tokens_details/cached_tokens",
+            "/prompt_cache_hit_tokens",
+            "/cached_tokens",
+        ]
+        .iter()
+        .filter_map(|p| u.pointer(p).and_then(Value::as_u64))
+        .max()
+        .unwrap_or(0)
+        .min(prompt);
         out.push(LlmChunk::Usage {
             input: prompt.saturating_sub(cached),
             output: u["completion_tokens"].as_u64().unwrap_or(0),
@@ -277,6 +286,27 @@ mod tests {
                 cache_read: 60,
                 cache_write: 0
             }]
+        );
+        let cached =
+            |usage: &str| match handle_data(&format!(r#"{{"choices":[],"usage":{usage}}}"#))
+                .unwrap()
+                .unwrap()[0]
+            {
+                LlmChunk::Usage {
+                    input, cache_read, ..
+                } => (input, cache_read),
+                _ => unreachable!(),
+            };
+        // DeepSeek and top-level fields.
+        assert_eq!(
+            cached(
+                r#"{"prompt_tokens":100,"completion_tokens":5,"prompt_cache_hit_tokens":70,"prompt_cache_miss_tokens":30}"#
+            ),
+            (30, 70)
+        );
+        assert_eq!(
+            cached(r#"{"prompt_tokens":100,"completion_tokens":5,"cached_tokens":64}"#),
+            (36, 64)
         );
         assert!(handle_data("[DONE]").is_none());
         assert!(handle_data(r#"{"error":{"message":"bad"}}"#)

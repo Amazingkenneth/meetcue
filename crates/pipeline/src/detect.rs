@@ -25,11 +25,13 @@ pub struct Detection {
 /// to classify as its last `[Them]` line.
 pub fn request(model: &str, transcript: &str, output_language: &str) -> LlmRequest {
     LlmRequest::new(model, UsagePurpose::Detect)
-        .system(
-            prompts::render(prompts::DETECT, &[("output_language", output_language)]),
-            true,
-        )
-        .user(transcript.to_string())
+        // The language goes last so the instructions stay the same, and
+        // cached, whichever language the meeting is in.
+        .system(prompts::DETECT, true)
+        .user(format!(
+            "{}\n\nOutput language: {output_language}",
+            transcript.trim_end()
+        ))
         .max_tokens(prompts::DETECT_MAX_TOKENS)
         .temperature(0.0)
 }
@@ -134,8 +136,12 @@ mod tests {
     fn request_shape() {
         let r = request("m", "[Them] 你好吗？\n", "Simplified Chinese");
         assert_eq!(r.max_tokens, 200);
-        assert!(r.system.contains("Simplified Chinese"));
         assert!(r.cache_system);
+        // The system prompt is the same in every language; the language is in the message.
+        assert_eq!(r.system, request("m", "x", "English").system);
+        assert!(r.messages[0]
+            .content
+            .ends_with("Output language: Simplified Chinese"));
         assert_eq!(r.messages.len(), 1);
     }
 }
