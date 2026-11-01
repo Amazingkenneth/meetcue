@@ -34,7 +34,7 @@ MeetCue is a Tauri 2 desktop app. All real-time work runs in Rust; the React int
 `backend.rs` runs the engine: it owns the provider streams, applies the requests (start, cancel or retry a hint), and forwards events to the app. Key rules enforced here:
 
 - Every hint generation carries a version; cancelled or outdated versions are dropped and their HTTP streams closed.
-- At most two generations run at the same time; more wait in a queue.
+- At most two generations run at the same time; more wait in a queue. A reply that stops arriving for 15 s ends with a timeout, and the engine gives up on any generation still running after two minutes, so a stalled connection can't hold a slot for the rest of the meeting.
 - Detection only looks at the other participants' channel.
 - Transcript history is trimmed to the last ten minutes.
 

@@ -13,7 +13,10 @@ use futures::StreamExt;
 
 use meetcue_core::{AudioFrame, Channel, MeetCueError, MeetCueEvent, UsagePurpose, UserAction};
 use meetcue_pipeline::engine::{EngineConfig, ModelRef};
-use meetcue_pipeline::provider::{AsrOptions, AsrProvider, AsrResult, AsrStream, AudioUsage};
+use meetcue_pipeline::provider::{
+    AsrOptions, AsrProvider, AsrResult, AsrStream, AudioUsage, LlmChunk, LlmProvider, LlmRequest,
+    LlmStream, ModelInfo,
+};
 use meetcue_pipeline::providers::mock::MockLlm;
 use meetcue_pipeline::{HintBackend, LocalHintBackend, SessionConfig};
 
@@ -413,5 +416,72 @@ async fn input_levels_reach_the_meters() {
         }
     }
     assert_eq!(loudest, -30.0, "the microphone level reaches the panel");
+    backend.stop().await;
+}
+
+/// Hint replies that send their points and then go quiet without ending,
+/// as a connection that stalls half way does. Detection is answered normally.
+struct StallingHints {
+    detect: MockLlm,
+    started: Arc<Mutex<u32>>,
+}
+
+#[async_trait]
+impl LlmProvider for StallingHints {
+    fn id(&self) -> &'static str {
+        "mock"
+    }
+
+    async fn list_models(&self) -> Result<Vec<ModelInfo>, MeetCueError> {
+        self.detect.list_models().await
+    }
+
+    async fn stream(&self, req: LlmRequest) -> Result<LlmStream, MeetCueError> {
+        if req.purpose != UsagePurpose::Hints {
+            return self.detect.stream(req).await;
+        }
+        *self.started.lock().unwrap() += 1;
+        let first = LlmChunk::Text("{\"n\":1,\"head\":\"Point\",\"rest\":\"detail\"}\n".into());
+        Ok(futures::stream::iter([Ok(first)])
+            .chain(futures::stream::pending())
+            .boxed())
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn stalled_hint_replies_do_not_stop_later_questions_getting_hints() {
+    let stalling = Arc::new(StallingHints {
+        detect: MockLlm::sdn(),
+        started: Arc::default(),
+    });
+    let engine = EngineConfig {
+        detect: model("mock", "mock-fast"),
+        hints: model("mock", "mock-fast"),
+        ..Default::default()
+    };
+    let cfg = SessionConfig::new(engine, None, stalling.clone(), stalling.clone());
+    let backend = LocalHintBackend::new();
+    backend.start(cfg).await.unwrap();
+    let mut events = backend.events();
+    // Far more questions than there are hint slots, each stalling half way.
+    for i in 0..5 {
+        backend
+            .inject_question(format!("第 {i} 个问题：你们怎么做高可用的？"), i * 60_000)
+            .await;
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
+    assert_eq!(
+        *stalling.started.lock().unwrap(),
+        5,
+        "every question got hints"
+    );
+    let mut timeouts = 0;
+    while let Ok(e) = events.try_recv() {
+        if let MeetCueEvent::HintsFailed { code, .. } = e {
+            assert_eq!(code, "MC-LLM-001");
+            timeouts += 1;
+        }
+    }
+    assert_eq!(timeouts, 5, "each stalled reply is shown as timed out");
     backend.stop().await;
 }

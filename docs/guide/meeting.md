@@ -57,7 +57,7 @@ If you use speakers instead of headphones, your microphone also hears the other 
 
 ## Several questions at once
 
-- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question.
+- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question. A question still waiting when a new one comes more than two minutes later is set aside, so new questions don't pile up behind it; set-aside questions stay in the list with their hints.
 - A question asked while you are not speaking replaces the current one, which moves down to the earlier questions. This includes a question asked before you said anything about the previous one.
 - Use `Ctrl+Alt+[` and `Ctrl+Alt+]` to move between questions, and `Ctrl+Alt+Enter` to mark the current one answered.
 
