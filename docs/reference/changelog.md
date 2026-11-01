@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- In a long meeting the panel's list of other questions stays short: only the three most recent earlier questions are shown, older ones fold behind **Show earlier questions**, and **Clear earlier** hides them from the list until you restore them.
+
 ## 0.3.5 — 2026-10-31
 
 ### Changed

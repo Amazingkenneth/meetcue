@@ -54,9 +54,23 @@ describe("Overlay", () => {
     expect(rows[1]).toHaveTextContent("Answered");
     expect(rows[1]).toHaveTextContent("4/4 covered");
 
+    // Clearing hides the answered question from the list until restored; the waiting one stays.
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Clear earlier" }));
+    });
+    const left = within(screen.getByRole("navigation", { name: "Other questions" })).getAllByRole("button");
+    expect(left).toHaveLength(1);
+    expect(left[0]).toHaveTextContent("Waiting");
+    expect(screen.getByText("1 cleared")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+    });
+    const restored = within(screen.getByRole("navigation", { name: "Other questions" })).getAllByRole("button");
+    expect(restored).toHaveLength(2);
+
     // Opening the answered question shows it in full, with a way back.
     await act(async () => {
-      fireEvent.click(rows[1]);
+      fireEvent.click(restored[1]);
     });
     const answered = screen.getByRole("article");
     expect(within(answered).getAllByLabelText("Covered")).toHaveLength(4);
@@ -127,5 +141,44 @@ describe("footerKeys", () => {
     const { footerKeys } = await import("./Overlay");
     expect(footerKeys()).toEqual({ prefix: "Ctrl+Alt+", toggle: "Space", focus: "[ ]", answered: "Enter" });
     expect(footerKeys("Ctrl+Shift+K").prefix).toBe("");
+  });
+});
+
+describe("compactRows", () => {
+  it("keeps live and waiting questions, folds older ones and leaves cleared ones out", async () => {
+    const { compactRows, RECENT_ROWS } = await import("./Overlay");
+    const { emptySession } = await import("../state/session");
+    const view = emptySession();
+    const status = (id: number) => (id === 9 ? "pending" : id === 8 ? "active" : "answered");
+    for (let id = 1; id <= 9; id++) {
+      view.questions[id] = {
+        id,
+        version: 1,
+        text: `q${id}`,
+        short: `q${id}`,
+        tags: [],
+        subQuestions: [],
+        status: status(id),
+        tMs: id * 1000,
+        context: [],
+        points: [],
+        answer: "",
+        answerDone: true,
+        failedCode: null,
+        latencyMs: null,
+      };
+      view.order.push(id);
+    }
+    // Shown in full: question 7; the rest in display order.
+    const others = [8, 9, 6, 5, 4, 3, 2, 1];
+    const rows = compactRows(view, others, 8, new Set([1, 2]));
+    expect(rows.keep).toEqual([8, 9]);
+    expect(rows.recent).toEqual([6, 5, 4].slice(0, RECENT_ROWS));
+    expect(rows.older).toEqual([3]);
+    expect(rows.cleared).toBe(2);
+    // Clearing never hides the live or a waiting question.
+    const all = compactRows(view, others, 8, new Set(others));
+    expect(all.keep).toEqual([8, 9]);
+    expect(all.earlier).toEqual([]);
   });
 });

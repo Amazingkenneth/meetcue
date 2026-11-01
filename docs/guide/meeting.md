@@ -28,6 +28,8 @@ From top to bottom, the full panel shows:
 2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
 3. **Conversation**: the question you are answering is shown in full at the top, with its talking points. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
 4. **Other questions**: one line each below it, with the time, a short summary, coverage and status. Questions waiting their turn come first, then earlier ones, newest first. Click a line to show that question in full; a bar at the top then offers **Back to the current question**, and a new question brings you back on its own.
+
+   In a long meeting the list stays short: the questions waiting their turn and the three most recent earlier ones are always shown, and older ones fold behind **Show N earlier questions**. **Clear earlier** hides every earlier question from the list for the rest of the meeting; they are still there for `Ctrl+Alt+[` and `Ctrl+Alt+]`, and **Restore** brings them back.
 5. **Footer**: shortcut reminders and the latency of the last hint.
 
 The **mini bar** (`Ctrl+Alt+H`) shows only the current question, its progress, the next point to cover in large type, and how many questions are waiting.
