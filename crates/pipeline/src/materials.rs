@@ -12,6 +12,8 @@ use meetcue_core::{codes, MeetCueError};
 
 use crate::textio::decode;
 
+mod docx;
+
 /// Characters of material placed in the system prompt.
 pub const SUMMARY_CHARS: usize = 3_000;
 /// Most recognizers accept a limited vocabulary list.
@@ -30,13 +32,39 @@ fn err(detail: impl Into<String>) -> MeetCueError {
 }
 
 /// Extracts plain text from a file's bytes, choosing the method by extension.
+///
+/// Errors carry a plain-language reason the person can act on, because they
+/// are shown next to the file name in Settings.
 pub fn extract_text(file_name: &str, bytes: &[u8]) -> Result<String, MeetCueError> {
     let ext = file_name
         .rsplit('.')
         .next()
         .unwrap_or("")
         .to_ascii_lowercase();
-    let text = match ext.as_str() {
+    // A malformed file must not take the whole import down with it.
+    let text = std::panic::catch_unwind(|| extract_by_type(&ext, bytes))
+        .unwrap_or_else(|_| {
+            Err(err(format!(
+                "MeetCue could not make sense of this .{ext} file. Open it, save a fresh copy and add that instead"
+            )))
+        })?;
+    let text = tidy(&text);
+    if text.is_empty() {
+        return Err(err(
+            "no text was found in this file. If it holds only pictures or scanned pages, MeetCue cannot read them; run text recognition (OCR) or paste the text into a document first",
+        ));
+    }
+    Ok(match text.char_indices().nth(MAX_TEXT_CHARS) {
+        Some((cut, _)) => text[..cut].to_string(),
+        None => text,
+    })
+}
+
+fn extract_by_type(ext: &str, bytes: &[u8]) -> Result<String, MeetCueError> {
+    if let Some(found) = sniff_office(ext, bytes) {
+        return found;
+    }
+    Ok(match ext {
         "txt" | "md" | "markdown" | "csv" | "tsv" | "json" | "yaml" | "yml" | "log" => {
             decode(bytes)
         }
@@ -53,28 +81,104 @@ pub fn extract_text(file_name: &str, bytes: &[u8]) -> Result<String, MeetCueErro
             )))
         }
         _ => return Err(err(format!("unsupported file type .{ext}"))),
-    };
-    let text = tidy(&text);
-    Ok(match text.char_indices().nth(MAX_TEXT_CHARS) {
-        Some((cut, _)) => text[..cut].to_string(),
-        None => text,
     })
+}
+
+/// Office files are ZIP packages, but files get renamed, encrypted or saved
+/// in a related format. This looks at the bytes rather than trusting the
+/// extension, reading what it can and explaining what it cannot.
+fn sniff_office(ext: &str, bytes: &[u8]) -> Option<Result<String, MeetCueError>> {
+    const OFFICE: &[&str] = &[
+        "docx", "docm", "xlsx", "xlsm", "pptx", "pptm", "odt", "ods", "odp",
+    ];
+    if !OFFICE.contains(&ext) || bytes.starts_with(b"PK") {
+        return None;
+    }
+    let word = ext.starts_with("doc");
+    // OLE compound file: an encrypted Office package or an old binary file.
+    if bytes.starts_with(&[0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]) {
+        let marker: Vec<u8> = "EncryptedPackage"
+            .encode_utf16()
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        if bytes.windows(marker.len()).any(|w| w == marker) {
+            return Some(Err(err(
+                "this file is password-protected or encrypted by a sensitivity label. Open it, remove the password or label (in Word: File > Info > Protect Document), save it and add it again",
+            )));
+        }
+        let old = match ext.chars().next() {
+            Some('d') => "doc",
+            Some('x') => "xls",
+            Some('p') => "ppt",
+            _ => "binary",
+        };
+        return Some(Err(err(format!(
+            "this is an older .{old} file renamed to .{ext}. Open it and use Save As to save it as .{ext}, then add it again"
+        ))));
+    }
+    let start = bytes
+        .iter()
+        .position(|b| !b.is_ascii_whitespace() && *b != 0xEF && *b != 0xBB && *b != 0xBF);
+    let head = &bytes[start.unwrap_or(bytes.len())..];
+    if word && head.starts_with(b"{\\rtf") {
+        return Some(Ok(rtf_text(bytes)));
+    }
+    if word && head.starts_with(b"<") {
+        let xml = decode(bytes);
+        // Word's single-file XML ("Flat OPC" or Word 2003 XML).
+        if xml.contains("<w:body") {
+            return Some(Ok(docx::flat_text(&xml)));
+        }
+        return Some(Ok(html_text(&xml)));
+    }
+    Some(Err(err(format!(
+        "this is not a valid .{ext} file. It may be damaged, not fully downloaded, or a different kind of file renamed to .{ext}; open it and save it again as .{ext}"
+    ))))
 }
 
 type Zip<'a> = zip::ZipArchive<std::io::Cursor<&'a [u8]>>;
 
 fn open_zip(bytes: &[u8]) -> Result<Zip<'_>, MeetCueError> {
-    zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| err(e.to_string()))
+    zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| {
+        err(format!(
+            "the file looks damaged or incomplete and could not be opened; open it and save a fresh copy ({e})"
+        ))
+    })
+}
+
+/// The name an archive actually uses for `name`: some tools write
+/// backslashes or change the case of package part names.
+fn entry_name(archive: &Zip<'_>, name: &str) -> Option<String> {
+    if archive.index_for_name(name).is_some() {
+        return Some(name.to_string());
+    }
+    archive
+        .file_names()
+        .find(|n| {
+            n.replace('\\', "/")
+                .trim_start_matches('/')
+                .eq_ignore_ascii_case(name)
+        })
+        .map(str::to_string)
 }
 
 fn zip_entry(archive: &mut Zip<'_>, name: &str) -> Result<String, MeetCueError> {
-    let mut xml = String::new();
+    let found = entry_name(archive, name).ok_or_else(|| err(format!("{name} is missing")))?;
+    let mut raw = Vec::new();
     archive
-        .by_name(name)
-        .map_err(|e| err(format!("{name}: {e}")))?
-        .read_to_string(&mut xml)
-        .map_err(|e| err(e.to_string()))?;
-    Ok(xml)
+        .by_name(&found)
+        .map_err(|e| match e {
+            zip::result::ZipError::UnsupportedArchive(m)
+                if m == zip::result::ZipError::PASSWORD_REQUIRED =>
+            {
+                err("this file is password-protected. Remove the password, save it and add it again")
+            }
+            e => err(format!("{name}: {e}")),
+        })?
+        .read_to_end(&mut raw)
+        .map_err(|e| err(format!("{name} is damaged ({e})")))?;
+    // Package parts are UTF-8 almost always, but UTF-16 is valid XML too.
+    Ok(decode(&raw))
 }
 
 /// Entries named `{prefix}{n}.xml`, in numeric order (slide2 before slide10).
@@ -91,21 +195,7 @@ fn numbered_entries(archive: &Zip<'_>, prefix: &str) -> Vec<(u32, String)> {
 }
 
 fn docx_text(bytes: &[u8]) -> Result<String, MeetCueError> {
-    let xml = zip_entry(&mut open_zip(bytes)?, "word/document.xml")?;
-    Ok(xml_to_text(&xml))
-}
-
-/// Converts WordprocessingML to text: paragraphs become lines, tags are dropped.
-fn xml_to_text(xml: &str) -> String {
-    markup_text(
-        xml,
-        &[
-            ("/w:p", "\n"),
-            ("w:tab", "\t"),
-            ("w:br", "\n"),
-            ("/w:tc", "\t"),
-        ],
-    )
+    docx::text(bytes)
 }
 
 fn pptx_text(bytes: &[u8]) -> Result<String, MeetCueError> {
@@ -454,7 +544,7 @@ fn tokens(xml: &str) -> impl Iterator<Item = Tok<'_>> {
             rest = after.find("-->").map_or("", |e| &after[e + 3..]);
             continue;
         }
-        let Some(gt) = rest.find('>') else {
+        let Some(gt) = tag_end(rest) else {
             rest = "";
             return None;
         };
@@ -477,6 +567,27 @@ fn tokens(xml: &str) -> impl Iterator<Item = Tok<'_>> {
             empty,
         }));
     })
+}
+
+/// Where the tag starting `s` ends. Quoted attribute values may contain
+/// '>' (alt text such as "costs > 5%"), so those are skipped over.
+fn tag_end(s: &str) -> Option<usize> {
+    let mut quote = None;
+    let mut prev = ' ';
+    for (i, c) in s.char_indices() {
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == '>' => return Some(i),
+            None if (c == '"' || c == '\'') && prev == '=' => quote = Some(c),
+            None => {}
+        }
+        if !c.is_whitespace() {
+            prev = c;
+        }
+    }
+    // An unbalanced quote: fall back to the first '>'.
+    s.find('>')
 }
 
 /// An attribute value from a tag's attribute text.
