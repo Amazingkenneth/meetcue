@@ -120,6 +120,10 @@
     "setupAgain": "Setup assistant",
     "setupAgainHint": "Walk through languages, audio, models, keys and the latency check again. Your current settings are kept as the starting point.",
     "setupAgainButton": "Run setup again",
+    "helpTitle": "Help",
+    "helpDocs": "Documentation",
+    "helpDocsHint": "Guides, shortcuts and fixes for common problems. Problems with a meeting? The activity log and diagnostics export are under Diagnostics.",
+    "helpButton": "Open help",
     "practiceTitle": "Mock interview",
     "practiceOpen": "Practise without a meeting",
     "practiceOpenHint": "Questions are read aloud and you answer over your microphone, with hints and a review. Sample interviews are included.",
@@ -609,10 +613,8 @@
     "practice": "Mock interview…",
     "panel": "Show or hide the panel",
     "resetPanel": "Reset panel position",
-    "exportDiagnostics": "Export diagnostics…",
     "help": "Help",
     "quit": "Quit MeetCue",
-    "log": "Activity log…",
     "clickThrough": "Let clicks pass through the panel"
   },
   "wipe": {

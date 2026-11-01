@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- The tray menu is shorter and keeps only what you need during a meeting: start or pause, show or hide the panel, click-through, mock interview, settings, help and quit. **Show or hide the panel** now does exactly that in one click and brings back the layout you last used, instead of stepping through full, mini and hidden. **Reset panel position** is in **Settings › General**, and the activity log and diagnostics export are in **Settings › Diagnostics**. **Settings › General** also has a link to the help pages.
+
 ## 0.3.5 — 2026-10-31
 
 ### Changed

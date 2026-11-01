@@ -100,7 +100,10 @@ export function LanguageField({ settings, update }: { settings: Settings; update
 }
 
 function GeneralTab({ settings, update }: { settings: Settings; update: Update }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const info = useAppInfo();
+  const docsBase = (info?.docsUrl ?? "https://amazingkenneth.github.io/meetcue/").replace(/\/*$/, "/");
+  const docsUrl = i18n.language.startsWith("zh") ? `${docsBase}zh/` : docsBase;
   return (
     <>
       <h2 className="page">{t("settings.tab.general")}</h2>
@@ -213,6 +216,13 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
         <Field label={t("settings.setupAgain")} hint={t("settings.setupAgainHint")}>
           <button className="btn btn-small" onClick={() => void backend().invoke("open_window", { view: "wizard" })}>
             {t("settings.setupAgainButton")}
+          </button>
+        </Field>
+      </Section>
+      <Section title={t("settings.helpTitle")}>
+        <Field label={t("settings.helpDocs")} hint={t("settings.helpDocsHint")}>
+          <button className="btn btn-small" onClick={() => void backend().invoke("open_url", { url: docsUrl })}>
+            {t("settings.helpButton")}
           </button>
         </Field>
       </Section>

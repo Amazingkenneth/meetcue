@@ -206,6 +206,7 @@ pub fn set_mode(app: &AppHandle, mode: PanelMode) {
             let _ = win.hide();
         }
         m => {
+            LAST_SHOWN_MINI.store(m == PanelMode::Mini, Ordering::SeqCst);
             let overlay = app.state::<AppState>().settings().overlay;
             apply_size(&win, m, &overlay);
             keep_on_screen(&win);
@@ -235,6 +236,29 @@ fn show_levels(app: &AppHandle, on: bool) {
             tracing::warn!(code = %e.code, "panel level meters unavailable: {}", e.detail);
         }
     });
+}
+
+/// Whether the panel was last shown in its mini layout, so showing it again
+/// from the tray brings back the layout the user picked.
+static LAST_SHOWN_MINI: AtomicBool = AtomicBool::new(false);
+
+/// Shows or hides the panel in one step, for the tray. Showing it also puts
+/// it back on screen if it was left outside every display.
+pub fn toggle_visible(app: &AppHandle) {
+    let current = app.state::<AppState>().settings().overlay.mode;
+    let visible = app
+        .get_webview_window(OVERLAY)
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    let next = match (current, visible) {
+        (PanelMode::Hidden, _) | (_, false) => match current {
+            PanelMode::Hidden if LAST_SHOWN_MINI.load(Ordering::SeqCst) => PanelMode::Mini,
+            PanelMode::Hidden => PanelMode::Full,
+            m => m,
+        },
+        _ => PanelMode::Hidden,
+    };
+    set_mode(app, next);
 }
 
 pub fn cycle_mode(app: &AppHandle) {

@@ -43,7 +43,7 @@ mod tests {
             "tray.practice",
             "tray.panel",
             "tray.resetPanel",
-            "tray.exportDiagnostics",
+            "tray.clickThrough",
             "tray.help",
             "tray.quit",
         ] {
