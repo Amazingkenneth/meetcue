@@ -21,14 +21,14 @@ Supported formats:
 | Kind | Extensions |
 | --- | --- |
 | PDF | `.pdf` |
-| Word | `.docx`, `.docm` |
+| Word | `.docx`, `.docm` (text, tables row by row, text boxes, footnotes, chart data, SmartArt text and picture descriptions) |
 | Excel | `.xlsx`, `.xlsm` (every sheet, as rows of cells) |
 | PowerPoint | `.pptx`, `.pptm` (slide text and speaker notes) |
 | OpenDocument | `.odt`, `.ods`, `.odp` |
 | Other documents | `.rtf`, `.html`, `.htm` |
 | Text | `.txt`, `.md`, `.csv`, `.tsv`, `.json`, `.yaml`, `.log` |
 
-MeetCue extracts the text on your computer and shows how many characters were found. Old `.doc`, `.xls` and `.ppt` files can't be read: open them in Office and save them as `.docx`, `.xlsx` or `.pptx` first. Scanned PDFs without a text layer yield no text; export them with text recognition first. Adding a file again replaces the earlier copy.
+MeetCue extracts the text on your computer and shows how many characters were found. Old `.doc`, `.xls` and `.ppt` files can't be read: open them in Office and save them as `.docx`, `.xlsx` or `.pptx` first. Scanned PDFs and documents made only of pictures have no text to read; export them with text recognition first. Password-protected files, and files encrypted by a sensitivity label, need the protection removed and the file saved again. If a file can't be read, the reason is shown next to its name. Adding a file again replaces the earlier copy.
 
 ## How the knowledge base is used
 

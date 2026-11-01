@@ -21,14 +21,14 @@
 | 类型 | 扩展名 |
 | --- | --- |
 | PDF | `.pdf` |
-| Word | `.docx`、`.docm` |
+| Word | `.docx`、`.docm`（正文、按行读取的表格、文本框、脚注、图表数据、SmartArt 文字和图片说明） |
 | Excel | `.xlsx`、`.xlsm`（所有工作表，按行读取单元格） |
 | PowerPoint | `.pptx`、`.pptm`（幻灯片文字和备注） |
 | OpenDocument | `.odt`、`.ods`、`.odp` |
 | 其他文档 | `.rtf`、`.html`、`.htm` |
 | 文本 | `.txt`、`.md`、`.csv`、`.tsv`、`.json`、`.yaml`、`.log` |
 
-MeetCue 在本机抽取文字并显示字数。旧版 `.doc`、`.xls`、`.ppt` 无法读取，请先在 Office 中另存为 `.docx`、`.xlsx` 或 `.pptx`。没有文字层的扫描版 PDF 抽不出文字，请先用文字识别功能导出。再次添加同一个文件会替换之前的版本。
+MeetCue 在本机抽取文字并显示字数。旧版 `.doc`、`.xls`、`.ppt` 无法读取，请先在 Office 中另存为 `.docx`、`.xlsx` 或 `.pptx`。扫描版 PDF 和只有图片的文档抽不出文字，请先用文字识别功能导出。设了密码或被敏感度标签加密的文件，需要先解除保护再重新保存。文件读取失败时，原因会显示在文件名旁边。再次添加同一个文件会替换之前的版本。
 
 ## 知识库如何使用
 
