@@ -12,7 +12,7 @@ pub const REVIEW: &str = include_str!("../prompts/review.txt");
 
 /// Token budgets per prompt.
 pub const DETECT_MAX_TOKENS: u32 = 200;
-pub const HINTS_MAX_TOKENS: u32 = 700;
+pub const HINTS_MAX_TOKENS: u32 = 1200;
 pub const FOLLOW_UP_MAX_TOKENS: u32 = 120;
 pub const REVIEW_MAX_TOKENS: u32 = 300;
 
@@ -43,6 +43,12 @@ mod tests {
         assert!(s.contains("The user's role: SRE"));
         assert!(s.contains(r#"{"n":1,"head":"key phrase","rest":"supporting words"}"#));
         assert!(!s.contains("{role}"));
+    }
+
+    #[test]
+    fn open_ended_questions_get_substantive_hints() {
+        assert!(HINTS_SYSTEM.contains("Open-ended questions need substance"));
+        assert!(HINTS_SYSTEM.contains("280 to 450 Chinese characters"));
     }
 
     #[test]
