@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- The panel now follows the meeting: the newest question is always shown in full at the top, even while it waits for you to finish the previous one, so its hints are never only in the list below. The question list is in the order questions were asked, newest first, and earlier questions move down as new ones come in. Clicking a line shows that question in the same place above the list, and **Back to the latest question** or the next new question brings you back.
+
 ## 0.3.7 — 2026-11-01
 
 ### Changed

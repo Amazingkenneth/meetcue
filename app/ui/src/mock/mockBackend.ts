@@ -184,11 +184,11 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     };
     switch (a.type) {
       case "focus":
-        view = { ...view, focus: a.id === view.active ? null : a.id };
+        view = { ...view, focus: a.id === view.order[view.order.length - 1] ? null : a.id };
         queue();
         break;
       case "focusStep": {
-        const cur = view.focus ?? view.active ?? view.order[view.order.length - 1];
+        const cur = view.focus ?? view.order[view.order.length - 1];
         const i = view.order.indexOf(cur ?? -1) + (a.target === "next" ? 1 : -1);
         if (i >= 0 && i < view.order.length) {
           view = { ...view, focus: view.order[i] };
@@ -201,7 +201,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
           emit({ type: "questionStatus", id: view.active, status: "answered" });
           const next = view.order.find((id) => view.questions[id].status === "pending") ?? null;
           if (next !== null) emit({ type: "questionStatus", id: next, status: "active" });
-          view = { ...view, active: next, focus: null };
+          view = { ...view, active: next };
           queue();
         }
         break;

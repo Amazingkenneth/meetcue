@@ -26,8 +26,8 @@ From top to bottom, the full panel shows:
 
 1. **Title bar**: status, elapsed time, pause, keep on top, and the switch to the mini bar.
 2. **Sources**: a level meter for your microphone and one for system sound. They move as soon as the panel is shown, before you start, so you can check that MeetCue hears you. Nothing is sent to any provider until you start.
-3. **Conversation**: the question you are answering is shown in full at the top, with its talking points. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
-4. **Other questions**: one line each below it, with the time, a short summary, coverage and status. Questions waiting their turn come first, then earlier ones, newest first. Click a line to show that question in full; a bar at the top then offers **Back to the current question**, and a new question brings you back on its own.
+3. **Conversation**: the newest question is shown in full at the top, with its talking points, so the panel keeps up with the meeting even when that question is still waiting its turn. Click the grey question text to see the sentences around it and why it was detected. **Show full answer** expands the sample answer.
+4. **Question list**: below it, one line per question in the order they were asked, newest first, with the time, a short summary, coverage and status. New questions appear at the top and earlier ones move down. The line of the question shown above is highlighted, and the question you are answering now is marked **Now**. Click a line to show that question in full in the same place above the list; its header then offers **Back to the latest question**, and a new question brings you back on its own.
 
    In a long meeting the list stays short: the questions waiting their turn and the three most recent earlier ones are always shown, and older ones fold behind **Show N earlier questions**. **Clear earlier** hides every earlier question from the list for the rest of the meeting; they are still there for `Ctrl+Alt+[` and `Ctrl+Alt+]`, and **Restore** brings them back.
 5. **Footer**: shortcut reminders and the latency of the last hint.
@@ -61,7 +61,7 @@ If you use speakers instead of headphones, your microphone also hears the other 
 
 ## Several questions at once
 
-- **Queue interruptions** (on by default): a question asked while you are answering waits as **Waiting**. When you finish answering, it becomes the current question. A question still waiting when a new one comes more than two minutes later is set aside, so new questions don't pile up behind it; set-aside questions stay in the list with their hints.
+- **Queue interruptions** (on by default): a question asked while you are answering is shown on top with its hints right away, marked **Waiting**, while ticks keep following the question you are answering. When you finish answering, it becomes the current question. A question still waiting when a new one comes more than two minutes later is set aside, so new questions don't pile up behind it; set-aside questions stay in the list with their hints.
 - A question asked while you are not speaking replaces the current one, which moves down to the earlier questions. This includes a question asked before you said anything about the previous one.
 - Use `Ctrl+Alt+[` and `Ctrl+Alt+]` to move between questions, and `Ctrl+Alt+Enter` to mark the current one answered.
 

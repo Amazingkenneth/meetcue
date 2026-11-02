@@ -30,7 +30,7 @@ describe("Overlay", () => {
     expect(screen.getByText("Not listening")).toBeInTheDocument();
   });
 
-  it("renders the replayed interview: queue, points, coverage and answers", async () => {
+  it("renders the replayed interview: newest first, points, coverage and answers", async () => {
     render(<Overlay />);
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
@@ -38,55 +38,66 @@ describe("Overlay", () => {
     await act(async () => {
       vi.advanceTimersByTime(46_000);
     });
-    // Only the current question is shown in full; the others are one-line rows.
+    // The newest question is shown in full on top, even while it waits its turn.
     const blocks = screen.getAllByRole("article");
     expect(blocks).toHaveLength(1);
-    const [active] = blocks;
-    expect(active).toHaveAttribute("aria-current", "true");
-    expect(within(active).getByText(/SDN 控制器是怎么部署/)).toBeInTheDocument();
-    // The active question highlights exactly one next point.
-    expect(within(active).getAllByText("Next", { selector: ".next-tag" })).toHaveLength(1);
-    const rows = within(screen.getByRole("navigation", { name: "Other questions" })).getAllByRole("button");
-    expect(rows).toHaveLength(2);
-    // The waiting question comes first, then the answered one.
+    expect(within(blocks[0]).getByText("控制器挂了还能转发吗？")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to the latest question" })).not.toBeInTheDocument();
+    // The list is in time order, newest first, and marks the question shown above.
+    const list = () =>
+      within(screen.getByRole("navigation", { name: "Questions, newest first" }))
+        .getAllByRole("button")
+        .filter((b) => b.classList.contains("ov-row"));
+    const rows = list();
+    expect(rows).toHaveLength(3);
     expect(rows[0]).toHaveTextContent("控制器故障还能转发吗");
     expect(rows[0]).toHaveTextContent("Waiting");
-    expect(rows[1]).toHaveTextContent("Answered");
-    expect(rows[1]).toHaveTextContent("4/4 covered");
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[1]).toHaveTextContent("SDN 控制器部署");
+    expect(rows[1]).toHaveTextContent("Now");
+    expect(rows[2]).toHaveTextContent("Answered");
+    expect(rows[2]).toHaveTextContent("4/4 covered");
 
-    // Clearing hides the answered question from the list until restored; the waiting one stays.
+    // Clearing hides the answered question from the list until restored; the others stay.
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Clear earlier" }));
     });
-    const left = within(screen.getByRole("navigation", { name: "Other questions" })).getAllByRole("button");
-    expect(left).toHaveLength(1);
-    expect(left[0]).toHaveTextContent("Waiting");
+    expect(list()).toHaveLength(2);
     expect(screen.getByText("1 cleared")).toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     });
-    const restored = within(screen.getByRole("navigation", { name: "Other questions" })).getAllByRole("button");
-    expect(restored).toHaveLength(2);
+    expect(list()).toHaveLength(3);
 
-    // Opening the answered question shows it in full, with a way back.
+    // Opening the active question shows it in the same place, with a way back.
     await act(async () => {
-      fireEvent.click(restored[1]);
+      fireEvent.click(list()[1]);
+    });
+    const active = screen.getByRole("article");
+    expect(active).toHaveAttribute("aria-current", "true");
+    expect(within(active).getAllByText("Next", { selector: ".next-tag" })).toHaveLength(1);
+    expect(within(active).getByRole("button", { name: "Back to the latest question" })).toBeInTheDocument();
+    // Context disclosure with tags.
+    fireEvent.click(within(active).getByRole("button", { name: /SDN 控制器是怎么部署/ }));
+    expect(within(active).getByText("复合问题·两问")).toBeInTheDocument();
+    // The list keeps its order while another question is shown.
+    expect(list()[0]).toHaveTextContent("控制器故障还能转发吗");
+    expect(list()[1]).toHaveAttribute("aria-current", "true");
+
+    // The answered question, with its full answer and bold keywords.
+    await act(async () => {
+      fireEvent.click(list()[2]);
     });
     const answered = screen.getByRole("article");
     expect(within(answered).getAllByLabelText("Covered")).toHaveLength(4);
-    expect(screen.getByText("Looking at another question")).toBeInTheDocument();
-    // Full answer with bold keywords.
     fireEvent.click(within(answered).getByRole("button", { name: "Show full answer →" }));
     expect(within(answered).getByText("双活数据中心", { selector: "strong" })).toBeInTheDocument();
-    // One click goes back to the current question.
+    // One click goes back to the newest question.
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Back to the current question" }));
+      fireEvent.click(screen.getByRole("button", { name: "Back to the latest question" }));
     });
-    expect(screen.queryByText("Looking at another question")).not.toBeInTheDocument();
-    const current = screen.getByRole("article");
-    // Context disclosure with tags.
-    fireEvent.click(within(current).getByRole("button", { name: /SDN 控制器是怎么部署/ }));
-    expect(within(current).getByText("复合问题·两问")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to the latest question" })).not.toBeInTheDocument();
+    expect(list()[0]).toHaveAttribute("aria-current", "true");
 
     // Latency in the footer.
     expect(screen.getByRole("button", { name: /^Latency \d\.\d s$/ })).toBeInTheDocument();
@@ -145,11 +156,11 @@ describe("footerKeys", () => {
 });
 
 describe("compactRows", () => {
-  it("keeps live and waiting questions, folds older ones and leaves cleared ones out", async () => {
+  it("keeps the shown, live and waiting questions, folds older ones and leaves cleared ones out", async () => {
     const { compactRows, RECENT_ROWS } = await import("./Overlay");
-    const { emptySession } = await import("../state/session");
+    const { emptySession, timeline } = await import("../state/session");
     const view = emptySession();
-    const status = (id: number) => (id === 9 ? "pending" : id === 8 ? "active" : "answered");
+    const status = (id: number) => (id === 9 ? "pending" : id === 4 ? "active" : "answered");
     for (let id = 1; id <= 9; id++) {
       view.questions[id] = {
         id,
@@ -169,16 +180,17 @@ describe("compactRows", () => {
       };
       view.order.push(id);
     }
-    // Shown in full: question 7; the rest in display order.
-    const others = [8, 9, 6, 5, 4, 3, 2, 1];
-    const rows = compactRows(view, others, 8, new Set([1, 2]));
-    expect(rows.keep).toEqual([8, 9]);
-    expect(rows.recent).toEqual([6, 5, 4].slice(0, RECENT_ROWS));
-    expect(rows.older).toEqual([3]);
-    expect(rows.cleared).toBe(2);
-    // Clearing never hides the live or a waiting question.
-    const all = compactRows(view, others, 8, new Set(others));
-    expect(all.keep).toEqual([8, 9]);
-    expect(all.earlier).toEqual([]);
+    const all = timeline(view);
+    expect(all).toEqual([9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    // Shown in full: question 2; live: question 4; waiting: question 9.
+    const rows = compactRows(view, all, 2, 4, new Set([1]));
+    expect(rows.keep).toEqual([9, 4, 2]);
+    expect(rows.recent).toEqual([8, 7, 6].slice(0, RECENT_ROWS));
+    expect(rows.older).toEqual([5, 3]);
+    expect(rows.cleared).toBe(1);
+    // Clearing never hides the shown, live or a waiting question.
+    const cleared = compactRows(view, all, 2, 4, new Set(all));
+    expect(cleared.keep).toEqual([9, 4, 2]);
+    expect(cleared.earlier).toEqual([]);
   });
 });
