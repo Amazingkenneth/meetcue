@@ -2704,14 +2704,18 @@ mod tests {
         });
         h.say(Channel::Remote, 1300, 1800, "第二题是什么？");
         h.detect_reply(YES);
+        let focus = |h: &Harness| {
+            h.events.iter().rev().find_map(|e| match e {
+                MeetCueEvent::QueueChanged { focus, active, .. } => Some((*focus, *active)),
+                _ => None,
+            })
+        };
+        // The newest question is shown while the first one is still active.
+        assert_eq!(focus(&h), Some((Some(2), Some(1))));
         h.input(Input::Action(UserAction::FocusStep {
-            target: FocusTarget::Next,
+            target: FocusTarget::Prev,
         }));
-        let focus = h.events.iter().rev().find_map(|e| match e {
-            MeetCueEvent::QueueChanged { focus, active, .. } => Some((*focus, *active)),
-            _ => None,
-        });
-        assert_eq!(focus, Some((Some(2), Some(1))));
+        assert_eq!(focus(&h), Some((Some(1), Some(1))));
         h.input(Input::Action(UserAction::Pause));
         assert_eq!(h.engine.state(), SessionState::Paused);
         h.input(Input::Action(UserAction::Resume));

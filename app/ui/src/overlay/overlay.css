@@ -143,15 +143,33 @@ html.overlay-view body {
 .st-active { color: var(--accent); }
 .st-pending { color: var(--link); }
 
+/* The question shown in full keeps its place at the top; the list below it
+   scrolls on its own and grows downwards as the meeting goes on. */
 .ov-chat {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
   padding: 4px var(--pad) var(--pad);
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.ov-detail,
+.ov-rows {
+  min-height: 0;
+  overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--ov-line) transparent;
+}
+
+.ov-detail {
+  flex: 0 1 auto;
+  max-height: 65%;
+}
+
+.ov-rows {
+  flex: 1 1 auto;
 }
 
 .ov-empty {
@@ -169,18 +187,7 @@ html.overlay-view body {
   padding: 1px 6px;
 }
 
-.ov-away {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 10px;
-  border: 1px solid var(--ov-accent-soft);
-  border-radius: var(--radius);
-  color: var(--ov-text-2);
-  font-size: calc(12px * var(--ov-scale, 1));
-}
-
-.ov-away .ov-link { margin: 0 0 0 auto; }
+.ov-block header .ov-back { margin: 0; font-size: inherit; }
 
 .ov-rows {
   display: flex;
@@ -202,6 +209,7 @@ html.overlay-view body {
 
 .ov-row:hover { background: var(--ov-card) !important; color: var(--ov-text) !important; }
 .ov-row[data-live="true"] { border-color: var(--ov-accent-soft) !important; }
+.ov-row[data-selected="true"] { background: var(--ov-card-focus) !important; color: var(--ov-text) !important; }
 .ov-row .mono { color: var(--ov-text-3); flex: none; }
 .ov-row .short { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ov-row .ov-muted, .ov-row .st { flex: none; font-size: calc(11px * var(--ov-scale, 1)); }
