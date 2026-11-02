@@ -4,6 +4,11 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Hints for open-ended questions, such as "how do you balance work and family?" or "tell me about a time when…", are no longer a few generic lines. They now give a clear stance, two to four concrete practices, an example and a trade-off, with a longer sample answer that is still easy to say out loud. Short factual questions keep the short answer.
+- The panel now follows the meeting: the newest question is always shown in full at the top, even while it waits for you to finish the previous one, so its hints are never only in the list below. The question list is in the order questions were asked, newest first, and earlier questions move down as new ones come in. Clicking a line shows that question in the same place above the list, and **Back to the latest question** or the next new question brings you back.
+
 ## 0.3.7 — 2026-11-01
 
 ### Changed

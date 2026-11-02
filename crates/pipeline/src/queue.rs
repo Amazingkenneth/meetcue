@@ -21,7 +21,7 @@ pub enum Admission {
 #[derive(Debug, Default)]
 pub struct QuestionQueue {
     items: Vec<(QuestionId, QuestionStatus)>,
-    /// Explicit focus set by the user; `None` follows the active question.
+    /// Explicit focus set by the user; `None` follows the newest question.
     focus: Option<QuestionId>,
 }
 
@@ -51,12 +51,14 @@ impl QuestionQueue {
             .count()
     }
 
-    /// The question shown as "current": the user's focus, else the active one,
-    /// else the most recent question.
+    /// The question shown in full: the user's pick, else the newest question,
+    /// so the panel follows the meeting even while an older one is active.
     pub fn focus(&self) -> Option<QuestionId> {
-        self.focus
-            .or_else(|| self.active())
-            .or_else(|| self.items.last().map(|(id, _)| *id))
+        self.focus.or_else(|| self.newest())
+    }
+
+    fn newest(&self) -> Option<QuestionId> {
+        self.items.last().map(|(id, _)| *id)
     }
 
     pub fn add(&mut self, id: QuestionId, admission: Admission) -> Changes {
@@ -84,9 +86,8 @@ impl QuestionQueue {
         };
         self.items.push((id, status));
         changes.push((id, status));
-        if status == QuestionStatus::Active {
-            self.focus = None;
-        }
+        // A new question moves the meeting on, so the panel follows it again.
+        self.focus = None;
         changes
     }
 
@@ -130,7 +131,7 @@ impl QuestionQueue {
         if self.status(id).is_none() {
             return false;
         }
-        self.focus = if Some(id) == self.active() {
+        self.focus = if Some(id) == self.newest() {
             None
         } else {
             Some(id)
@@ -167,7 +168,6 @@ impl QuestionQueue {
         {
             self.set(next, QuestionStatus::Active, changes);
         }
-        self.focus = None;
     }
 
     fn set(&mut self, id: QuestionId, status: QuestionStatus, changes: &mut Changes) {
@@ -281,22 +281,29 @@ mod tests {
     }
 
     #[test]
-    fn focus_is_display_only() {
+    fn focus_follows_the_newest_question_and_is_display_only() {
         let mut q = QuestionQueue::default();
         q.add(1, Admission::Queue);
         q.add(2, Admission::Queue);
         q.add(3, Admission::Queue);
-        assert_eq!(q.focus(), Some(1));
-        assert!(q.step_focus(FocusTarget::Next));
+        // The newest question is shown even though the first one is active.
+        assert_eq!(q.focus(), Some(3));
+        assert!(!q.step_focus(FocusTarget::Next));
+        assert!(q.step_focus(FocusTarget::Prev));
         assert_eq!(q.focus(), Some(2));
         assert_eq!(q.active(), Some(1), "focus must not change status");
-        assert!(q.step_focus(FocusTarget::Next));
-        assert!(!q.step_focus(FocusTarget::Next));
         assert!(q.set_focus(1));
         assert!(!q.step_focus(FocusTarget::Prev));
-        // When the active question changes, focus follows it again.
-        q.set_focus(3);
+        // Finishing the active question keeps the user's pick.
         q.finish_active();
-        assert_eq!(q.focus(), Some(2));
+        assert_eq!(q.focus(), Some(1));
+        // A new question brings the panel back to the newest one.
+        q.add(4, Admission::Queue);
+        assert_eq!(q.focus(), Some(4));
+        // Picking the newest question is the same as following it.
+        q.set_focus(2);
+        assert!(q.set_focus(4));
+        q.add(5, Admission::Queue);
+        assert_eq!(q.focus(), Some(5));
     }
 }

@@ -9,11 +9,12 @@ import {
   contextAround,
   coverageCount,
   currentId,
-  displayOrder,
+  latestId,
   liveId,
   medianLatency,
   neighbours,
   nextPoint,
+  timeline,
   type QuestionView,
   type SessionErrorView,
   type SessionView,
@@ -268,19 +269,20 @@ const focus = (id: number) => void backend().invoke("user_action", { action: { t
 function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
   const { t } = useTranslation();
   const current = currentId(view);
+  const latest = latestId(view);
   const live = liveId(view);
-  const listRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLElement>(null);
   // When each question was first shown, so delayed hints don't wait again after looking elsewhere.
   const shown = useRef(new Map<string, number>());
   // Older questions fold away; "Clear earlier" hides them for this meeting only.
   const [expanded, setExpanded] = useState(false);
   const [cleared, setCleared] = useState<{ session: number | null; ids: ReadonlySet<number> }>({ session: null, ids: NONE });
-  // The question shown in full is first in the list, so switching scrolls to the top.
+  // A new question goes on top of the list, so bring the list back up to it.
   useEffect(() => {
     listRef.current?.scrollTo?.({ top: 0, behavior: "smooth" });
-  }, [current]);
+  }, [latest]);
 
-  if (!view.order.length) {
+  if (!view.order.length || current === null) {
     return (
       <div className="ov-chat">
         <div className="ov-empty">
@@ -303,62 +305,66 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
       </div>
     );
   }
-  const [top, ...others] = displayOrder(view);
   const clearedIds = cleared.session === view.startedAt ? cleared.ids : NONE;
-  const rows = compactRows(view, others, live, clearedIds);
-  const visible = [...rows.keep, ...rows.recent, ...(expanded ? rows.older : [])];
-  const q = view.questions[top];
-  const key = `${view.startedAt}:${top}`;
+  const all = timeline(view);
+  const rows = compactRows(view, all, current, live, clearedIds);
+  const shownRows = new Set([...rows.keep, ...rows.recent, ...(expanded ? rows.older : [])]);
+  const visible = all.filter((id) => shownRows.has(id));
+  const q = view.questions[current];
+  const key = `${view.startedAt}:${current}`;
   if (!shown.current.has(key)) shown.current.set(key, Date.now());
   return (
-    <div className="ov-chat" aria-live="polite" ref={listRef}>
-      {live !== null && current !== live && (
-        <div className="ov-away" role="status">
-          <span>{t("overlay.viewingOther")}</span>
-          <button className="ov-link" onClick={() => focus(live)}>
-            {t("overlay.backToLive")}
-          </button>
-        </div>
-      )}
-      {q && <ChatBlock key={key} q={q} view={view} display={display} shownAt={shown.current.get(key) ?? 0} isLive={top === live} />}
-      {visible.length > 0 && (
-        <nav className="ov-rows" aria-label={t("overlay.otherQuestions")}>
-          {visible.map((id) => {
-            const o = view.questions[id];
-            return o ? <QuestionRow key={id} q={o} view={view} isLive={id === live} /> : null;
-          })}
-        </nav>
-      )}
-      {(rows.older.length > 0 || rows.earlier.length > 0 || rows.cleared > 0) && (
-        <div className="ov-compact">
-          {rows.older.length > 0 && (
-            <button className="ov-link" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
-              {expanded ? t("overlay.showFewer") : t("overlay.showEarlier", { count: rows.older.length })}
-            </button>
-          )}
-          <span className="grow" />
-          {rows.cleared > 0 && (
-            <>
-              <span className="ov-muted">{t("overlay.clearedCount", { count: rows.cleared })}</span>
-              <button className="ov-link" onClick={() => setCleared({ session: view.startedAt, ids: new Set() })}>
-                {t("overlay.restore")}
+    <div className="ov-chat">
+      {/* The question shown in full stays in one place; the list below it scrolls. */}
+      <div className="ov-detail" aria-live="polite">
+        {q && (
+          <ChatBlock
+            key={key}
+            q={q}
+            view={view}
+            display={display}
+            shownAt={shown.current.get(key) ?? 0}
+            isLive={current === live}
+            onBack={latest !== null && current !== latest ? () => focus(latest) : null}
+          />
+        )}
+      </div>
+      <nav className="ov-rows" aria-label={t("overlay.questionList")} ref={listRef}>
+        {visible.map((id) => {
+          const o = view.questions[id];
+          return o ? <QuestionRow key={id} q={o} view={view} isLive={id === live} selected={id === current} /> : null;
+        })}
+        {(rows.older.length > 0 || rows.earlier.length > 0 || rows.cleared > 0) && (
+          <div className="ov-compact">
+            {rows.older.length > 0 && (
+              <button className="ov-link" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+                {expanded ? t("overlay.showFewer") : t("overlay.showEarlier", { count: rows.older.length })}
               </button>
-            </>
-          )}
-          {rows.earlier.length > 0 && (
-            <button
-              className="ov-link"
-              title={t("overlay.clearEarlierTitle")}
-              onClick={() => {
-                setCleared({ session: view.startedAt, ids: new Set([...clearedIds, ...rows.earlier]) });
-                setExpanded(false);
-              }}
-            >
-              {t("overlay.clearEarlier")}
-            </button>
-          )}
-        </div>
-      )}
+            )}
+            <span className="grow" />
+            {rows.cleared > 0 && (
+              <>
+                <span className="ov-muted">{t("overlay.clearedCount", { count: rows.cleared })}</span>
+                <button className="ov-link" onClick={() => setCleared({ session: view.startedAt, ids: new Set() })}>
+                  {t("overlay.restore")}
+                </button>
+              </>
+            )}
+            {rows.earlier.length > 0 && (
+              <button
+                className="ov-link"
+                title={t("overlay.clearEarlierTitle")}
+                onClick={() => {
+                  setCleared({ session: view.startedAt, ids: new Set([...clearedIds, ...rows.earlier]) });
+                  setExpanded(false);
+                }}
+              >
+                {t("overlay.clearEarlier")}
+              </button>
+            )}
+          </div>
+        )}
+      </nav>
     </div>
   );
 }
@@ -367,36 +373,45 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
 export const RECENT_ROWS = 3;
 
 /**
- * Splits the one-line rows so a long meeting stays easy to scan: the live and
- * waiting questions always show, then the most recent earlier ones; older
- * ones fold behind "Show earlier", and cleared ones are left out until restored.
+ * Splits the list so a long meeting stays easy to scan without changing its
+ * time order: the question shown in full, the live one and waiting ones always
+ * show, then the most recent earlier ones; older ones fold behind "Show
+ * earlier", and cleared ones are left out until restored.
  */
 export function compactRows(
   view: SessionView,
-  others: number[],
+  ids: number[],
+  current: number | null,
   live: number | null,
   cleared: ReadonlySet<number>,
 ): { keep: number[]; earlier: number[]; recent: number[]; older: number[]; cleared: number } {
   const keep: number[] = [];
   const earlier: number[] = [];
   let hidden = 0;
-  for (const id of others) {
+  for (const id of ids) {
     const q = view.questions[id];
     if (!q) continue;
-    if (id === live || q.status === "pending") keep.push(id);
+    if (id === current || id === live || q.status === "pending") keep.push(id);
     else if (cleared.has(id)) hidden++;
     else earlier.push(id);
   }
   return { keep, earlier, recent: earlier.slice(0, RECENT_ROWS), older: earlier.slice(RECENT_ROWS), cleared: hidden };
 }
 
-/** One line for a question that isn't shown in full; a click shows it in full. */
-function QuestionRow({ q, view, isLive }: { q: QuestionView; view: SessionView; isLive: boolean }) {
+/** One line per question in the list; a click shows it in full above the list. */
+function QuestionRow({ q, view, isLive, selected }: { q: QuestionView; view: SessionView; isLive: boolean; selected: boolean }) {
   const { t } = useTranslation();
   const { done, total } = coverageCount(q);
   const at = view.startedAt !== null ? clock(q.tMs - view.startedAt) : "";
   return (
-    <button className="ov-row" data-live={isLive} title={q.text} onClick={() => focus(q.id)}>
+    <button
+      className="ov-row"
+      data-live={isLive}
+      data-selected={selected}
+      aria-current={selected ? "true" : undefined}
+      title={q.text}
+      onClick={() => focus(q.id)}
+    >
       <span className="mono">{at}</span>
       {isLive && <span className="ov-live">{t("overlay.live")}</span>}
       <span className="short">{q.short || q.text}</span>
@@ -422,12 +437,15 @@ function ChatBlock({
   display,
   shownAt,
   isLive,
+  onBack,
 }: {
   q: QuestionView;
   view: SessionView;
   display: HintDisplay;
   shownAt: number;
   isLive: boolean;
+  /** Set while an earlier question is shown: goes back to the newest one. */
+  onBack: (() => void) | null;
 }) {
   const { t } = useTranslation();
   const now = useNow(display.level === "delayed" ? 500 : 60_000);
@@ -444,6 +462,11 @@ function ChatBlock({
         <span className="mono">{at}</span>
         <span>{t("overlay.them")}</span>
         <span className="grow" />
+        {onBack && (
+          <button className="ov-link ov-back" title={t("overlay.viewingOther")} onClick={onBack}>
+            {t("overlay.backToLatest")}
+          </button>
+        )}
         <StatusText q={q} />
       </header>
       <button className="ov-question" aria-expanded={showContext} onClick={() => setShowContext(!showContext)}>

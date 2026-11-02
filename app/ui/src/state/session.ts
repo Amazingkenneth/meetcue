@@ -239,30 +239,27 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
   }
 }
 
-/** The question shown as current: user focus, else the active question, else the latest. */
+/** The newest question, which is where the meeting is now. */
+export function latestId(s: SessionView): number | null {
+  return s.order.length ? s.order[s.order.length - 1] : null;
+}
+
+/** The question shown in full: the user's pick, else the newest question. */
 export function currentId(s: SessionView): number | null {
-  return s.focus ?? s.active ?? (s.order.length ? s.order[s.order.length - 1] : null);
+  return s.focus ?? latestId(s);
 }
 
 /** The question being answered now: the active one, else the latest. */
 export function liveId(s: SessionView): number | null {
-  return s.active ?? (s.order.length ? s.order[s.order.length - 1] : null);
+  return s.active ?? latestId(s);
 }
 
 /**
- * Order of the conversation list: the question shown in full first, then the
- * live one if the user is looking at another, then the ones waiting their
- * turn, then earlier ones newest first. A new question never lands below the
- * fold of a short panel.
+ * Order of the question list: always by time, newest first, so the list reads
+ * like the meeting and earlier questions move down as new ones come in.
  */
-export function displayOrder(s: SessionView): number[] {
-  const cur = currentId(s);
-  const live = liveId(s);
-  const top = [cur, live].filter((id, i, a): id is number => id !== null && a.indexOf(id) === i);
-  const rest = s.order.filter((id) => !top.includes(id));
-  const waiting = rest.filter((id) => s.questions[id]?.status === "pending");
-  const earlier = rest.filter((id) => s.questions[id]?.status !== "pending").reverse();
-  return [...top, ...waiting, ...earlier];
+export function timeline(s: SessionView): number[] {
+  return [...s.order].reverse();
 }
 
 export function neighbours(s: SessionView): { prev: QuestionView | null; current: QuestionView | null; next: QuestionView | null } {
