@@ -12,7 +12,7 @@ You can also start and pause from the tray icon menu.
 
 1. **Recognition**: both audio sources are streamed to your speech recognition provider. Only sound that contains speech is sent; silence is skipped, apart from a short keep-alive signal.
 2. **Detection**: when another participant finishes a sentence, the detection model decides whether it's a question for you. Your own microphone is never checked for questions.
-3. **Hints**: for a question, the hint model writes three to five numbered talking points and a short sample answer. Points appear one by one as they are generated.
+3. **Hints**: for a question, the hint model writes three to five numbered talking points and a sample answer. Open-ended questions, such as asking for advice, your approach or a story ("how do you balance work and family?"), get a fuller answer with concrete practices, an example and a trade-off instead of a one-line summary. Points appear one by one as they are generated.
 
 With **Early trigger** on (**Settings › Hints**), MeetCue starts generating as soon as the speaker pauses for a moment, before the sentence is officially over. If the speaker keeps going, the hints are rewritten for the whole sentence; if the question changes noticeably, the early request is cancelled and a new one starts. This saves several hundred milliseconds on most questions.
 

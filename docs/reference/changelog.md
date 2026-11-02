@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Hints for open-ended questions, such as "how do you balance work and family?" or "tell me about a time when…", are no longer a few generic lines. They now give a clear stance, two to four concrete practices, an example and a trade-off, with a longer sample answer that is still easy to say out loud. Short factual questions keep the short answer.
+
 ## 0.3.7 — 2026-11-01
 
 ### Changed
