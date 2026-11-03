@@ -1,5 +1,5 @@
 {
-    "version": "0.3.9",
+    "version": "0.3.10",
     "description": "Meeting prompter and interview practice: live talking points from your own speech and model API keys",
     "homepage": "https://amazingkenneth.github.io/meetcue/",
     "license": "MIT",
@@ -9,8 +9,8 @@
     ],
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Amazingkenneth/meetcue/releases/download/v0.3.9/meetcue-win-x64.zip",
-            "hash": "95ab79aee516ae3029666098b4d56ea49fef5d4416a5508442d72d37bd6a6acb"
+            "url": "https://github.com/Amazingkenneth/meetcue/releases/download/v0.3.10/meetcue-win-x64.zip",
+            "hash": "2b46bf418e4f310f19b6c502b778422ec4a2ac1064a186f6cf00aade5109c049"
         }
     },
     "shortcuts": [
