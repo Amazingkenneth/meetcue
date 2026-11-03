@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Fixed
+
+- When the interviewer pauses mid-question, the rest of the sentence is now added to the question card instead of showing up as a separate question or being dropped. Two questions asked close together also no longer swap places in the list when the reply for the later one comes back first.
+
 ## 0.3.8 — 2026-11-02
 
 ### Changed
