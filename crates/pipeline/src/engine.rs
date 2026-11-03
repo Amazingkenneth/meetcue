@@ -612,7 +612,7 @@ impl Engine {
                         self.extend_question(id, line.text.clone(), line.t1_ms, now, out)
                     }
                     EarlyState::Dropped => {
-                        if prefilter::might_be_question(&line.text) {
+                        if prefilter::worth_checking(&line.text) {
                             self.start_detect(&line, now, false, Target::New, out);
                         }
                     }
@@ -662,9 +662,9 @@ impl Engine {
             }
             return;
         }
-        // Right after a question, let the model judge sentences the rules
-        // would skip: "idea B too" may finish it.
-        if prefilter::might_be_question(&line.text) || self.recent_question(&line).is_some() {
+        // The model decides by meaning whether an answer is expected, so
+        // requests without a question word or mark are not missed.
+        if prefilter::worth_checking(&line.text) {
             self.start_detect(&line, now, false, Target::New, out);
         }
     }
@@ -2122,12 +2122,26 @@ mod tests {
     }
 
     #[test]
-    fn non_questions_never_reach_the_model() {
+    fn back_channels_and_my_own_speech_never_reach_the_model() {
         let mut h = Harness::new(no_early());
-        h.say(Channel::Remote, 0, 1000, "好的，我们开始吧。");
         h.say(Channel::Remote, 2000, 2500, "对吧？");
-        h.say(Channel::Me, 3000, 4000, "你能听到我吗？");
+        h.say(Channel::Remote, 3000, 3300, "嗯");
+        h.say(Channel::Me, 4000, 5000, "你能听到我吗？");
         assert!(h.detects.is_empty());
+    }
+
+    #[test]
+    fn the_model_judges_requests_without_question_words() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 2000, "说一下你对微服务的理解");
+        assert_eq!(h.detects.len(), 1, "no question word or mark");
+        h.detect_reply(YES);
+        assert_eq!(question_texts(&h).len(), 1);
+        // A plain statement is also sent, and the model turns it down.
+        h.say(Channel::Remote, 20_000, 21_000, "好的，我们开始吧。");
+        assert_eq!(h.detects.len(), 2);
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        assert_eq!(question_texts(&h).len(), 1);
     }
 
     #[test]
@@ -2673,9 +2687,13 @@ mod tests {
         h.detect_reply(r#"{"isQuestion":false,"directedToMe":true,"merged":true}"#);
         assert_eq!(h.hints.len(), 2);
         assert_eq!(texts(&h).last().map(|t| (t.0, t.1)), Some((1, 2)));
-        // Much later, the same fragment is just a remark.
+        // Much later the model sees the same kind of fragment on its own
+        // and turns it down as a remark.
         h.say(Channel::Remote, 20_000, 20_800, "Idea C, too.");
-        assert_eq!(h.detects.len(), 2);
+        assert_eq!(h.detects.len(), 3);
+        assert_eq!(h.hints.len(), 2, "no speculative hints for a fragment");
+        h.detect_reply(r#"{"isQuestion":false,"directedToMe":true,"merged":false}"#);
+        assert_eq!(texts(&h).last().map(|t| (t.0, t.1)), Some((1, 2)));
     }
 
     #[test]

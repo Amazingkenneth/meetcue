@@ -4,6 +4,10 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Changed
+
+- Whether a sentence needs an answer is now decided by the detection model from its meaning, not by question words or a question mark. Requests such as "说一下你对微服务的理解" or "I'd like to hear about your last role" now get hints. Every sentence from the other side, apart from very short back-channels, is now sent to the detection model, so detection makes more requests than before.
+
 ### Fixed
 
 - When the interviewer pauses mid-question, the rest of the sentence is now added to the question card instead of showing up as a separate question or being dropped. Two questions asked close together also no longer swap places in the list when the reply for the later one comes back first.
