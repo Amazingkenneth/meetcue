@@ -310,6 +310,10 @@ pub struct Engine {
     last_me_activity: i64,
     early: Option<EarlyLink>,
     candidates: HashMap<ReqId, Candidate>,
+    /// Detection replies that came back before the reply for a sentence said
+    /// earlier. They wait for it, so questions are created in the order they
+    /// were asked and the rest of a split sentence can merge into its start.
+    held_detects: Vec<(ReqId, Result<String, MeetCueError>)>,
     /// Speculative hint requests, by the detection request they belong to.
     speculative: HashMap<ReqId, Speculation>,
     reqs: HashMap<ReqId, Req>,
@@ -347,6 +351,7 @@ impl Engine {
             last_me_activity: i64::MIN / 2,
             early: None,
             candidates: HashMap::new(),
+            held_detects: Vec::new(),
             speculative: HashMap::new(),
             reqs: HashMap::new(),
             next_req: 1,
@@ -407,6 +412,7 @@ impl Engine {
             out.push(Output::Cancel { req });
         }
         self.candidates.clear();
+        self.held_detects.clear();
         self.speculative.clear();
         self.state = SessionState::Stopped;
         out.push(Output::Emit(MeetCueEvent::SessionState {
@@ -851,6 +857,63 @@ impl Engine {
     }
 
     fn on_detect_done(
+        &mut self,
+        req: ReqId,
+        reply: Result<String, MeetCueError>,
+        now: i64,
+        out: &mut Vec<Output>,
+    ) {
+        if self.earlier_detection_pending(req) {
+            self.reqs.remove(&req);
+            self.held_detects.push((req, reply));
+            return;
+        }
+        self.apply_detect_done(req, reply, now, out);
+        self.release_held_detects(now, out);
+    }
+
+    /// Whether a new sentence said before the one `req` checks is still
+    /// waiting for its detection reply.
+    fn earlier_detection_pending(&self, req: ReqId) -> bool {
+        let Some(c) = self
+            .candidates
+            .get(&req)
+            .filter(|c| c.target == Target::New)
+        else {
+            return false;
+        };
+        self.candidates
+            .iter()
+            .any(|(r, o)| *r != req && o.target == Target::New && o.speech_end < c.speech_end)
+    }
+
+    /// Applies held detection replies, oldest sentence first, as far as no
+    /// earlier sentence is still being checked.
+    fn release_held_detects(&mut self, now: i64, out: &mut Vec<Output>) {
+        loop {
+            let next = self
+                .held_detects
+                .iter()
+                .enumerate()
+                .min_by_key(|(_, (r, _))| {
+                    self.candidates
+                        .get(r)
+                        .map(|c| c.speech_end)
+                        .unwrap_or(i64::MIN)
+                })
+                .map(|(i, (r, _))| (i, *r));
+            let Some((i, req)) = next else {
+                return;
+            };
+            if self.earlier_detection_pending(req) {
+                return;
+            }
+            let (req, reply) = self.held_detects.remove(i);
+            self.apply_detect_done(req, reply, now, out);
+        }
+    }
+
+    fn apply_detect_done(
         &mut self,
         req: ReqId,
         reply: Result<String, MeetCueError>,
@@ -1378,11 +1441,15 @@ impl Engine {
     }
 
     fn cancel_req(&mut self, req: ReqId, now: i64, out: &mut Vec<Output>) {
-        self.candidates.remove(&req);
+        let was_candidate = self.candidates.remove(&req).is_some();
+        self.held_detects.retain(|(r, _)| *r != req);
         if self.reqs.remove(&req).is_some() {
             out.push(Output::Cancel { req });
         }
         self.drop_speculation(req, now, out);
+        if was_candidate {
+            self.release_held_detects(now, out);
+        }
     }
 
     /// Discards the hints started alongside detection request `detect`.
@@ -2905,5 +2972,110 @@ mod tests {
         // Nobody has spoken for a while: let the entry expire.
         h.at(5 * HINTS_WARM_MS);
         assert_eq!(h.warms.len(), 2);
+    }
+
+    fn question_texts(h: &Harness) -> Vec<(QuestionId, i64, String)> {
+        let mut qs = std::collections::BTreeMap::new();
+        for e in &h.events {
+            if let MeetCueEvent::QuestionNew { id, t_ms, text, .. } = e {
+                qs.insert(*id, (*t_ms, text.clone()));
+            }
+        }
+        qs.into_iter()
+            .map(|(id, (t, text))| (id, t, text))
+            .collect()
+    }
+
+    #[test]
+    fn questions_keep_the_order_they_were_asked_in() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 1000, 3000, "What is a hash map?");
+        h.say(
+            Channel::Remote,
+            3600,
+            6000,
+            "How do you handle on-call incidents?",
+        );
+        assert_eq!(h.detects.len(), 2, "both sentences are checked at once");
+        let (first, _) = h.detects[0].clone();
+        let (second, _) = h.detects[1].clone();
+        // The reply for the later sentence comes back first.
+        h.at(6500).input(Input::DetectDone {
+            req: second,
+            reply: Ok(YES.into()),
+        });
+        assert!(
+            question_texts(&h).is_empty(),
+            "it waits for the earlier one"
+        );
+        h.at(7000).input(Input::DetectDone {
+            req: first,
+            reply: Ok(YES.into()),
+        });
+        assert_eq!(
+            question_texts(&h),
+            vec![
+                (1, 3000, "What is a hash map?".to_string()),
+                (2, 6000, "How do you handle on-call incidents?".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn rest_of_a_split_question_merges_while_its_start_is_checked() {
+        const MERGED: &str = r#"{"isQuestion":true,"directedToMe":true,"merged":true,"short":"Q","subQuestions":[],"tags":[]}"#;
+        let mut h = Harness::new(no_early());
+        h.say(
+            Channel::Remote,
+            1000,
+            3000,
+            "How would you design a zero trust",
+        );
+        h.say(Channel::Remote, 3800, 6000, "network for a remote team?");
+        assert_eq!(h.detects.len(), 2);
+        let (first, _) = h.detects[0].clone();
+        let (second, _) = h.detects[1].clone();
+        h.input(Input::DetectDone {
+            req: second,
+            reply: Ok(MERGED.into()),
+        });
+        h.input(Input::DetectDone {
+            req: first,
+            reply: Ok(YES.into()),
+        });
+        assert_eq!(
+            question_texts(&h),
+            vec![(
+                1,
+                3000,
+                "How would you design a zero trust network for a remote team?".to_string()
+            )]
+        );
+    }
+
+    #[test]
+    fn a_held_reply_is_applied_once_the_earlier_check_is_cancelled() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 1000, 3000, "What is a hash map?");
+        h.say(
+            Channel::Remote,
+            3600,
+            6000,
+            "How do you handle on-call incidents?",
+        );
+        let (first, _) = h.detects[0].clone();
+        let (second, _) = h.detects[1].clone();
+        h.input(Input::DetectDone {
+            req: second,
+            reply: Ok(YES.into()),
+        });
+        let mut out = Vec::new();
+        let now = h.now;
+        h.engine.cancel_req(first, now, &mut out);
+        h.absorb(out);
+        assert_eq!(
+            question_texts(&h),
+            vec![(1, 6000, "How do you handle on-call incidents?".to_string())]
+        );
     }
 }
