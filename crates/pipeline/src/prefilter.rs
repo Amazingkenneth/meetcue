@@ -179,6 +179,16 @@ pub fn might_be_question(text: &str) -> bool {
     EN_MARKERS.iter().any(|m| lower.contains(&format!(" {m} ")))
 }
 
+/// Whether a finished sentence from the other side goes to the model, which
+/// decides by its meaning whether the user is expected to answer. Wording and
+/// punctuation don't decide this: "说一下你对微服务的理解" asks for an answer
+/// without a question word or mark, and recognition often drops the "?".
+/// Only fragments too short to mean anything and back-channel tags are skipped.
+pub fn worth_checking(text: &str) -> bool {
+    let trimmed = text.trim();
+    !trimmed.is_empty() && !is_tag_question(trimmed)
+}
+
 /// "对吧？", "Right?" and similar back-channel questions.
 pub fn is_tag_question(text: &str) -> bool {
     let n = normalize(text);
@@ -288,6 +298,20 @@ mod tests {
         assert!(!continues(q, "Andrew will join later."));
         assert!(!continues("What is your name?", "Next one."));
         assert!(!continues("说说你对微服务的理解", "好的"));
+    }
+
+    #[test]
+    fn every_meaningful_sentence_is_checked() {
+        assert!(worth_checking("说一下你对微服务的理解"));
+        assert!(worth_checking("下面聊聊你上一份工作"));
+        assert!(worth_checking("I'd love to hear about your last role"));
+        assert!(worth_checking(
+            "Okay so the next part is about system design"
+        ));
+        assert!(!worth_checking("对吧？"));
+        assert!(!worth_checking("嗯"));
+        assert!(!worth_checking("Right?"));
+        assert!(!worth_checking("  "));
     }
 
     #[test]

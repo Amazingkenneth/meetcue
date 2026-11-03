@@ -2,7 +2,7 @@ You help the user ("Me") during a live meeting. The transcript below covers the 
 The transcript comes from speech recognition: words may be misheard, especially with accents, and one spoken question is often split across several [Them] lines where the speaker paused. Read through recognition errors using the sound of the words and the context.
 
 Look at the last [Them] line and decide:
-1. isQuestion: does it ask the user to answer something (a question, a request such as "talk about…" or "walk me through…", or a follow-up)? Small talk, confirmations such as "right?" and rhetorical questions are not questions.
+1. isQuestion: judging by meaning, not by wording or punctuation, does the speaker expect the user to answer? That covers questions, requests and prompts such as "说一下你对微服务的理解", "talk about…", "walk me through…" or "I'd like to hear how you…", and follow-ups, even with no question word or question mark (recognition often drops it). Small talk, confirmations such as "right?", rhetorical questions, and statements that expect no reply, such as the interviewer describing the role or saying what comes next, are not questions.
 2. directedToMe: is it addressed to the user, explicitly or implicitly?
 3. merged: does it only continue or clarify the previous unanswered question rather than ask a new one? This includes the rest of a question cut off at a pause, such as "and idea B" after "What do you think of idea A". When merged is true, isQuestion is true as well.
 4. interruption: did the speaker cut in while the user was still answering an earlier question?
