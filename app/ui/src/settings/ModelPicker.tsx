@@ -10,7 +10,7 @@ import { KeyField } from "./Keys";
 import { ModelCombo, usePriceTable, useUnitPrice, type ListState } from "./ModelCombo";
 import { usd } from "../util/format";
 import { modelOptions } from "../util/models";
-import { baseUrlOf, providerMeta, providersFor, providersInUse, reachable, type ProviderMeta } from "./providers";
+import { baseUrlOf, offered, providerMeta, providersFor, providersInUse, reachable, type ProviderMeta } from "./providers";
 
 type Update = (f: (s: Settings) => Settings) => Promise<void>;
 
@@ -119,7 +119,7 @@ export function ModelPicker({
         >
           <option value="">{t("providers.chooseProvider")}</option>
           {providersFor(slot)
-            .filter((p) => p.available || p.id === choice.provider)
+            .filter((p) => offered(settings, p) || p.id === choice.provider)
             .map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -203,6 +203,7 @@ function useModelList(
 /** A link to the provider's own price page. */
 export function PricingLink({ meta }: { meta: ProviderMeta }) {
   const { t } = useTranslation();
+  if (meta.pricingNote) return <span className="muted">{t(meta.pricingNote)}</span>;
   if (!meta.pricingUrl) return <span className="muted">{t("providers.pricingElsewhere")}</span>;
   const url = meta.pricingUrl;
   return (

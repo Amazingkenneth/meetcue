@@ -74,6 +74,27 @@
 
 部分服务在流式输出时不返回 token 用量，此时其用量和费用显示为零。
 
+## ChatGPT 订阅（实验性） {#chatgpt-subscription}
+
+用包含 Codex 的 ChatGPT 付费套餐（Plus、Pro、Business 等）做问题检测和要点生成，不需要 API 密钥。MeetCue 用 OpenAI Codex CLI 的方式登录，并连接同一个后端。
+
+::: warning OpenAI 不支持这种用法
+OpenAI 只允许自家的 Codex 应用使用这种登录方式。OpenAI 一旦修改该后端，它就可能失效；在其他应用中使用，账户也可能被 OpenAI 限制或停用。请自行承担风险。上面的 API 密钥供应商不受影响。
+:::
+
+1. **开启**：**设置 › 供应商与费用 › 高级 › 使用我的 ChatGPT 订阅（实验性）**，然后确认提示。
+2. **选择**：为问题检测、要点生成或两者选择 **ChatGPT subscription (experimental)** 作为供应商。
+3. **登录**：在 **接口地址与密钥** 中点 **使用 ChatGPT 登录**，然后在浏览器中完成登录。MeetCue 在 `127.0.0.1:1455`（或 `1457`）等待浏览器返回，请先关闭仍在进行的 Codex 登录。
+4. **模型**：列表显示 Codex 为你的账户提供的模型。`gpt-6-luna` 这类小模型出提示最快。
+
+和 API 密钥的区别：
+
+- **速度**：所有 Codex 模型都会先推理再回答。MeetCue 使用最低的推理强度，但第一个字仍比快速的 API 模型来得晚。可以运行[延迟测试](/zh/guide/latency)比较。
+- **费用**：请求占用套餐的用量额度，不单独计费，所以不显示价格，预算也不适用。达到额度时会显示 [MC-LLM-003](/zh/troubleshooting/error-codes#mc-llm-003)。
+- **令牌**：只在系统凭据库中保存刷新令牌，访问令牌只留在内存中。**退出登录** 会删除令牌，并请求 OpenAI 将其吊销。
+
+如果登录过期或被吊销，请求会失败并显示 [MC-LLM-002](/zh/troubleshooting/error-codes#mc-llm-002)：重新登录即可。
+
 ## 公司网络 {#corporate-networks}
 
 MeetCue 使用 Windows 证书库，公司安装的证书会被信任。所有连接（包括语音识别）都跟随 Windows 设置中手动配置的代理（**网络和 Internet › 代理**）。MeetCue 不会执行自动配置脚本；如果你的网络使用自动配置脚本，或要使用其他代理，请在 **设置 › 供应商与费用 › 高级 › HTTPS 代理** 中填写。如果连接失败并显示 [MC-NET-001](/zh/troubleshooting/error-codes#mc-net-001)，请看[延迟偏高](/zh/troubleshooting/latency#company-network)。

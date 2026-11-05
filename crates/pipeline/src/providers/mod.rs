@@ -8,6 +8,8 @@ use crate::provider::{AsrProvider, LlmProvider};
 
 pub mod alibaba;
 pub mod anthropic;
+pub mod chatgpt;
+pub mod chatgpt_login;
 pub mod deepgram;
 pub mod mock;
 pub mod openai;
@@ -76,6 +78,10 @@ pub fn llm(cfg: &ProviderConfig) -> Result<Arc<dyn LlmProvider>, MeetCueError> {
             cfg.base_url.clone(),
             cfg.proxy.clone(),
         ))),
+        chatgpt::ID => Ok(Arc::new(chatgpt::ChatGpt::new(
+            &key(cfg, codes::LLM_AUTH)?,
+            cfg.proxy.clone(),
+        )?)),
         "openai-compatible" => {
             let base = cfg
                 .base_url
@@ -104,7 +110,11 @@ mod tests {
     fn cfg(provider: &str) -> ProviderConfig {
         ProviderConfig {
             provider: provider.into(),
-            key: Some("key".into()),
+            key: Some(if provider == "chatgpt" {
+                r#"{"refresh":"rt","account":"acc"}"#.into()
+            } else {
+                "key".into()
+            }),
             base_url: Some("https://host/v1".into()),
             ..Default::default()
         }
@@ -115,7 +125,7 @@ mod tests {
         for p in ["soniox", "deepgram", "alibaba", "tencent", "mock"] {
             assert_eq!(asr(&cfg(p)).map(|a| a.id()).ok(), Some(p), "{p}");
         }
-        for p in ["anthropic", "openai-compatible", "mock"] {
+        for p in ["anthropic", "chatgpt", "openai-compatible", "mock"] {
             assert_eq!(llm(&cfg(p)).map(|l| l.id()).ok(), Some(p), "{p}");
         }
     }
@@ -132,6 +142,10 @@ mod tests {
         );
         assert_eq!(
             llm(&no_key("anthropic")).err().map(|e| e.code),
+            Some(codes::LLM_AUTH.to_string())
+        );
+        assert_eq!(
+            llm(&no_key("chatgpt")).err().map(|e| e.code),
             Some(codes::LLM_AUTH.to_string())
         );
         // The key is optional for OpenAI-compatible servers; the URL is not.

@@ -255,6 +255,17 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       credentials.delete(key);
       return null;
     },
+    // The preview has no browser sign-in: it pretends one succeeded.
+    chatgpt_sign_in: () => {
+      credentials.set("chatgpt", "signed-in");
+      return { email: "you@example.com", plan: "plus" };
+    },
+    chatgpt_cancel_sign_in: () => null,
+    chatgpt_account: () => (credentials.has("chatgpt") ? { email: "you@example.com", plan: "plus" } : null),
+    chatgpt_sign_out: () => {
+      credentials.delete("chatgpt");
+      return null;
+    },
     // The desktop shell restarts afterwards; here the preview just starts over.
     wipe_all_data: () => {
       credentials.clear();

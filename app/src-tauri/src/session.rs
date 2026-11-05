@@ -62,12 +62,18 @@ pub fn provider_config(
     model: &str,
     choice: &EndpointChoice,
 ) -> Result<ProviderConfig, MeetCueError> {
+    if provider == providers::chatgpt::ID && !settings.providers.chatgpt_subscription {
+        return Err(MeetCueError::new(
+            codes::LLM_AUTH,
+            "the experimental ChatGPT subscription provider is turned off",
+        ));
+    }
     let key = state.credentials.get(provider)?;
     let probes = state.probes.lock().unwrap().clone();
     let base_url = settings.providers.base_url(provider);
     // A base URL of the user's own replaces the provider's regional hosts.
     let host = match provider {
-        "openai-compatible" => None,
+        "openai-compatible" | providers::chatgpt::ID => None,
         _ if base_url.is_some() => None,
         _ => choose_host(provider, choice, &probes),
     };

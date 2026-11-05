@@ -17,6 +17,12 @@ export interface ProviderMeta {
   consoleUrl?: string;
   /** The provider's own price page. MeetCue does not list prices itself. */
   pricingUrl?: string;
+  /** Locale key of a note shown instead of a price link. */
+  pricingNote?: string;
+  /** Signs in with an account in the browser instead of taking a key. */
+  signIn?: boolean;
+  /** Offered only after the user turns it on in Settings (see `offered`). */
+  experimental?: boolean;
   available: boolean;
 }
 
@@ -71,6 +77,16 @@ export const PROVIDERS: ProviderMeta[] = [
     available: true,
   },
   {
+    id: "chatgpt",
+    kind: "llm",
+    name: "ChatGPT subscription (experimental)",
+    modelExample: "gpt-6-luna",
+    pricingNote: "chatgpt.pricingNote",
+    signIn: true,
+    experimental: true,
+    available: true,
+  },
+  {
     id: "openai-compatible",
     kind: "llm",
     name: "OpenAI-compatible",
@@ -90,6 +106,13 @@ export function providerMeta(id: string | null | undefined): ProviderMeta | unde
 
 export function providerName(id: string | null | undefined): string {
   return providerMeta(id)?.name ?? id ?? "—";
+}
+
+/** Whether the provider can be chosen now: experimental ones only once turned on. */
+export function offered(settings: Settings, p: ProviderMeta): boolean {
+  if (!p.available) return false;
+  if (p.id === "chatgpt") return settings.providers.chatgptSubscription;
+  return !p.experimental;
 }
 
 /** The user's base URL for a provider, if they set one. */

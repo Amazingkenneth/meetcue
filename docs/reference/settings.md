@@ -58,6 +58,7 @@ Every setting applies as soon as it's changed, including during a meeting: model
 | Hint model | `providers.hints` |
 | Base URL per provider (required for OpenAI-compatible, optional for Anthropic) | `providers.baseUrls`, for example `{"openai-compatible": "https://host/v1"}`. Older files with `providers.openaiBaseUrl` are moved here when loaded |
 | HTTPS proxy | `providers.proxy`; empty uses the system proxy |
+| Use my ChatGPT subscription (experimental) | `providers.chatgptSubscription`, default `false`. See [ChatGPT subscription](/guide/providers#chatgpt-subscription) |
 | Prices you entered (listed under **Your own prices**, where they can be removed) | `providers.pricingOverrides` |
 | Cost estimate assumptions (**How estimates are calculated**) | `providers.estimate`: `speechRatio`, `questionsPerHour`, `hintInputTokens`, `hintOutputTokens`, `detectInputTokens`, `detectOutputTokens`, `systemTokens`, `cancelOverhead` |
 | Budget | `providers.budget.sessionLimitUsd`, `monthlyLimitUsd`, `onLimit` (`notifyOnly`, `pauseHints`, `endSession`) |

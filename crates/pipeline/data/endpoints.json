@@ -48,6 +48,13 @@
       ],
       "probeModel": "claude-haiku-5-5"
     },
+    "chatgpt": {
+      "kind": "llm",
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "probeModel": "gpt-6-luna"
+    },
     "openai-compatible": {
       "kind": "llm",
       "userDefined": true,

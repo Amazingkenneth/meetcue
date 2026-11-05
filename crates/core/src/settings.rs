@@ -256,6 +256,9 @@ pub struct ProviderSettings {
     pub openai_base_url: Option<String>,
     /// Explicit HTTPS proxy; when empty the system proxy settings are used.
     pub proxy: Option<String>,
+    /// Experimental: offer "Sign in with ChatGPT" as a language model
+    /// provider. Off until the user turns it on and accepts the warning.
+    pub chatgpt_subscription: bool,
     pub pricing_overrides: Vec<PriceEntry>,
     pub estimate: CostAssumptions,
     pub budget: BudgetSettings,
