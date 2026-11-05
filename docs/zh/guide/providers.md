@@ -74,6 +74,19 @@
 
 部分服务在流式输出时不返回 token 用量，此时其用量和费用显示为零。
 
+## One API、New API 等网关 {#gateways}
+
+[One API](https://github.com/songquanpeng/one-api) 及其分支 [New API](https://github.com/QuantumNous/new-api) 等自建网关把多个供应商的密钥汇总到一个地址和一个网关自己的密钥之后。MeetCue 无需额外设置即可使用：
+
+- **任意模型，任一网关**：选择 **OpenAI-compatible**，填写以 `/v1` 结尾的网关地址，例如 `https://gateway.example.com/v1`，以及网关签发的密钥。模型名请使用网关列出的名称。
+- **经由 New API 使用 Claude**：选择 **Anthropic**，把 New API 的地址填为 Anthropic 的 **接口地址**，并填写 New API 密钥。New API 支持 Messages API，因此 MeetCue 的提示缓存和低思考设置依然生效。请保留 Claude 原本的模型名，MeetCue 要据此选择思考设置。若走 OpenAI 兼容方式，网关会转换请求，缓存随之失效，准备材料较长时会更慢、更贵。One API 不支持 Messages API，用它时 Claude 只能走 OpenAI 兼容方式。
+
+网关会让每条要点多经过一跳。服务器离你或离供应商较近时，通常只增加几十毫秒；[延迟探测](/zh/guide/latency)测量的就是网关地址，可以用它查看。为保证要点逐字流式显示：
+
+- 如果网关前面还有 nginx 等反向代理，请关闭响应缓冲（`proxy_buffering off`），否则要点会在最后一次性出现。
+- 使用 One API 时，如果用量和费用显示为零，请设置 `ENFORCE_INCLUDE_USAGE=true`。
+- 价格以网关自己的计费为准，如需预算请在 **你填写的价格** 中填写。
+
 ## 公司网络 {#corporate-networks}
 
 MeetCue 使用 Windows 证书库，公司安装的证书会被信任。所有连接（包括语音识别）都跟随 Windows 设置中手动配置的代理（**网络和 Internet › 代理**）。MeetCue 不会执行自动配置脚本；如果你的网络使用自动配置脚本，或要使用其他代理，请在 **设置 › 供应商与费用 › 高级 › HTTPS 代理** 中填写。如果连接失败并显示 [MC-NET-001](/zh/troubleshooting/error-codes#mc-net-001)，请看[延迟偏高](/zh/troubleshooting/latency#company-network)。

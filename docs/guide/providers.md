@@ -74,6 +74,19 @@ Any service that implements the OpenAI chat completions API with streaming, incl
 
 Some services don't report token usage while streaming. Usage and cost then show as zero for them.
 
+## Gateways such as One API and New API {#gateways}
+
+Self-hosted gateways such as [One API](https://github.com/songquanpeng/one-api) and its fork [New API](https://github.com/QuantumNous/new-api) put many providers' keys behind one address and one key of their own. MeetCue works with them without extra settings:
+
+- **Any model, through either gateway**: choose **OpenAI-compatible** and enter the gateway's address ending in `/v1`, for example `https://gateway.example.com/v1`, with a key the gateway issued. Use the model names the gateway lists.
+- **Claude, through New API**: choose **Anthropic** and enter the New API address as the Anthropic **Base URL**, with a New API key. New API speaks the Messages API, so MeetCue's prompt caching and low thinking settings still apply. Keep Claude's own model names, since MeetCue picks the thinking settings from them. Through the OpenAI-compatible route the gateway converts the request and the cache is lost, which makes long prepared materials slower and dearer. One API has no Messages API, so with it Claude only works through the OpenAI-compatible route.
+
+A gateway adds one hop to every hint. On a server near you or near the provider this is usually a few tens of milliseconds; run the [latency probe](/guide/latency) to see it, since it measures the gateway's address. To keep hints streaming:
+
+- If a reverse proxy such as nginx sits in front of the gateway, turn off response buffering (`proxy_buffering off`). Otherwise hints arrive all at once at the end.
+- In One API, set `ENFORCE_INCLUDE_USAGE=true` if usage and cost show as zero.
+- Prices come from the gateway's own billing, so enter them under **Your own prices** for budgets.
+
 ## Corporate networks
 
 MeetCue uses the Windows certificate store, so certificates installed by your company are trusted. It follows the manual proxy set in Windows Settings (**Network & internet › Proxy**) for all connections, including speech recognition. Automatic configuration scripts are not evaluated; if your network uses one, or to use a different proxy, enter it in **Settings › Providers & cost › Advanced › HTTPS proxy**. If connections fail with [MC-NET-001](/troubleshooting/error-codes#mc-net-001), see [High latency](/troubleshooting/latency#company-network).
