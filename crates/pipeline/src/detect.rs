@@ -19,6 +19,8 @@ pub struct Detection {
     pub short: String,
     pub sub_questions: Vec<String>,
     pub tags: Vec<String>,
+    /// How many [Them] lines just before the last one set this question up.
+    pub lead_in: u32,
 }
 
 /// Builds the detection request. `transcript` already ends with the sentence
@@ -52,6 +54,18 @@ pub fn parse(reply: &str) -> Option<Detection> {
             obj.insert(key.into(), Value::Bool(b));
         }
     }
+    // A count written as text or out of range is read leniently, not as a
+    // reason to discard the whole reply.
+    if let Some(v) = obj.get("leadIn") {
+        let n = match v {
+            Value::Number(n) => n.as_f64(),
+            Value::String(s) => s.trim().parse::<f64>().ok(),
+            _ => None,
+        }
+        .filter(|n| n.is_finite() && *n > 0.0)
+        .map_or(0, |n| n.min(10.0) as u32);
+        obj.insert("leadIn".into(), Value::from(n));
+    }
     for key in ["subQuestions", "tags"] {
         if let Some(Value::String(s)) = obj.get(key) {
             let list = if s.is_empty() {
@@ -68,6 +82,38 @@ pub fn parse(reply: &str) -> Option<Detection> {
     d.tags.truncate(3);
     d.sub_questions.retain(|t| !t.trim().is_empty());
     Some(d)
+}
+
+/// Whether `reply` already holds a whole JSON object, so it can be used
+/// without waiting for the rest of the stream (closing events, usage).
+pub fn is_complete(reply: &str) -> bool {
+    let Some(start) = reply.find('{') else {
+        return false;
+    };
+    let (mut depth, mut in_str, mut escaped) = (0usize, false, false);
+    for c in reply[start..].chars() {
+        if in_str {
+            match c {
+                _ if escaped => escaped = false,
+                '\\' => escaped = true,
+                '"' => in_str = false,
+                _ => {}
+            }
+            continue;
+        }
+        match c {
+            '"' => in_str = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// Fallback short title when the model gave none: the question itself, cut
@@ -111,8 +157,40 @@ mod tests {
         assert_eq!(d.tags, ["插话"]);
         assert!(d.sub_questions.is_empty());
 
+        let d = parse(r#"{"isQuestion":true,"leadIn":2}"#).unwrap();
+        assert_eq!(d.lead_in, 2);
+        assert_eq!(
+            parse(r#"{"isQuestion":true,"leadIn":"1"}"#)
+                .unwrap()
+                .lead_in,
+            1
+        );
+        assert_eq!(
+            parse(r#"{"isQuestion":true,"leadIn":-3}"#).unwrap().lead_in,
+            0
+        );
+        assert_eq!(
+            parse(r#"{"isQuestion":true,"leadIn":null}"#)
+                .unwrap()
+                .lead_in,
+            0
+        );
+
         assert!(parse("not json").is_none());
         assert!(parse("{broken").is_none());
+    }
+
+    #[test]
+    fn complete_replies_are_recognised_early() {
+        assert!(!is_complete(""));
+        assert!(!is_complete(r#"{"isQuestion":true,"short":"a}"#));
+        assert!(!is_complete(
+            r#"{"isQuestion":true,"tags":["x"],"sub":{"a":1}"#
+        ));
+        assert!(is_complete(
+            r#"{"isQuestion":true,"short":"a}b\"c","sub":{"a":1}}"#
+        ));
+        assert!(is_complete("```json\n{\"isQuestion\":false}"));
     }
 
     #[test]

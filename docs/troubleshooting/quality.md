@@ -67,7 +67,9 @@ This page helps when hints are missing, appear for the wrong sentences, or recog
 
 ## One question is split into two, or hints answer only part of it {#split}
 
-MeetCue joins the rest of a question to its start when the speaker pauses in the middle: a sentence that begins within 5 seconds and opens with a joining word ("and…", "what about…", "还有…") or finishes a sentence left hanging ("…and", "…，") becomes part of the same question, and its hints are rewritten to cover every part. Other short sentences right after a question are checked by the detection model, which can join them too.
+MeetCue joins the rest of a question to its start when the speaker pauses in the middle. Recognition ends a sentence at every pause, often with a full stop, so a sentence from the same speaker that begins within 5 seconds becomes part of the same question when nobody has answered in between and the earlier part did not end with a question mark ("如何制定数据中心IP。" / "V6的迁移方案，同时保证。" / "存量用户不受影响？"). A short tail that ends with a question mark ("…你会如何。" / "调整？") is joined too, and so is a sentence that opens with a joining word ("and…", "what about…", "还有…"). Short replies such as "对" or "OK" are never joined. The hints are rewritten to cover the whole question. A full sentence after a question mark may be a new question, so the detection model decides; once you have started answering, a new question always gets its own card.
+
+When the speaker sets a question up over a few sentences before asking it ("如果研发和运维团队的职责重叠，交付很慢。我们发现了这些问题，那你会如何调整？"), the detection model tells MeetCue how many of those sentences belong to the question, and they are shown on the card with it.
 
 **Possible causes**
 

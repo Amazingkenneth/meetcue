@@ -23,7 +23,7 @@ use crate::prefilter;
 use crate::prompts;
 use crate::provider::{AsrResult, LlmRequest};
 use crate::queue::{Admission, QuestionQueue};
-use crate::text::{dominant_lang, edit_ratio, extends, join_parts, Lang};
+use crate::text::{dominant_lang, edit_ratio, extends, join_parts, meaningful_len, Lang};
 use crate::transcript::{format_for_prompt, TranscriptBuffer};
 use crate::usage::{BudgetOutcome, CostMeter};
 
@@ -36,6 +36,15 @@ pub const EARLY_MAX_CHANGE: f64 = 0.30;
 /// A remote sentence starting this soon after a question's last words may be
 /// the rest of it, cut off by a pause ("…idea A" / "and idea B").
 pub const CONTINUATION_MS: i64 = 5_000;
+/// Lines that set a question up ("如果研发和运维团队的职责重叠，" /
+/// "你会如何调整？") are kept with it when they started at most this long
+/// before it.
+pub const LEAD_IN_MS: i64 = 30_000;
+/// At most this many lines are kept as a question's set-up.
+const MAX_LEAD_IN_LINES: usize = 5;
+/// The user saying at least this many letters or characters counts as
+/// answering; shorter sounds ("嗯", "OK") are back-channels.
+const ANSWER_MIN_CHARS: usize = 4;
 /// Silence after which a fully covered question counts as answered.
 pub const ANSWERED_SILENCE_MS: i64 = 4_000;
 /// The user speaking this recently means a new question is an interruption.
@@ -212,6 +221,8 @@ enum Target {
 #[derive(Debug, Clone)]
 struct Candidate {
     text: String,
+    /// When the first part of the sentence started.
+    speech_start: i64,
     speech_end: i64,
     heard_at: i64,
     started_at: i64,
@@ -264,6 +275,9 @@ struct Question {
     tags: Vec<String>,
     subs: Vec<String>,
     t_ms: i64,
+    /// What the speaker said to set the question up, kept in front of its
+    /// text when later parts replace it.
+    lead_in: String,
     /// When the latest part of the question ended.
     last_part_end: i64,
     context: Vec<TranscriptLine>,
@@ -295,6 +309,8 @@ enum Req {
 #[derive(Debug)]
 struct Speculation {
     req: ReqId,
+    /// The sentence the hints answer.
+    text: String,
     started_at: i64,
     items: Vec<HintItem>,
     /// Set once the request has ended: `true` if it completed.
@@ -580,6 +596,7 @@ impl Engine {
             };
             let cand = Candidate {
                 text: line.text.clone(),
+                speech_start: t_ms,
                 speech_end: t_ms,
                 heard_at: now,
                 started_at: now,
@@ -609,7 +626,8 @@ impl Engine {
                         self.join_candidate(req, line.text.clone(), line.t1_ms, now, out)
                     }
                     EarlyState::Created(id) => {
-                        self.extend_question(id, line.text.clone(), line.t1_ms, now, out)
+                        let text = self.with_lead_in(id, &line.text);
+                        self.extend_question(id, text, line.t1_ms, now, out)
                     }
                     EarlyState::Dropped => {
                         if prefilter::worth_checking(&line.text) {
@@ -625,11 +643,15 @@ impl Engine {
                     if let Some(c) = self.candidates.get_mut(&req) {
                         c.text = line.text.clone();
                     }
+                    // A few words corrected don't change what the hints answer.
+                    if let Some(spec) = self.speculative.get_mut(&req) {
+                        spec.text = line.text.clone();
+                    }
                     return;
                 }
                 (EarlyState::Created(id), false) => {
                     if let Some(q) = self.question_mut(id) {
-                        q.text = line.text.clone();
+                        q.text = join_parts(&q.lead_in, &line.text);
                     }
                     if let Some(ev) = self.question_event(id) {
                         out.push(Output::Emit(ev));
@@ -671,7 +693,8 @@ impl Engine {
 
     /// The open question, or the sentence still being checked, that `line`
     /// carries on, if it starts within [`CONTINUATION_MS`] and is joined to
-    /// it by its wording.
+    /// it by its wording, or simply finishes it with nobody answering in
+    /// between (see [`prefilter::finishes`]).
     fn continuation_of(&self, line: &TranscriptLine) -> Option<Join> {
         let cand = self
             .candidates
@@ -682,14 +705,80 @@ impl Engine {
         let question = self
             .recent_question(line)
             .map(|q| (q.last_part_end, Join::Question(q.id, q.text.clone())));
-        let (_, join) = match (cand, question) {
+        let (end, join) = match (cand, question) {
             (Some(c), Some(q)) => Some(if c.0 >= q.0 { c } else { q }),
             (c, q) => c.or(q),
         }?;
         let prev = match &join {
             Join::Candidate(_, t) | Join::Question(_, t) => t,
         };
-        prefilter::continues(prev, &line.text).then_some(join)
+        let joins = prefilter::continues(prev, &line.text)
+            || (prefilter::finishes(prev, &line.text) && !self.me_answered(end, line.t0_ms));
+        joins.then_some(join)
+    }
+
+    /// Whether the user said something more than a back-channel between
+    /// `from` and `to`, or is saying it now.
+    fn me_answered(&self, from: i64, to: i64) -> bool {
+        let speaking = &self.utterances[idx(Channel::Me)];
+        meaningful_len(&speaking.text()) >= ANSWER_MIN_CHARS
+            || self.transcript.since(from).any(|l| {
+                l.channel == Channel::Me
+                    && l.t0_ms <= to
+                    && meaningful_len(&l.text) >= ANSWER_MIN_CHARS
+            })
+    }
+
+    /// The lines the speaker said just before the sentence starting at
+    /// `start` to set it up, oldest first: up to `count` of them, as long as
+    /// they follow each other closely, nobody answered in between and none
+    /// belongs to an earlier question.
+    fn lead_in(&self, start: i64, count: usize) -> Vec<String> {
+        let count = count.min(MAX_LEAD_IN_LINES);
+        if count == 0 {
+            return Vec::new();
+        }
+        let floor = self.questions.last().map(|q| q.last_part_end);
+        let mut parts = Vec::new();
+        let mut next_start = start;
+        for l in self
+            .transcript
+            .since(start - LEAD_IN_MS)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+        {
+            if l.t0_ms >= start {
+                continue;
+            }
+            if l.channel == Channel::Me {
+                if meaningful_len(&l.text) >= ANSWER_MIN_CHARS {
+                    break;
+                }
+                continue;
+            }
+            if floor.is_some_and(|f| l.t1_ms <= f)
+                || next_start - l.t1_ms > CONTINUATION_MS
+                || start - l.t0_ms > LEAD_IN_MS
+            {
+                break;
+            }
+            parts.push(l.text.clone());
+            next_start = l.t0_ms;
+            if parts.len() == count {
+                break;
+            }
+        }
+        parts.reverse();
+        parts
+    }
+
+    /// `text` with the set-up of question `id` in front of it.
+    fn with_lead_in(&self, id: QuestionId, text: &str) -> String {
+        match self.question(id) {
+            Some(q) => join_parts(&q.lead_in, text),
+            None => text.to_string(),
+        }
     }
 
     /// The newest question, if it is still open and its last part ended
@@ -711,12 +800,20 @@ impl Engine {
         now: i64,
         out: &mut Vec<Output>,
     ) {
-        if let Some(c) = self.candidates.get_mut(&req) {
-            c.text = text;
-            c.speech_end = c.speech_end.max(speech_end);
-            c.joined = true;
-        }
+        let Some(c) = self.candidates.get_mut(&req) else {
+            return;
+        };
+        c.text = text.clone();
+        c.speech_end = c.speech_end.max(speech_end);
+        c.joined = true;
+        let target = c.target;
         self.drop_speculation(req, now, out);
+        // Start on the whole question now rather than once detection is
+        // back, so joining the rest costs no extra round trip.
+        if target == Target::New && prefilter::might_be_question(&text) {
+            let lang = self.output_language(&text);
+            self.speculate(req, &text, lang, now, out);
+        }
     }
 
     /// Replaces a question with its longer version and rewrites its hints.
@@ -820,6 +917,7 @@ impl Engine {
             req,
             Candidate {
                 text: line.text.clone(),
+                speech_start: line.t0_ms,
                 speech_end: line.t1_ms,
                 heard_at: now,
                 started_at: now,
@@ -831,29 +929,44 @@ impl Engine {
         out.push(Output::Detect { req, request });
         // A sentence sent only because it may finish the previous question
         // gets no hints of its own.
-        if self.cfg.speculative_hints
-            && target == Target::New
-            && prefilter::might_be_question(&line.text)
-            && !self.hints_paused
-            && self.hints_running < MAX_CONCURRENT_HINTS
-        {
-            let request = self.hints_request(&line.text, lang, now);
-            let spec = self.alloc_req(Req::Speculative { detect: req });
-            self.hints_running += 1;
-            self.hints_started.insert(spec, now);
-            self.speculative.insert(
-                req,
-                Speculation {
-                    req: spec,
-                    started_at: now,
-                    items: Vec::new(),
-                    finished: None,
-                },
-            );
-            self.hints_prefix_at = Some(now);
-            out.push(Output::Hints { req: spec, request });
+        if target == Target::New && prefilter::might_be_question(&line.text) {
+            self.speculate(req, &line.text, lang, now, out);
         }
         req
+    }
+
+    /// Starts hints for `text` alongside detection request `detect`, when
+    /// speculative hints are on and a slot is free.
+    fn speculate(
+        &mut self,
+        detect: ReqId,
+        text: &str,
+        lang: &str,
+        now: i64,
+        out: &mut Vec<Output>,
+    ) {
+        if !self.cfg.speculative_hints
+            || self.hints_paused
+            || self.hints_running >= MAX_CONCURRENT_HINTS
+        {
+            return;
+        }
+        let request = self.hints_request(text, lang, now);
+        let spec = self.alloc_req(Req::Speculative { detect });
+        self.hints_running += 1;
+        self.hints_started.insert(spec, now);
+        self.speculative.insert(
+            detect,
+            Speculation {
+                req: spec,
+                text: text.to_string(),
+                started_at: now,
+                items: Vec::new(),
+                finished: None,
+            },
+        );
+        self.hints_prefix_at = Some(now);
+        out.push(Output::Hints { req: spec, request });
     }
 
     fn on_detect_done(
@@ -963,6 +1076,19 @@ impl Engine {
                 return;
             }
         };
+        // Only a question still waiting for its answer can be continued: once
+        // the user has answered, a new question that the model read as more
+        // of the old one starts a card of its own.
+        let mut det = det;
+        if det.merged && cand.target == Target::New {
+            let still_open = self
+                .last_open_question()
+                .and_then(|id| self.question(id))
+                .is_some_and(|q| !self.me_answered(q.last_part_end, cand.speech_start));
+            if !still_open {
+                det.merged = false;
+            }
+        }
         // The rest of a question cut off by a pause need not sound like one.
         let continues = det.merged && self.last_open_question().is_some();
         let keep =
@@ -1017,7 +1143,7 @@ impl Engine {
         // is the whole question unless it merges into an earlier one or more
         // of it arrived since. A compound sentence is fine: the hint prompt
         // covers every part it asks.
-        let usable = !det.merged && !cand.joined;
+        let usable = !det.merged && spec.as_ref().is_some_and(|s| s.text == cand.text);
         // Parts detection listed before the rest arrived are incomplete.
         let subs = if cand.joined {
             Vec::new()
@@ -1036,9 +1162,9 @@ impl Engine {
             if let Some(q) = self.question_mut(id) {
                 q.version += 1;
                 if merged {
-                    q.text = format!("{} {}", q.text, cand.text);
+                    q.text = join_parts(&q.text, &cand.text);
                 } else {
-                    q.text = cand.text.clone();
+                    q.text = join_parts(&q.lead_in, &cand.text);
                     q.short = short;
                 }
                 q.tags = det.tags;
@@ -1082,14 +1208,20 @@ impl Engine {
             Admission::Queue
         };
         let context = self.transcript.last_before(cand.speech_end + 1, 4);
+        // The set-up the speaker gave before asking belongs on the card too.
+        let lead_in = self
+            .lead_in(cand.speech_start, det.lead_in as usize)
+            .into_iter()
+            .fold(String::new(), |acc, l| join_parts(&acc, &l));
         self.questions.push(Question {
             id,
             version: 1,
-            text: cand.text.clone(),
+            text: join_parts(&lead_in, &cand.text),
             short,
             tags: det.tags,
             subs,
             t_ms: cand.speech_end,
+            lead_in,
             last_part_end: cand.speech_end,
             context,
             vocab: Vec::new(),
@@ -3047,9 +3179,14 @@ mod tests {
             Channel::Remote,
             1000,
             3000,
-            "How would you design a zero trust",
+            "How would you design a zero trust network?",
         );
-        h.say(Channel::Remote, 3800, 6000, "network for a remote team?");
+        h.say(
+            Channel::Remote,
+            3800,
+            6000,
+            "For a remote team of fifty people?",
+        );
         assert_eq!(h.detects.len(), 2);
         let (first, _) = h.detects[0].clone();
         let (second, _) = h.detects[1].clone();
@@ -3066,7 +3203,8 @@ mod tests {
             vec![(
                 1,
                 3000,
-                "How would you design a zero trust network for a remote team?".to_string()
+                "How would you design a zero trust network? For a remote team of fifty people?"
+                    .to_string()
             )]
         );
     }
@@ -3094,6 +3232,138 @@ mod tests {
         assert_eq!(
             question_texts(&h),
             vec![(1, 6000, "How do you handle on-call incidents?".to_string())]
+        );
+    }
+
+    fn live() -> EngineConfig {
+        EngineConfig {
+            speculative_hints: true,
+            ..Default::default()
+        }
+    }
+
+    fn last_text(h: &Harness, id: QuestionId) -> Option<String> {
+        texts(h).into_iter().rev().find(|t| t.0 == id).map(|t| t.2)
+    }
+
+    /// A question cut into three sentences by the speaker's pauses, right
+    /// after the user finished answering the previous one, stays one card.
+    #[test]
+    fn a_question_split_after_an_answer_stays_together() {
+        const MERGED: &str = r#"{"isQuestion":true,"directedToMe":true,"merged":true,"short":"IPv6迁移","subQuestions":[],"tags":[]}"#;
+        let mut h = Harness::new(live());
+        let first = "业务量翻倍以后，你会怎么调整机房的扩容节奏？";
+        h.say(Channel::Remote, 0, 3000, first);
+        h.detect_reply(YES);
+        h.say(
+            Channel::Me,
+            5000,
+            60_000,
+            "我会先看容量趋势，再分批采购，最后留出余量，就这些。",
+        );
+        // The model takes the start of the new question for more of the old
+        // one, which the user has already answered.
+        h.say(Channel::Remote, 70_000, 71_500, "如何制定数据中心IP。");
+        h.detect_reply(MERGED);
+        let detects = h.detects.len();
+        h.say(Channel::Remote, 72_500, 74_500, "V6的迁移方案，同时保证。");
+        h.say(Channel::Remote, 75_500, 77_000, "存量用户不受影响？");
+        assert_eq!(
+            h.detects.len(),
+            detects,
+            "the rest is joined without the model"
+        );
+        assert_eq!(last_text(&h, 1).as_deref(), Some(first));
+        assert_eq!(
+            last_text(&h, 2).as_deref(),
+            Some("如何制定数据中心IP。V6的迁移方案，同时保证。存量用户不受影响？")
+        );
+        assert!(last_text(&h, 3).is_none());
+        let (_, request) = h.hints.last().unwrap();
+        assert!(request.messages[0]
+            .content
+            .contains("同时保证。存量用户不受影响？"));
+    }
+
+    /// The set-up said before the question, and a short tail after a pause,
+    /// are both kept on the card.
+    #[test]
+    fn a_question_keeps_its_set_up_and_its_tail() {
+        let mut h = Harness::new(live());
+        h.say(Channel::Remote, 0, 2000, "你怎么做备份？");
+        h.detect_reply(YES);
+        h.say(
+            Channel::Me,
+            4000,
+            30_000,
+            "首先要异地备份，然后要定期演练，最后要复盘。",
+        );
+        h.say(Channel::Remote, 40_000, 41_500, "如果研发和运维团队。");
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        h.say(Channel::Remote, 42_500, 44_000, "的职责重叠，交付很慢。");
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        h.say(
+            Channel::Remote,
+            45_000,
+            47_000,
+            "我们发现了这些问题，那你会如何。",
+        );
+        let detects = h.detects.len();
+        let spec = h.hints.last().unwrap().0;
+        h.say(Channel::Remote, 47_300, 47_800, "调整？");
+        assert_eq!(
+            h.detects.len(),
+            detects,
+            "the tail is not checked on its own"
+        );
+        assert!(
+            h.cancelled.contains(&spec),
+            "hints for the cut-off part dropped"
+        );
+        let hints = h.hints.len();
+        // The model counts more set-up lines than there are since the answer.
+        h.detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"leadIn":3,"short":"职责重叠如何调整"}"#,
+        );
+        assert_eq!(
+            last_text(&h, 2).as_deref(),
+            Some(
+                "如果研发和运维团队。的职责重叠，交付很慢。我们发现了这些问题，那你会如何。调整？"
+            )
+        );
+        assert_eq!(
+            h.hints.len(),
+            hints,
+            "hints for the whole question started with the tail"
+        );
+        assert!(h.hints[hints - 1].1.messages[0]
+            .content
+            .contains("如何。调整？"));
+    }
+
+    #[test]
+    fn a_new_question_after_the_answer_is_not_merged_into_the_old_one() {
+        const MERGED: &str = r#"{"isQuestion":true,"directedToMe":true,"merged":true,"short":"Q","subQuestions":[],"tags":[]}"#;
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 2000, "What is a hash map?");
+        h.detect_reply(YES);
+        h.say(
+            Channel::Me,
+            3000,
+            9000,
+            "It maps keys to values using a hash function.",
+        );
+        h.say(
+            Channel::Remote,
+            10_000,
+            12_000,
+            "And how do you resize one?",
+        );
+        h.detect_reply(MERGED);
+        assert_eq!(last_text(&h, 1).as_deref(), Some("What is a hash map?"));
+        assert_eq!(
+            last_text(&h, 2).as_deref(),
+            Some("And how do you resize one?")
         );
     }
 }
