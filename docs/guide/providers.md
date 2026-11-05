@@ -67,12 +67,27 @@ Common errors: [MC-LLM-002](/troubleshooting/error-codes#mc-llm-002) (key reject
 
 Any service that implements the OpenAI chat completions API with streaming, including self-hosted model servers.
 
-1. **Base URL**: choose **OpenAI-compatible** for a task, then in **Settings › Providers & cost › Addresses & keys** enter the base URL ending in `/v1`, for example `https://llm.example.com/v1`.
+1. **Base URL**: choose **OpenAI-compatible** for a task, then in **Settings › Providers & cost › Addresses & keys** enter the service's base URL, for example `https://llm.example.com/v1`. A bare address such as `https://llm.example.com` gets `/v1` added, a pasted `…/chat/completions` address is cut back to its root, and other paths such as `/api/v3` are kept as they are.
 2. **Key**: paste the service's API key under **OpenAI-compatible key**. Leave it empty if the service doesn't need one.
-3. **Check**: **Save and verify** loads `/v1/models`, whose names appear as suggestions in the **Model** field. Type the model name your service uses.
+3. **Check**: **Save and verify** loads the service's model list, whose names appear as suggestions in the **Model** field. Type the model name your service uses.
 4. **Price**: for cost estimates and budgets, enter the service's price under **Settings › Providers & cost › Budget › Your own prices**.
 
+Services differ in small ways, and MeetCue adapts to the common ones on its own. If a service rejects `max_tokens` (as OpenAI's reasoning models do), `stream_options` or `temperature`, MeetCue retries once without it or under its newer name and keeps using what worked. Replies that arrive all at once instead of streamed are read too, and Azure OpenAI addresses get their key in the `api-key` header.
+
 Some services don't report token usage while streaming. Usage and cost then show as zero for them.
+
+## Gateways such as One API and New API {#gateways}
+
+Self-hosted gateways such as [One API](https://github.com/songquanpeng/one-api) and its fork [New API](https://github.com/QuantumNous/new-api) put many providers' keys behind one address and one key of their own. MeetCue works with them without extra settings:
+
+- **Any model, through either gateway**: choose **OpenAI-compatible** and enter the gateway's address, for example `https://gateway.example.com`, with a key the gateway issued. Use the model names the gateway lists.
+- **Claude, through New API**: choose **Anthropic** and enter the New API address as the Anthropic **Base URL**, with a New API key. MeetCue sends the key both as `x-api-key` and as a bearer token, since gateways read one or the other. New API speaks the Messages API, so MeetCue's prompt caching and low thinking settings still apply. Keep Claude's own model names, since MeetCue picks the thinking settings from them. Through the OpenAI-compatible route the gateway converts the request and the cache is lost, which makes long prepared materials slower and dearer. One API has no Messages API, so with it Claude only works through the OpenAI-compatible route.
+
+A gateway adds one hop to every hint. On a server near you or near the provider this is usually a few tens of milliseconds; run the [latency probe](/guide/latency) to see it, since it measures the gateway's address. To keep hints streaming:
+
+- If a reverse proxy such as nginx sits in front of the gateway, turn off response buffering (`proxy_buffering off`). Otherwise hints arrive all at once at the end.
+- In One API, set `ENFORCE_INCLUDE_USAGE=true` if usage and cost show as zero.
+- Prices come from the gateway's own billing, so enter them under **Your own prices** for budgets.
 
 ## Corporate networks
 

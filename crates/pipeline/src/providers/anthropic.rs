@@ -26,6 +26,9 @@ pub struct Anthropic {
     key: String,
     base: String,
     proxy: Option<String>,
+    /// A base URL of the user's own: also send the key as a bearer token,
+    /// which some gateways read instead of `x-api-key`.
+    gateway: bool,
 }
 
 impl Anthropic {
@@ -36,21 +39,40 @@ impl Anthropic {
         base_url: Option<String>,
         proxy: Option<String>,
     ) -> Self {
-        let base = match base_url.as_deref().map(str::trim).filter(|u| !u.is_empty()) {
+        let own = base_url.as_deref().map(str::trim).filter(|u| !u.is_empty());
+        let base = match own {
             Some(u) => api_base(u),
             None => format!("https://{}/v1", host.as_deref().unwrap_or(API_HOST)),
         };
-        Self { key, base, proxy }
+        Self {
+            key,
+            base,
+            proxy,
+            gateway: own.is_some(),
+        }
     }
 
     fn base(&self) -> &str {
         &self.base
     }
+
+    fn auth(&self, b: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        let b = b
+            .header("x-api-key", &self.key)
+            .header("anthropic-version", API_VERSION);
+        if self.gateway {
+            b.bearer_auth(&self.key)
+        } else {
+            b
+        }
+    }
 }
 
-/// `https://host` and `https://host/v1` both mean the API root `https://host/v1`.
+/// `https://host`, `https://host/v1` and a pasted `https://host/v1/messages`
+/// all mean the API root `https://host/v1`.
 pub fn api_base(url: &str) -> String {
     let url = url.trim().trim_end_matches('/');
+    let url = url.strip_suffix("/messages").unwrap_or(url);
     if url.ends_with("/v1") {
         url.to_string()
     } else {
@@ -247,10 +269,8 @@ impl LlmProvider for Anthropic {
             if let Some(a) = &after {
                 url.push_str(&format!("&after_id={a}"));
             }
-            let resp = client
-                .get(url)
-                .header("x-api-key", &self.key)
-                .header("anthropic-version", API_VERSION)
+            let resp = self
+                .auth(client.get(url))
                 .send()
                 .await
                 .map_err(|e| net::reqwest_error(&e))?;
@@ -290,10 +310,8 @@ impl LlmProvider for Anthropic {
         let mut attempt = 0;
         let resp = loop {
             let body = request_body(&req, minimal);
-            let sent = client
-                .post(&url)
-                .header("x-api-key", &self.key)
-                .header("anthropic-version", API_VERSION)
+            let sent = self
+                .auth(client.post(&url))
                 .header("content-type", "application/json")
                 .json(&body)
                 .send()
@@ -379,10 +397,8 @@ impl LlmProvider for Anthropic {
             return Ok(None);
         }
         let client = net::http_client(self.proxy.as_deref())?;
-        let resp = client
-            .post(format!("{}/messages", self.base()))
-            .header("x-api-key", &self.key)
-            .header("anthropic-version", API_VERSION)
+        let resp = self
+            .auth(client.post(format!("{}/messages", self.base())))
             .header("content-type", "application/json")
             .json(&warm_body(&req))
             .send()
@@ -432,6 +448,14 @@ mod tests {
             "https://gw.example/anthropic/v1"
         );
         assert_eq!(a(None, Some("  ")), "https://api.anthropic.com/v1");
+        assert_eq!(
+            a(None, Some("https://gw.example/v1/messages")),
+            "https://gw.example/v1"
+        );
+        let gw =
+            |url: Option<&str>| Anthropic::new("k".into(), None, url.map(Into::into), None).gateway;
+        assert!(gw(Some("https://gw.example")));
+        assert!(!gw(None));
     }
 
     fn req(model: &str) -> LlmRequest {
