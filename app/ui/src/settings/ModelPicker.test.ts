@@ -2,11 +2,22 @@ import { describe, expect, it } from "vitest";
 import type { Settings } from "../bindings/Settings";
 import defaults from "../mock/default-settings.json";
 import { allChosen, chooseProvider } from "./ModelPicker";
-import { baseUrlOf, providerMeta, providersInUse, reachable } from "./providers";
+import { baseUrlOf, offered, providerMeta, providersInUse, reachable } from "./providers";
 
 const fresh = () => structuredClone(defaults) as unknown as Settings;
 
 describe("provider choice", () => {
+  it("offers the ChatGPT subscription only once it is turned on", () => {
+    const s = fresh();
+    const chatgpt = providerMeta("chatgpt")!;
+    expect(s.providers.chatgptSubscription).toBe(false);
+    expect(offered(s, chatgpt)).toBe(false);
+    expect(offered(s, providerMeta("anthropic")!)).toBe(true);
+    expect(offered(s, providerMeta("azure-speech")!)).toBe(false);
+    s.providers.chatgptSubscription = true;
+    expect(offered(s, chatgpt)).toBe(true);
+  });
+
   it("needs a provider and a model name for every task", () => {
     const s = fresh();
     expect(allChosen(s)).toBe(false);

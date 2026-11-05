@@ -862,6 +862,47 @@ function OwnPrices({ settings, update }: { settings: Settings; update: Update })
   );
 }
 
+/** Experimental opt-in for using a ChatGPT subscription; turning it on asks first. */
+function ChatGptSwitch({ settings, update }: { settings: Settings; update: Update }) {
+  const { t } = useTranslation();
+  const [confirming, setConfirming] = useState(false);
+  const set = (on: boolean) =>
+    void update((s) => {
+      s.providers.chatgptSubscription = on;
+      return s;
+    });
+  return (
+    <>
+      <Switch
+        checked={settings.providers.chatgptSubscription}
+        label={t("chatgpt.switch")}
+        description={t("chatgpt.switchHint")}
+        onChange={(on) => (on ? setConfirming(true) : set(false))}
+      />
+      {confirming && (
+        <div className="note note-warn" role="alertdialog" aria-label={t("chatgpt.confirmTitle")}>
+          <strong>{t("chatgpt.confirmTitle")}</strong>
+          <p style={{ margin: "4px 0 8px" }}>{t("chatgpt.confirmBody")}</p>
+          <div className="row">
+            <button
+              className="btn btn-primary btn-small"
+              onClick={() => {
+                setConfirming(false);
+                set(true);
+              }}
+            >
+              {t("chatgpt.confirm")}
+            </button>
+            <button className="btn btn-small" onClick={() => setConfirming(false)}>
+              {t("common.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ProvidersTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
   const [credentials, refresh] = useCredentials();
@@ -1011,6 +1052,7 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
             }
           />
         </Field>
+        <ChatGptSwitch settings={settings} update={update} />
       </Section>
     </>
   );

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
+import type { ChatGptAccount } from "../bindings/ChatGptAccount";
 import type { Settings } from "../bindings/Settings";
 import type { VerifyResult } from "../bindings/VerifyResult";
 import { Badge } from "../design/components";
@@ -10,6 +11,23 @@ import { type ProviderMeta } from "./providers";
 /** One compact row per provider: its base URL where it takes one, and its key.
  * The key itself never comes back from the backend. */
 export function KeyField({
+  provider,
+  configured,
+  settings,
+  update,
+  onChanged,
+}: {
+  provider: ProviderMeta;
+  configured: boolean;
+  settings: Settings;
+  update: (f: (s: Settings) => Settings) => Promise<void>;
+  onChanged: () => void;
+}) {
+  if (provider.signIn) return <SignInField provider={provider} configured={configured} settings={settings} onChanged={onChanged} />;
+  return <KeyInputs provider={provider} configured={configured} settings={settings} update={update} onChanged={onChanged} />;
+}
+
+function KeyInputs({
   provider,
   configured,
   settings,
@@ -131,6 +149,113 @@ export function KeyField({
             {t("providers.getKey")} ↗
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Experimental: "Sign in with ChatGPT" in the browser, instead of a key.
+ * Tokens stay in the credential store; only the email and plan come back. */
+function SignInField({
+  provider,
+  configured,
+  settings,
+  onChanged,
+}: {
+  provider: ProviderMeta;
+  configured: boolean;
+  settings: Settings;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslation();
+  const [account, setAccount] = useState<ChatGptAccount | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<VerifyResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const enabled = settings.providers.chatgptSubscription;
+
+  useEffect(() => {
+    if (!configured) {
+      setAccount(null);
+      return;
+    }
+    void backend().invoke("chatgpt_account").then(setAccount);
+  }, [configured]);
+
+  const signIn = async () => {
+    setWaiting(true);
+    setError(null);
+    setResult(null);
+    try {
+      setAccount(await backend().invoke("chatgpt_sign_in"));
+      onChanged();
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      const detail = (e as { detail?: string })?.detail;
+      if (detail !== "sign-in cancelled") setError(code ? `${errorTitle(code)} · ${code}` : String(e));
+    } finally {
+      setWaiting(false);
+    }
+  };
+
+  const verify = async () => {
+    setBusy(true);
+    try {
+      setResult(await backend().invoke("verify_provider", { provider: provider.id }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const who = account?.email ? (account.plan ? `${account.email} · ${account.plan}` : account.email) : t("chatgpt.signedIn");
+
+  return (
+    <div className="key-row">
+      <span className="key-name">{provider.name}</span>
+      <div className="key-inputs">
+        <p className="note note-warn" style={{ margin: 0 }}>
+          {t("chatgpt.warning")}
+        </p>
+        {!enabled && <p className="muted">{t("chatgpt.turnedOff")}</p>}
+      </div>
+      <div className="key-actions">
+        {configured ? (
+          <>
+            <Badge tone={result && !result.ok ? "err" : "ok"}>
+              {result && !result.ok ? `${errorTitle(result.code ?? "")} · ${result.code}` : result?.ok ? t("common.verified") : who}
+            </Badge>
+            <button className="btn btn-small" disabled={busy || !enabled} onClick={() => void verify()}>
+              {t("common.verify")}
+            </button>
+            <button
+              className="btn-link"
+              onClick={() =>
+                void backend()
+                  .invoke("chatgpt_sign_out")
+                  .then(() => {
+                    setAccount(null);
+                    setResult(null);
+                    onChanged();
+                  })
+              }
+            >
+              {t("chatgpt.signOut")}
+            </button>
+          </>
+        ) : waiting ? (
+          <>
+            <span className="muted">{t("chatgpt.waiting")}</span>
+            <button className="btn-link" onClick={() => void backend().invoke("chatgpt_cancel_sign_in")}>
+              {t("common.cancel")}
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-small btn-primary" disabled={!enabled} onClick={() => void signIn()}>
+            {t("chatgpt.signIn")}
+          </button>
+        )}
+        {error && <Badge tone="err">{error}</Badge>}
       </div>
     </div>
   );

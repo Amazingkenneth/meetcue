@@ -9,7 +9,7 @@ import type { Stat } from "../bindings/Stat";
 import { useAppEvents } from "../state/hooks";
 import { date, millis, usd } from "../util/format";
 import { errorTitle } from "../util/errors";
-import { PROVIDERS, providerName, reachable } from "./providers";
+import { offered, PROVIDERS, providerName, reachable } from "./providers";
 
 type Order = "fastest" | "cheapest" | "balanced";
 
@@ -30,7 +30,7 @@ export function sortCombos(combos: ComboEstimate[], order: Order): ComboEstimate
 
 /** Targets for the probe: every available provider, with the chosen model where set. */
 export function probeTargets(settings: Settings): ProbeTarget[] {
-  return PROVIDERS.filter((p) => p.available && reachable(settings, p))
+  return PROVIDERS.filter((p) => offered(settings, p) && reachable(settings, p))
     .map((p) => {
       const slot = p.kind === "asr" ? settings.providers.asr : settings.providers.hints;
       return {

@@ -241,6 +241,20 @@
     "baseUrlDefault": "Base URL (default {{url}})",
     "modelsLead": "Choose a provider, then pick a model from the list or type any name it offers. The list shows each model's price and the estimated cost of a meeting hour; once a key is saved, it adds every model your account offers."
   },
+  "chatgpt": {
+    "switch": "Use my ChatGPT subscription (experimental)",
+    "switchHint": "Adds “ChatGPT subscription” as a model provider. It signs in the way OpenAI's Codex CLI does, instead of using an API key.",
+    "confirmTitle": "Not supported by OpenAI",
+    "confirmBody": "OpenAI supports this sign-in only for its own Codex apps. From MeetCue it may stop working at any time, and OpenAI could limit or suspend your account. Requests count toward your plan's usage limits, and only Codex models are offered, all of which reason before answering, so hints can take longer. Your API-key providers are not affected.",
+    "confirm": "I understand, turn it on",
+    "warning": "Experimental and not supported by OpenAI: it may stop working, and could put your ChatGPT account at risk.",
+    "turnedOff": "Turn on “Use my ChatGPT subscription” under Advanced to sign in.",
+    "signIn": "Sign in with ChatGPT",
+    "signOut": "Sign out",
+    "signedIn": "Signed in",
+    "waiting": "Finish signing in in your browser…",
+    "pricingNote": "Included in your ChatGPT plan; counts toward its usage limits"
+  },
   "probe": {
     "title": "Latency probe",
     "lead": "Measures how fast each provider responds from your network, so you can choose with real numbers.",

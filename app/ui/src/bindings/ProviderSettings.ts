@@ -13,4 +13,9 @@ baseUrls: { [key in string]: string },
 /**
  * Explicit HTTPS proxy; when empty the system proxy settings are used.
  */
-proxy: string | null, pricingOverrides: Array<PriceEntry>, estimate: CostAssumptions, budget: BudgetSettings, };
+proxy: string | null, 
+/**
+ * Experimental: offer "Sign in with ChatGPT" as a language model
+ * provider. Off until the user turns it on and accepts the warning.
+ */
+chatgptSubscription: boolean, pricingOverrides: Array<PriceEntry>, estimate: CostAssumptions, budget: BudgetSettings, };

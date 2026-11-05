@@ -237,6 +237,20 @@
     "baseUrlDefault": "接口地址（默认 {{url}}）",
     "modelsLead": "选择供应商，然后从列表中选择模型，或输入它支持的任意模型名。列表会显示每个模型的价格和每会议小时的预估费用；保存密钥后，还会列出你的账户可用的全部模型。"
   },
+  "chatgpt": {
+    "switch": "使用我的 ChatGPT 订阅（实验性）",
+    "switchHint": "把“ChatGPT 订阅”加为模型供应商。它用 OpenAI Codex CLI 的方式登录，不需要 API 密钥。",
+    "confirmTitle": "OpenAI 不支持这种用法",
+    "confirmBody": "OpenAI 只允许自家的 Codex 应用使用这种登录方式。在 MeetCue 中使用随时可能失效，OpenAI 也可能限制或停用你的账户。请求会占用你套餐的用量额度；可用的只有 Codex 模型，它们都会先推理再回答，所以提示可能出得更慢。你的 API 密钥供应商不受影响。",
+    "confirm": "我已了解，开启",
+    "warning": "实验性功能，OpenAI 不支持：随时可能失效，也可能给你的 ChatGPT 账户带来风险。",
+    "turnedOff": "先在“高级”中开启“使用我的 ChatGPT 订阅”，再登录。",
+    "signIn": "使用 ChatGPT 登录",
+    "signOut": "退出登录",
+    "signedIn": "已登录",
+    "waiting": "请在浏览器中完成登录…",
+    "pricingNote": "包含在你的 ChatGPT 套餐中，占用套餐用量额度"
+  },
   "probe": {
     "title": "延迟探测",
     "lead": "从你所在的网络实测各供应商的响应速度，用真实数据做选择。",

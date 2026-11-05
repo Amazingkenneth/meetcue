@@ -45,6 +45,7 @@
     },
     "baseUrls": {},
     "proxy": null,
+    "chatgptSubscription": false,
     "pricingOverrides": [],
     "estimate": {
       "speechRatio": 0.6,

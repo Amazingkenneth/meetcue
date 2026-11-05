@@ -82,6 +82,15 @@ pub fn run(opts: cli::Options) -> i32 {
     } else {
         Arc::new(SystemCredentials)
     };
+    {
+        // OpenAI rotates the ChatGPT refresh token: keep the newest one.
+        let store = credentials.clone();
+        meetcue_pipeline::providers::chatgpt::set_saver(move |cred| {
+            if let Err(e) = store.set(meetcue_pipeline::providers::chatgpt::ID, cred) {
+                tracing::warn!("could not save the refreshed ChatGPT sign-in: {e}");
+            }
+        });
+    }
     if let Some(reason) = &paths.fallback_reason {
         tracing::warn!(
             "settings folder not writable, using {}: {reason}",

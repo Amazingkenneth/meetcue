@@ -74,6 +74,27 @@ Any service that implements the OpenAI chat completions API with streaming, incl
 
 Some services don't report token usage while streaming. Usage and cost then show as zero for them.
 
+## ChatGPT subscription (experimental) {#chatgpt-subscription}
+
+Uses a paid ChatGPT plan that includes Codex (Plus, Pro, Business and others) for question detection and hints instead of an API key. MeetCue signs in the way OpenAI's Codex CLI does and talks to the same backend.
+
+::: warning Not supported by OpenAI
+OpenAI supports this sign-in only for its own Codex apps. It may stop working whenever OpenAI changes that backend, and OpenAI could limit or suspend an account that uses it from other apps. Use it at your own risk. The API-key providers above are not affected.
+:::
+
+1. **Turn it on**: **Settings › Providers & cost › Advanced › Use my ChatGPT subscription (experimental)**, then confirm the warning.
+2. **Choose it**: pick **ChatGPT subscription (experimental)** as the provider for question detection, hints or both.
+3. **Sign in**: under **Addresses & keys**, click **Sign in with ChatGPT** and finish in your browser. MeetCue waits for the browser on `127.0.0.1:1455` (or `1457`), so close any Codex sign-in that is still open.
+4. **Model**: the list shows the models Codex offers your account. A small one such as `gpt-6-luna` gives the quickest hints.
+
+How it differs from an API key:
+
+- **Speed**: every Codex model reasons before it answers. MeetCue asks for the lowest effort, but the first words still come later than from a fast API model. Run the [latency probe](/guide/latency) to compare.
+- **Cost**: requests count toward your plan's usage limits rather than being billed, so no price is shown and budgets don't apply. When the limit is reached you'll see [MC-LLM-003](/troubleshooting/error-codes#mc-llm-003).
+- **Tokens**: only the refresh token is kept, in the system credential store. Access tokens stay in memory. **Sign out** deletes the token and asks OpenAI to revoke it.
+
+If the sign-in expires or is revoked, requests fail with [MC-LLM-002](/troubleshooting/error-codes#mc-llm-002): sign in again.
+
 ## Corporate networks
 
 MeetCue uses the Windows certificate store, so certificates installed by your company are trusted. It follows the manual proxy set in Windows Settings (**Network & internet › Proxy**) for all connections, including speech recognition. Automatic configuration scripts are not evaluated; if your network uses one, or to use a different proxy, enter it in **Settings › Providers & cost › Advanced › HTTPS proxy**. If connections fail with [MC-NET-001](/troubleshooting/error-codes#mc-net-001), see [High latency](/troubleshooting/latency#company-network).

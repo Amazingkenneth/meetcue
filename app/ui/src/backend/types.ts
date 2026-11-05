@@ -28,6 +28,7 @@ import type { TimedEvent } from "../bindings/TimedEvent";
 import type { UsageSummary } from "../bindings/UsageSummary";
 import type { UserAction } from "../bindings/UserAction";
 import type { Voice } from "../bindings/Voice";
+import type { ChatGptAccount } from "../bindings/ChatGptAccount";
 import type { VerifyResult } from "../bindings/VerifyResult";
 
 export type ModelSlot = "asr" | "detect" | "hints";
@@ -43,6 +44,10 @@ export interface Commands {
   credential_status: { args: undefined; result: Record<string, boolean> };
   set_credential: { args: { key: string; value: string }; result: null };
   delete_credential: { args: { key: string }; result: null };
+  chatgpt_sign_in: { args: undefined; result: ChatGptAccount };
+  chatgpt_cancel_sign_in: { args: undefined; result: null };
+  chatgpt_account: { args: undefined; result: ChatGptAccount | null };
+  chatgpt_sign_out: { args: undefined; result: null };
   wipe_all_data: { args: undefined; result: null };
   verify_provider: { args: { provider: string }; result: VerifyResult };
   list_models: { args: { provider: string }; result: ModelInfo[] };

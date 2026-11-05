@@ -21,6 +21,8 @@ use meetcue_pipeline::endpoints::EndpointCatalog;
 use meetcue_pipeline::practice::{PracticeReport, PracticeReportSummary, PracticeScript};
 use meetcue_pipeline::probe::{self, ProbeEnv, ProbeReport, ProbeRequest};
 use meetcue_pipeline::provider::ModelInfo;
+use meetcue_pipeline::providers::chatgpt;
+use meetcue_pipeline::providers::chatgpt_login::{self, ChatGptAccount, Credential};
 use meetcue_pipeline::{knowledge, materials, prompts, providers, HintBackend};
 use meetcue_platform::speech::Speaker;
 
@@ -45,6 +47,7 @@ const PROVIDER_IDS: &[&str] = &[
     "alibaba",
     "tencent",
     "anthropic",
+    "chatgpt",
     "openai-compatible",
 ];
 
@@ -170,7 +173,8 @@ pub fn set_credential(
     key: String,
     value: String,
 ) -> Res<()> {
-    if !PROVIDER_IDS.contains(&key.as_str()) {
+    // The ChatGPT sign-in is written only by `chatgpt_sign_in`.
+    if !PROVIDER_IDS.contains(&key.as_str()) || key == chatgpt::ID {
         return Err(MeetCueError::new(
             codes::SYS_CREDENTIALS,
             "unknown credential",
@@ -178,6 +182,94 @@ pub fn set_credential(
     }
     state.credentials.set(&key, &value)?;
     // A running session picks up the new key without restarting.
+    tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
+    Ok(())
+}
+
+/// A ChatGPT sign-in waiting for the browser; sending cancels it.
+static CHATGPT_PENDING: std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>> =
+    std::sync::Mutex::new(None);
+
+fn cancel_chatgpt_pending() {
+    if let Some(tx) = CHATGPT_PENDING.lock().unwrap().take() {
+        let _ = tx.send(());
+    }
+}
+
+/// Experimental: signs in with a ChatGPT account in the browser, the way the
+/// Codex CLI does, and keeps the refresh token in the credential store.
+#[tauri::command]
+pub async fn chatgpt_sign_in(app: AppHandle, state: State<'_, AppState>) -> Res<ChatGptAccount> {
+    let settings = state.settings();
+    if !settings.providers.chatgpt_subscription {
+        return Err(MeetCueError::new(
+            codes::LLM_AUTH,
+            "the experimental ChatGPT subscription provider is turned off",
+        ));
+    }
+    // A second click replaces a sign-in still waiting for the browser; its
+    // callback port frees up a moment later.
+    cancel_chatgpt_pending();
+    let mut tries = 0;
+    let login = loop {
+        match chatgpt_login::begin().await {
+            Ok(l) => break l,
+            Err(e) if tries >= 10 => return Err(e),
+            Err(_) => {
+                tries += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        }
+    };
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    *CHATGPT_PENDING.lock().unwrap() = Some(tx);
+    app.opener()
+        .open_url(login.url.clone(), None::<&str>)
+        .map_err(io_err)?;
+    let proxy = settings.providers.proxy.clone();
+    let result = tokio::select! {
+        r = login.finish(proxy.as_deref()) => r,
+        _ = rx => Err(MeetCueError::new(codes::LLM_AUTH, "sign-in cancelled")),
+        _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
+            Err(MeetCueError::new(codes::LLM_AUTH, "sign-in timed out"))
+        }
+    };
+    let (cred, access) = result?;
+    state.credentials.set(chatgpt::ID, &cred.to_json())?;
+    chatgpt::remember(&cred, access).await;
+    tracing::info!(
+        "signed in with ChatGPT ({})",
+        cred.plan.as_deref().unwrap_or("plan unknown")
+    );
+    tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
+    Ok(cred.account_info())
+}
+
+#[tauri::command]
+pub fn chatgpt_cancel_sign_in() {
+    cancel_chatgpt_pending();
+}
+
+/// The signed-in ChatGPT account, without any token.
+#[tauri::command]
+pub fn chatgpt_account(state: State<'_, AppState>) -> Option<ChatGptAccount> {
+    let saved = state.credentials.get(chatgpt::ID).ok().flatten()?;
+    Credential::parse(&saved).ok().map(|c| c.account_info())
+}
+
+#[tauri::command]
+pub async fn chatgpt_sign_out(app: AppHandle, state: State<'_, AppState>) -> Res<()> {
+    let saved = state.credentials.get(chatgpt::ID).ok().flatten();
+    state.credentials.delete(chatgpt::ID)?;
+    chatgpt::forget().await;
+    if let Some(cred) = saved.and_then(|s| Credential::parse(&s).ok()) {
+        let proxy = state.settings().providers.proxy.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = chatgpt_login::revoke(&cred.refresh, proxy.as_deref()).await {
+                tracing::warn!("could not revoke the ChatGPT sign-in: {e}");
+            }
+        });
+    }
     tauri::async_runtime::spawn(async move { session::apply_live(&app).await });
     Ok(())
 }
@@ -720,6 +812,10 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         credential_status,
         set_credential,
         delete_credential,
+        chatgpt_sign_in,
+        chatgpt_cancel_sign_in,
+        chatgpt_account,
+        chatgpt_sign_out,
         wipe_all_data,
         verify_provider,
         list_models,
