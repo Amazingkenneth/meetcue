@@ -67,10 +67,12 @@
 
 任何实现了 OpenAI Chat Completions 流式接口的服务，包括自建的模型服务。
 
-1. **接口地址**：为任务选择 **OpenAI-compatible**，然后在 **设置 › 供应商与费用 › 接口地址与密钥** 中填写以 `/v1` 结尾的地址，例如 `https://llm.example.com/v1`。
+1. **接口地址**：为任务选择 **OpenAI-compatible**，然后在 **设置 › 供应商与费用 › 接口地址与密钥** 中填写该服务的接口地址，例如 `https://llm.example.com/v1`。只填域名（如 `https://llm.example.com`）时会自动补上 `/v1`；粘贴的 `…/chat/completions` 完整地址会截回根地址；`/api/v3` 等其他路径保持不变。
 2. **密钥**：在 **OpenAI-compatible 密钥** 处粘贴该服务的 API 密钥。不需要密钥的服务可以留空。
-3. **验证**：**保存并验证** 会加载 `/v1/models`，其中的模型名会作为 **模型** 输入框的建议。请填写你所用服务的模型名。
+3. **验证**：**保存并验证** 会加载该服务的模型列表，其中的模型名会作为 **模型** 输入框的建议。请填写你所用服务的模型名。
 4. **价格**：如需费用估算和预算，请在 **设置 › 供应商与费用 › 预算 › 你填写的价格** 中填写该服务的价格。
+
+各服务之间有些细微差别，MeetCue 会自动适配常见的几种。如果服务拒绝 `max_tokens`（OpenAI 的推理模型就是如此）、`stream_options` 或 `temperature`，MeetCue 会去掉该字段或改用新名称重试一次，并在之后沿用可行的写法。一次性返回而非流式返回的回复也能读取；Azure OpenAI 地址会通过 `api-key` 请求头发送密钥。
 
 部分服务在流式输出时不返回 token 用量，此时其用量和费用显示为零。
 
@@ -78,8 +80,8 @@
 
 [One API](https://github.com/songquanpeng/one-api) 及其分支 [New API](https://github.com/QuantumNous/new-api) 等自建网关把多个供应商的密钥汇总到一个地址和一个网关自己的密钥之后。MeetCue 无需额外设置即可使用：
 
-- **任意模型，任一网关**：选择 **OpenAI-compatible**，填写以 `/v1` 结尾的网关地址，例如 `https://gateway.example.com/v1`，以及网关签发的密钥。模型名请使用网关列出的名称。
-- **经由 New API 使用 Claude**：选择 **Anthropic**，把 New API 的地址填为 Anthropic 的 **接口地址**，并填写 New API 密钥。New API 支持 Messages API，因此 MeetCue 的提示缓存和低思考设置依然生效。请保留 Claude 原本的模型名，MeetCue 要据此选择思考设置。若走 OpenAI 兼容方式，网关会转换请求，缓存随之失效，准备材料较长时会更慢、更贵。One API 不支持 Messages API，用它时 Claude 只能走 OpenAI 兼容方式。
+- **任意模型，任一网关**：选择 **OpenAI-compatible**，填写网关地址，例如 `https://gateway.example.com`，以及网关签发的密钥。模型名请使用网关列出的名称。
+- **经由 New API 使用 Claude**：选择 **Anthropic**，把 New API 的地址填为 Anthropic 的 **接口地址**，并填写 New API 密钥。网关读取密钥的方式不一，MeetCue 会同时以 `x-api-key` 和 Bearer 令牌发送。New API 支持 Messages API，因此 MeetCue 的提示缓存和低思考设置依然生效。请保留 Claude 原本的模型名，MeetCue 要据此选择思考设置。若走 OpenAI 兼容方式，网关会转换请求，缓存随之失效，准备材料较长时会更慢、更贵。One API 不支持 Messages API，用它时 Claude 只能走 OpenAI 兼容方式。
 
 网关会让每条要点多经过一跳。服务器离你或离供应商较近时，通常只增加几十毫秒；[延迟探测](/zh/guide/latency)测量的就是网关地址，可以用它查看。为保证要点逐字流式显示：
 
