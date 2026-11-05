@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.3.11 — 2026-11-05
+
 ### Fixed
 
 - A question the interviewer splits over several pauses now stays on one card. Recognition ends a sentence at every pause, often with a full stop, so before this "如何制定数据中心IP。" / "V6的迁移方案，同时保证。" / "存量用户不受影响？" could turn into three questions, and a short tail such as "调整？" was dropped. Sentences that follow without anyone answering are now joined, and the hints are started for the whole question at once.
