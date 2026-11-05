@@ -18,7 +18,7 @@ pub enum HintItem {
 
 /// Upper bounds applied to model output so a runaway line cannot break the layout.
 const MAX_HEAD_CHARS: usize = 24;
-const MAX_REST_CHARS: usize = 60;
+const MAX_REST_CHARS: usize = 120;
 pub const MAX_POINTS: u32 = 6;
 
 #[derive(Debug)]

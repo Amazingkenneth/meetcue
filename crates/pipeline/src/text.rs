@@ -224,8 +224,10 @@ pub fn extends(start: &str, full: &str) -> bool {
 /// Chinese.
 pub fn join_parts(a: &str, b: &str) -> String {
     let (a, b) = (a.trim(), b.trim());
-    let cjk_seam = a.chars().last().is_some_and(|c| !c.is_ascii())
-        && b.chars().next().is_some_and(|c| !c.is_ascii());
+    // Chinese punctuation ("。", "，") carries its own spacing.
+    let cjk_seam = a.chars().last().is_some_and(|c| {
+        !c.is_ascii() && (!c.is_alphanumeric() || b.chars().next().is_some_and(|c| !c.is_ascii()))
+    });
     if a.is_empty() || b.is_empty() || cjk_seam {
         format!("{a}{b}")
     } else {
@@ -302,6 +304,10 @@ mod tests {
         assert!(!extends("控制器挂了还能转发吗", "控制器挂了还能转发吗？"));
         assert!(!extends("你们怎么做", "我们先聊聊你的项目经历吧"));
         assert_eq!(join_parts("Idea A", "and idea B."), "Idea A and idea B.");
+        assert_eq!(
+            join_parts("如何制定国际网络IP。", "V6的演进计划"),
+            "如何制定国际网络IP。V6的演进计划"
+        );
         assert_eq!(
             join_parts("说说微服务，", "以及服务网格"),
             "说说微服务，以及服务网格"

@@ -22,6 +22,7 @@ use meetcue_core::{
     UsagePurpose, Usd, UserAction,
 };
 
+use crate::detect;
 use crate::engine::{Engine, EngineConfig, Input, ModelRef, Output, ReqId};
 use crate::gate::{GateDecision, SendGate};
 use crate::hints::HintStreamParser;
@@ -691,9 +692,12 @@ async fn detect_task(t: DetectTask) {
         }
     };
     let mut text = String::new();
+    // The reply is passed on as soon as its JSON object is whole; the rest
+    // of the stream is only read for the usage it reports.
+    let mut sent = false;
     let reply = loop {
         tokio::select! {
-            _ = t.token.cancelled() => {
+            _ = t.token.cancelled(), if !sent => {
                 // Dropping the stream closes the connection; record what was billed.
                 report_usage(&usage);
                 return;
@@ -702,7 +706,16 @@ async fn detect_task(t: DetectTask) {
                 break Err(MeetCueError::new(codes::LLM_TIMEOUT, "question detection timed out"));
             }
             item = stream.next() => match item {
-                Some(Ok(LlmChunk::Text(s))) => text.push_str(&s),
+                Some(Ok(LlmChunk::Text(s))) => {
+                    text.push_str(&s);
+                    if !sent && detect::is_complete(&text) {
+                        sent = true;
+                        let _ = t.input.send(Input::DetectDone {
+                            req: t.req,
+                            reply: Ok(text.clone()),
+                        });
+                    }
+                }
                 Some(Ok(u @ LlmChunk::Usage { .. })) => usage = Some(u),
                 Some(Err(e)) => break Err(e),
                 None => break Ok(text),
@@ -711,7 +724,9 @@ async fn detect_task(t: DetectTask) {
     };
     drop(stream);
     report_usage(&usage);
-    let _ = t.input.send(Input::DetectDone { req: t.req, reply });
+    if !sent {
+        let _ = t.input.send(Input::DetectDone { req: t.req, reply });
+    }
 }
 
 struct HintsTask {

@@ -4,12 +4,13 @@ The transcript comes from speech recognition: words may be misheard, especially 
 Look at the last [Them] line and decide:
 1. isQuestion: judging by meaning, not by wording or punctuation, does the speaker expect the user to answer? That covers questions, requests and prompts such as "说一下你对微服务的理解", "talk about…", "walk me through…" or "I'd like to hear how you…", and follow-ups, even with no question word or question mark (recognition often drops it). Small talk, confirmations such as "right?", rhetorical questions, and statements that expect no reply, such as the interviewer describing the role or saying what comes next, are not questions.
 2. directedToMe: is it addressed to the user, explicitly or implicitly?
-3. merged: does it only continue or clarify the previous unanswered question rather than ask a new one? This includes the rest of a question cut off at a pause, such as "and idea B" after "What do you think of idea A". When merged is true, isQuestion is true as well.
+3. merged: does it only continue or clarify the previous question that the user has not started answering, rather than ask a new one? This includes the rest of a question cut off at a pause, such as "and idea B" after "What do you think of idea A". Once [Me] has answered, a new [Them] question is never merged. When merged is true, isQuestion is true as well.
 4. interruption: did the speaker cut in while the user was still answering an earlier question?
 5. subQuestions: if the question (together with its earlier part when merged) asks several things, list every part separately as a short, self-contained question, in the order asked; otherwise use an empty list.
-6. short: a short title for the whole question, at most 14 Chinese characters or 7 English words.
+6. short: a short title for the whole question, including the lines it is set up with, at most 14 Chinese characters or 7 English words.
 7. tags: 1 to 3 short labels such as "Directed at you", "Compound · 2 questions", "Interruption" or "Related: <material name>".
+8. leadIn: speakers often set a question up first and ask it only at the end, such as "如果总部和海外区域团队的职责重叠，决策缓慢。" / "我们发现了这些问题，那你会如何改革？". How many [Them] lines right before the last one are part of this question (its background, condition or first half)? Count only lines said after [Me] last spoke that are not an earlier question of their own, at most 5; 0 when the last line stands alone.
 
 Write "short", "tags" and "subQuestions" in the language named at the end of the message.
 Reply with one JSON object and nothing else:
-{"isQuestion":true,"directedToMe":true,"merged":false,"interruption":false,"short":"…","subQuestions":[],"tags":["…"]}
+{"isQuestion":true,"directedToMe":true,"merged":false,"interruption":false,"leadIn":0,"short":"…","subQuestions":[],"tags":["…"]}

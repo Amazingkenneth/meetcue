@@ -41,7 +41,9 @@ mod tests {
             ],
         );
         assert!(s.contains("The user's role: SRE"));
-        assert!(s.contains(r#"{"n":1,"head":"key phrase","rest":"supporting words"}"#));
+        assert!(s.contains(
+            r#"{"n":1,"head":"what this point says","rest":"how to say it, as a spoken sentence"}"#
+        ));
         assert!(!s.contains("{role}"));
     }
 

@@ -228,6 +228,36 @@ pub fn continues(prev: &str, next: &str) -> bool {
         .any(|s| lower.starts_with(&format!("{s} ")))
 }
 
+/// Whether `next`, said right after `prev` by the same speaker with nobody
+/// answering in between, finishes the sentence `prev` started. Recognizers
+/// end a sentence at every pause and often put a full stop there, so a
+/// question cut in two rarely looks unfinished: "如何制定国际网络IP。" /
+/// "V6的演进计划，同时保证。" / "现网客户不受影响？". Anything that follows a
+/// sentence not yet closed by a question mark is taken as its rest, and so is
+/// a short tail ending in one ("…你会如何。" / "改革？"). A full sentence after
+/// a question mark may be a new question, which the model decides.
+pub fn finishes(prev: &str, next: &str) -> bool {
+    if continues(prev, next) {
+        return true;
+    }
+    let next = strip_fillers(next).trim();
+    let n = normalize(next);
+    if n.is_empty() || TAG_QUESTIONS.iter().any(|t| n == *t) || FILLERS.contains(&n.as_str()) {
+        return false;
+    }
+    let asks = next.ends_with(['?', '？']);
+    if meaningful_len(next) < MIN_LEN && (asks || BACK_CHANNELS.contains(&n.as_str())) {
+        return asks;
+    }
+    !prev.trim().ends_with(['?', '？'])
+}
+
+/// Replies such as "对。" that the other side says while listening.
+const BACK_CHANNELS: &[&str] = &[
+    "对", "对对", "好", "好的", "是", "是的", "嗯嗯", "哦", "噢", "行", "可以", "yes", "yeah",
+    "yep", "sure", "fine", "great", "cool", "ok", "okay", "right",
+];
+
 fn strip_fillers(text: &str) -> &str {
     let mut rest = text.trim();
     loop {
@@ -298,6 +328,36 @@ mod tests {
         assert!(!continues(q, "Andrew will join later."));
         assert!(!continues("What is your name?", "Next one."));
         assert!(!continues("说说你对微服务的理解", "好的"));
+    }
+
+    #[test]
+    fn rest_of_a_question_after_a_full_stop() {
+        assert!(finishes("如何制定国际网络IP。", "V6的演进计划，同时保证。"));
+        assert!(finishes("V6的演进计划，同时保证。", "现网客户不受影响？"));
+        assert!(finishes("我们发现了这些问题，那你会如何。", "改革？"));
+        assert!(finishes("网络部如何体现真正的被灾备。", "能力？"));
+        assert!(finishes("某个海外的PO。", "P。"));
+        assert!(!finishes("你有什么优势让。", "对。"));
+        assert!(!finishes("如何评估一项骨干网投资？", "是否。"));
+        assert!(finishes(
+            "How would you design a zero trust",
+            "network for a remote team?"
+        ));
+        assert!(finishes(
+            "What is a hash map?",
+            "And how is it different from a tree?"
+        ));
+        // A full new sentence after a question is left to the model.
+        assert!(!finishes(
+            "What is a hash map?",
+            "How do you handle on-call incidents?"
+        ));
+        assert!(!finishes("说说你对微服务的理解？", "好的"));
+        // Back-channels and short remarks never join.
+        assert!(!finishes("说说你对微服务的理解。", "嗯。"));
+        assert!(!finishes("说说你对微服务的理解。", "对吧？"));
+        assert!(!finishes("Tell me about your last project.", "Right?"));
+        assert!(!finishes("Tell me about your last project.", "OK."));
     }
 
     #[test]

@@ -4,6 +4,17 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Fixed
+
+- A question the interviewer splits over several pauses now stays on one card. Recognition ends a sentence at every pause, often with a full stop, so before this "如何制定国际网络IP。" / "V6的演进计划，同时保证。" / "现网客户不受影响？" could turn into three questions, and a short tail such as "改革？" was dropped. Sentences that follow without anyone answering are now joined, and the hints are started for the whole question at once.
+- The start of a new question is no longer added to the previous question after you have answered it.
+- Sentences the interviewer uses to set a question up ("如果总部和海外区域团队职责重叠……我们发现了这些问题，那你会如何改革？") are now shown on the question card with it.
+
+### Changed
+
+- Talking points are written in plain spoken sentences you can read out as they are, instead of a short phrase and a list of keywords.
+- The detection reply is used as soon as it is complete, without waiting for the rest of the response, which shaves a little off the time to the first hint.
+
 ## 0.3.10 — 2026-11-03
 
 ### Changed
