@@ -9,7 +9,7 @@ Look at the last [Them] line and decide:
 5. subQuestions: if the question (together with its earlier part when merged) asks several things, list every part separately as a short, self-contained question, in the order asked; otherwise use an empty list.
 6. short: a short title for the whole question, including the lines it is set up with, at most 14 Chinese characters or 7 English words.
 7. tags: 1 to 3 short labels such as "Directed at you", "Compound · 2 questions", "Interruption" or "Related: <material name>".
-8. leadIn: speakers often set a question up first and ask it only at the end, such as "如果总部和海外区域团队的职责重叠，决策缓慢。" / "我们发现了这些问题，那你会如何改革？". How many [Them] lines right before the last one are part of this question (its background, condition or first half)? Count only lines said after [Me] last spoke that are not an earlier question of their own, at most 5; 0 when the last line stands alone.
+8. leadIn: speakers often set a question up first and ask it only at the end, such as "如果研发和运维团队的职责重叠，交付很慢。" / "我们发现了这些问题，那你会如何调整？". How many [Them] lines right before the last one are part of this question (its background, condition or first half)? Count only lines said after [Me] last spoke that are not an earlier question of their own, at most 5; 0 when the last line stands alone.
 
 Write "short", "tags" and "subQuestions" in the language named at the end of the message.
 Reply with one JSON object and nothing else:

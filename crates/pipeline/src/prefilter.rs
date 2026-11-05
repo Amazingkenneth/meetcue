@@ -231,10 +231,10 @@ pub fn continues(prev: &str, next: &str) -> bool {
 /// Whether `next`, said right after `prev` by the same speaker with nobody
 /// answering in between, finishes the sentence `prev` started. Recognizers
 /// end a sentence at every pause and often put a full stop there, so a
-/// question cut in two rarely looks unfinished: "如何制定国际网络IP。" /
-/// "V6的演进计划，同时保证。" / "现网客户不受影响？". Anything that follows a
+/// question cut in two rarely looks unfinished: "如何制定数据中心IP。" /
+/// "V6的迁移方案，同时保证。" / "存量用户不受影响？". Anything that follows a
 /// sentence not yet closed by a question mark is taken as its rest, and so is
-/// a short tail ending in one ("…你会如何。" / "改革？"). A full sentence after
+/// a short tail ending in one ("…你会如何。" / "调整？"). A full sentence after
 /// a question mark may be a new question, which the model decides.
 pub fn finishes(prev: &str, next: &str) -> bool {
     if continues(prev, next) {
@@ -332,13 +332,13 @@ mod tests {
 
     #[test]
     fn rest_of_a_question_after_a_full_stop() {
-        assert!(finishes("如何制定国际网络IP。", "V6的演进计划，同时保证。"));
-        assert!(finishes("V6的演进计划，同时保证。", "现网客户不受影响？"));
-        assert!(finishes("我们发现了这些问题，那你会如何。", "改革？"));
-        assert!(finishes("网络部如何体现真正的被灾备。", "能力？"));
-        assert!(finishes("某个海外的PO。", "P。"));
-        assert!(!finishes("你有什么优势让。", "对。"));
-        assert!(!finishes("如何评估一项骨干网投资？", "是否。"));
+        assert!(finishes("如何制定数据中心IP。", "V6的迁移方案，同时保证。"));
+        assert!(finishes("V6的迁移方案，同时保证。", "存量用户不受影响？"));
+        assert!(finishes("我们发现了这些问题，那你会如何。", "调整？"));
+        assert!(finishes("备份系统如何体现真正的容灾。", "能力？"));
+        assert!(finishes("某个边缘的PO。", "P。"));
+        assert!(!finishes("你有什么优势。", "对。"));
+        assert!(!finishes("如何评估一项新系统投资？", "是否。"));
         assert!(finishes(
             "How would you design a zero trust",
             "network for a remote team?"

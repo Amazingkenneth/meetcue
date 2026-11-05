@@ -36,8 +36,8 @@ pub const EARLY_MAX_CHANGE: f64 = 0.30;
 /// A remote sentence starting this soon after a question's last words may be
 /// the rest of it, cut off by a pause ("…idea A" / "and idea B").
 pub const CONTINUATION_MS: i64 = 5_000;
-/// Lines that set a question up ("如果总部和海外区域团队职责重叠，" /
-/// "你会如何改革？") are kept with it when they started at most this long
+/// Lines that set a question up ("如果研发和运维团队的职责重叠，" /
+/// "你会如何调整？") are kept with it when they started at most this long
 /// before it.
 pub const LEAD_IN_MS: i64 = 30_000;
 /// At most this many lines are kept as a question's set-up.
@@ -3250,24 +3250,24 @@ mod tests {
     /// after the user finished answering the previous one, stays one card.
     #[test]
     fn a_question_split_after_an_answer_stays_together() {
-        const MERGED: &str = r#"{"isQuestion":true,"directedToMe":true,"merged":true,"short":"IPv6演进","subQuestions":[],"tags":[]}"#;
+        const MERGED: &str = r#"{"isQuestion":true,"directedToMe":true,"merged":true,"short":"IPv6迁移","subQuestions":[],"tags":[]}"#;
         let mut h = Harness::new(live());
-        let first = "现在AI算力业务增长，对国际网络和数据中心互联提了什么样的新要求？";
+        let first = "业务量翻倍以后，你会怎么调整机房的扩容节奏？";
         h.say(Channel::Remote, 0, 3000, first);
         h.detect_reply(YES);
         h.say(
             Channel::Me,
             5000,
             60_000,
-            "有几方面吧，第一个是高带宽低时延，第二个是合规，回答完毕。",
+            "我会先看容量趋势，再分批采购，最后留出余量，就这些。",
         );
         // The model takes the start of the new question for more of the old
         // one, which the user has already answered.
-        h.say(Channel::Remote, 70_000, 71_500, "如何制定国际网络IP。");
+        h.say(Channel::Remote, 70_000, 71_500, "如何制定数据中心IP。");
         h.detect_reply(MERGED);
         let detects = h.detects.len();
-        h.say(Channel::Remote, 72_500, 74_500, "V6的演进计划，同时保证。");
-        h.say(Channel::Remote, 75_500, 77_000, "现网客户不受影响？");
+        h.say(Channel::Remote, 72_500, 74_500, "V6的迁移方案，同时保证。");
+        h.say(Channel::Remote, 75_500, 77_000, "存量用户不受影响？");
         assert_eq!(
             h.detects.len(),
             detects,
@@ -3276,13 +3276,13 @@ mod tests {
         assert_eq!(last_text(&h, 1).as_deref(), Some(first));
         assert_eq!(
             last_text(&h, 2).as_deref(),
-            Some("如何制定国际网络IP。V6的演进计划，同时保证。现网客户不受影响？")
+            Some("如何制定数据中心IP。V6的迁移方案，同时保证。存量用户不受影响？")
         );
         assert!(last_text(&h, 3).is_none());
         let (_, request) = h.hints.last().unwrap();
         assert!(request.messages[0]
             .content
-            .contains("同时保证。现网客户不受影响？"));
+            .contains("同时保证。存量用户不受影响？"));
     }
 
     /// The set-up said before the question, and a short tail after a pause,
@@ -3290,22 +3290,17 @@ mod tests {
     #[test]
     fn a_question_keeps_its_set_up_and_its_tail() {
         let mut h = Harness::new(live());
-        h.say(Channel::Remote, 0, 2000, "你怎么做容灾？");
+        h.say(Channel::Remote, 0, 2000, "你怎么做备份？");
         h.detect_reply(YES);
         h.say(
             Channel::Me,
             4000,
             30_000,
-            "首先要多路由，然后要演练，最后要复盘。",
+            "首先要异地备份，然后要定期演练，最后要复盘。",
         );
-        h.say(Channel::Remote, 40_000, 41_500, "如果总部和海外区域网络。");
+        h.say(Channel::Remote, 40_000, 41_500, "如果研发和运维团队。");
         h.detect_reply(r#"{"isQuestion":false}"#);
-        h.say(
-            Channel::Remote,
-            42_500,
-            44_000,
-            "团队的职责重叠，决策缓慢。",
-        );
+        h.say(Channel::Remote, 42_500, 44_000, "的职责重叠，交付很慢。");
         h.detect_reply(r#"{"isQuestion":false}"#);
         h.say(
             Channel::Remote,
@@ -3315,7 +3310,7 @@ mod tests {
         );
         let detects = h.detects.len();
         let spec = h.hints.last().unwrap().0;
-        h.say(Channel::Remote, 47_300, 47_800, "改革？");
+        h.say(Channel::Remote, 47_300, 47_800, "调整？");
         assert_eq!(
             h.detects.len(),
             detects,
@@ -3328,11 +3323,13 @@ mod tests {
         let hints = h.hints.len();
         // The model counts more set-up lines than there are since the answer.
         h.detect_reply(
-            r#"{"isQuestion":true,"directedToMe":true,"leadIn":3,"short":"职责重叠如何改革"}"#,
+            r#"{"isQuestion":true,"directedToMe":true,"leadIn":3,"short":"职责重叠如何调整"}"#,
         );
         assert_eq!(
             last_text(&h, 2).as_deref(),
-            Some("如果总部和海外区域网络。团队的职责重叠，决策缓慢。我们发现了这些问题，那你会如何。改革？")
+            Some(
+                "如果研发和运维团队。的职责重叠，交付很慢。我们发现了这些问题，那你会如何。调整？"
+            )
         );
         assert_eq!(
             h.hints.len(),
@@ -3341,7 +3338,7 @@ mod tests {
         );
         assert!(h.hints[hints - 1].1.messages[0]
             .content
-            .contains("如何。改革？"));
+            .contains("如何。调整？"));
     }
 
     #[test]

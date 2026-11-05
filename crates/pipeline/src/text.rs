@@ -305,8 +305,8 @@ mod tests {
         assert!(!extends("你们怎么做", "我们先聊聊你的项目经历吧"));
         assert_eq!(join_parts("Idea A", "and idea B."), "Idea A and idea B.");
         assert_eq!(
-            join_parts("如何制定国际网络IP。", "V6的演进计划"),
-            "如何制定国际网络IP。V6的演进计划"
+            join_parts("如何制定数据中心IP。", "V6的演进计划"),
+            "如何制定数据中心IP。V6的演进计划"
         );
         assert_eq!(
             join_parts("说说微服务，", "以及服务网格"),

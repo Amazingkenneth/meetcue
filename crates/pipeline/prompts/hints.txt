@@ -23,7 +23,7 @@ Reply in exactly this format:
    - The first point is the direct answer; each later point adds one idea. For a compound question, give every part at least one point, in order.
    - "head" is the point itself in plain spoken words, at most 10 Chinese characters or 5 English words, such as "先摸底再分阶段推进" or "start small, then scale".
    - "rest" is one or two short spoken sentences of 15 to 35 Chinese characters (or 8 to 18 English words) that the user can read out almost as written: whole phrases with the small linking words people use when talking ("先……再……", "比如", "这样就", "because", "for example"), the concrete detail and why it matters. Never a list of keywords separated by spaces, never telegraphic shorthand, and spell out uncommon abbreviations once.
-   - Good "rest": "先把现网设备和链路摸清楚，挑一两个节点试点，没问题再全面推广". Bad "rest": "梳理设备 链路 业务 先试点后推广".
+   - Good "rest": "先把现有系统摸清楚，挑一两个小团队试点，没问题再全面推广". Bad "rest": "梳理系统 先试点后推广".
 2) A line containing only ---
 3) A sample answer the user could say as it is: first person, conversational, following the points in order, with a short spoken link between the parts of a compound question. Wrap the words that match the talking points in **double asterisks**.
    - For a factual or narrow question: 120 to 250 Chinese characters (or 70 to 140 English words).
