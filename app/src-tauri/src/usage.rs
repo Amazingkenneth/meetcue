@@ -93,7 +93,7 @@ pub fn summary(lines: &[LedgerLine], month: &str) -> UsageSummary {
         total_micros: rows.iter().filter_map(|r| r.micros).sum(),
         rows,
         by_purpose: {
-            purposes.sort_by(|a, b| b.micros.cmp(&a.micros));
+            purposes.sort_by_key(|p| std::cmp::Reverse(p.micros));
             purposes
         },
     }
@@ -228,5 +228,37 @@ mod tests {
         let c = csv(&lines);
         assert!(c.starts_with("time,provider"));
         assert!(c.contains("2026-10-01T10:00:00Z,anthropic,m,hints,100,50,10,0,0,0.001000"));
+    }
+
+    #[test]
+    fn summary_splits_cost_by_purpose() {
+        let audio = UsageKind::Audio { ms: 1 };
+        let mut asr = line("2026-10-01T00:00:00Z", "soniox", audio.clone(), Some(900));
+        asr.purpose = UsagePurpose::Asr;
+        let mut detect = line("2026-10-01T00:00:00Z", "x", audio.clone(), None);
+        detect.purpose = UsagePurpose::Detect;
+        let lines = vec![
+            asr,
+            detect.clone(),
+            LedgerLine {
+                micros: Some(40),
+                ..detect
+            },
+            line("2026-10-01T00:00:00Z", "x", audio, Some(300)),
+        ];
+        let s = summary(&lines, "2026-10");
+        let by: Vec<_> = s
+            .by_purpose
+            .iter()
+            .map(|p| (p.purpose, p.calls, p.micros, p.unpriced))
+            .collect();
+        assert_eq!(
+            by,
+            [
+                (UsagePurpose::Asr, 1, 900, false),
+                (UsagePurpose::Hints, 1, 300, false),
+                (UsagePurpose::Detect, 2, 40, true),
+            ]
+        );
     }
 }

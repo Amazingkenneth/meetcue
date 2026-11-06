@@ -31,6 +31,8 @@
 | 面板文字大小，0.8 到 1.6 | `overlay.textScale` | `1` |
 | 面板不透明度，0.3 到 1 | `overlay.opacity` | `1` |
 | 保存的位置：每个位置快捷键对应的位置、大小和形态 | `overlay.spots` | 三个空位置 |
+| 重写提示的按钮（**更简短**、**更详细**、**换个角度**、**提问**） | `overlay.hintActions` | `true` |
+| 识别或提示中断时提醒我 | `overlay.connectionAlerts` | `true` |
 | 重新运行设置向导 | `general.wizardCompleted` | 完成设置前为 `false` |
 
 通用页底部的 **清除所有数据** 在你输入确认词后删除 API 密钥、设置和所有本地记录，然后重启 MeetCue。见[删除你的数据](/zh/reference/privacy#delete-your-data)。
@@ -47,6 +49,7 @@
 | 麦克风人声门限 | `audio.vadThresholdDb`，单位 dBFS，−70 到 −10 | `-45` |
 | 系统声音人声门限 | `audio.remoteVadThresholdDb`，单位 dBFS，−70 到 −10 | `-60` |
 | 放大会议中轻声说话的人 | `audio.boostQuietVoices` | `true` |
+| 区分发言人（Soniox 和 Deepgram；Deepgram 额外收费） | `audio.speakerLabels` | `false` |
 | 静音多久算一句结束 | `audio.endpointSilenceMs`，500 到 3000 毫秒 | `700` |
 
 ## 供应商与费用
@@ -69,7 +72,7 @@
 | 设置 | 键名 | 默认值 |
 | --- | --- | --- |
 | 我的角色 | `hints.role` | 空 |
-| 知识库 | `hints.materials`（名称、路径和抽取的文字） | 无 |
+| 知识库 | `hints.materials`（名称和路径；抽取的文字保存在设置旁的 `knowledge.json` 中） | 无 |
 | 提示词：指令 | `hints.prompts.hintsSystem`（为空时使用内置提示词） | 空 |
 | 提示词：问题消息 | `hints.prompts.hintsUser`（为空时使用内置提示词） | 空 |
 | 只提示指向我的问题 | `hints.onlyDirectedToMe` | `false` |
@@ -77,6 +80,8 @@
 | 边说边勾选要点 | `hints.trackCoverage` | `false` |
 | 提前触发 | `hints.earlyTrigger` | `true` |
 | 边判断问题边生成提示 | `hints.speculativeHints` | `true` |
+| 记住我之前的回答 | `hints.meetingMemory` | `true` |
+| 不重复检查相同的句子 | `hints.skipRepeatedSentences` | `true` |
 
 ## 快捷键
 
@@ -111,6 +116,14 @@
 | 中文语音 | `practice.voiceZh`：Windows 语音 id，留空表示第一个 | `""` |
 | 我开口时停止朗读 | `audio.stopTtsOnSpeech` | `true` |
 | 口头禅词表 | `practice.fillersZh`、`practice.fillersEn` | 见[练习模式](/zh/guide/practice#review-report) |
+
+## 会议记录
+
+| 设置 | 键名 | 默认值 |
+| --- | --- | --- |
+| 保存每场会议的回顾 | `history.saveMeetings` | `true` |
+| 同时保存完整对话 | `history.saveTranscript` | `false` |
+| 会议保留时间（天；0 表示永久保留） | `history.keepDays` | `90` |
 
 ## 诊断
 

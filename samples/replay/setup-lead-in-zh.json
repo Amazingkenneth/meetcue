@@ -1,0 +1,15 @@
+{
+  "name": "The set-up said before a question and its short tail stay on its card (0.3.11)",
+  "lines": [
+    { "ch": "remote", "t0": 0, "t1": 2000, "text": "你怎么做备份？", "detect": { "isQuestion": true, "directedToMe": true, "short": "备份" } },
+    { "ch": "me", "t0": 4000, "t1": 30000, "text": "首先要异地备份，然后要定期演练，最后要复盘。" },
+    { "ch": "remote", "t0": 40000, "t1": 41500, "text": "如果研发和运维团队。", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 42500, "t1": 44000, "text": "的职责重叠，交付很慢。", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 45000, "t1": 47000, "text": "我们发现了这些问题，那你会如何。", "detect": { "isQuestion": true, "directedToMe": true, "leadIn": 3, "short": "职责重叠如何调整" } },
+    { "ch": "remote", "t0": 47300, "t1": 47800, "text": "调整？" }
+  ],
+  "questions": [
+    "你怎么做备份？",
+    "如果研发和运维团队。的职责重叠，交付很慢。我们发现了这些问题，那你会如何。调整？"
+  ]
+}

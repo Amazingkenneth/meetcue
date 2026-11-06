@@ -682,7 +682,7 @@
     "confirmTitle": "This permanently deletes:",
     "itemKeys": "All API keys saved in the system credential store",
     "itemSettings": "Your settings, including materials and shortcuts",
-    "itemRecords": "Practice reports, usage and cost records, and latency check history",
+    "itemRecords": "Practice reports, saved meetings, usage and cost records, and latency check history",
     "itemLogs": "Logs and cached price lists",
     "confirmLead": "It can't be undone. Export anything you want to keep first.",
     "typeToConfirm": "Type {{word}} to confirm.",

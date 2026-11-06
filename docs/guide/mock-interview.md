@@ -86,6 +86,12 @@ The same files are in the repository under [samples/practice](https://github.com
 
 To use your own questions, click **Choose a file…** under **Use your own file**. See [Write your own interview](#own-interview).
 
+### Questions for your own role {#generate}
+
+Under **Write questions for my role**, choose how many questions you want and click **Write questions**. MeetCue sends your role and an excerpt of your knowledge base (**Settings › Hints**), such as the job description and your résumé, to your hint model, and gets back the questions an interviewer for that role is likely to ask: a few about your own experience, the core questions of the role, a behavioural question and one about motivation. Each comes with a short reference answer based on your material, so the review can compare. It is one request to your hint model, and you can edit the list in the next step like any other.
+
+The button is available once you have entered a role or added a file.
+
 ## Step 5: Check the questions {#step-5}
 
 The preview lists every question or line. You can:

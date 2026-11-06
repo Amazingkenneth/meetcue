@@ -31,6 +31,8 @@ If `settings.json` can't be read, MeetCue renames it to `settings.json.bad` and 
 | Panel text size, 0.8 to 1.6 | `overlay.textScale` | `1` |
 | Panel opacity, 0.3 to 1 | `overlay.opacity` | `1` |
 | Saved spots: position, size and layout for each spot shortcut | `overlay.spots` | three empty spots |
+| Buttons to rewrite hints (**Shorter**, **More detail**, **Another take**, **Ask**) | `overlay.hintActions` | `true` |
+| Tell me when recognition or hints stop working | `overlay.connectionAlerts` | `true` |
 | Run setup again | `general.wizardCompleted` | `false` until setup is finished |
 
 **Erase all data**, at the bottom of the General tab, deletes API keys, settings and every local record after you type the confirmation word, then restarts MeetCue. See [Delete your data](/reference/privacy#delete-your-data).
@@ -47,6 +49,7 @@ Every setting applies as soon as it's changed, including during a meeting: model
 | Microphone voice threshold | `audio.vadThresholdDb`, in dBFS, −70 to −10 | `-45` |
 | System sound voice threshold | `audio.remoteVadThresholdDb`, in dBFS, −70 to −10 | `-60` |
 | Boost quiet voices from the meeting | `audio.boostQuietVoices` | `true` |
+| Tell speakers apart (Soniox and Deepgram; Deepgram charges extra) | `audio.speakerLabels` | `false` |
 | Sentence end after silence | `audio.endpointSilenceMs`, 500 to 3000 ms | `700` |
 
 ## Providers and cost
@@ -69,7 +72,7 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Setting | Key | Default |
 | --- | --- | --- |
 | My role | `hints.role` | empty |
-| Knowledge base | `hints.materials` (name, path and extracted text) | none |
+| Knowledge base | `hints.materials` (name and path; the extracted text is kept in `knowledge.json` next to the settings) | none |
 | Prompt instructions | `hints.prompts.hintsSystem` (empty uses the built-in prompt) | empty |
 | Prompt question message | `hints.prompts.hintsUser` (empty uses the built-in prompt) | empty |
 | Only questions directed at me | `hints.onlyDirectedToMe` | `false` |
@@ -77,6 +80,8 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Tick off points as I speak | `hints.trackCoverage` | `false` |
 | Early trigger | `hints.earlyTrigger` | `true` |
 | Write hints while checking the question | `hints.speculativeHints` | `true` |
+| Remember my earlier answers | `hints.meetingMemory` | `true` |
+| Don't check repeated sentences | `hints.skipRepeatedSentences` | `true` |
 
 ## Shortcuts
 
@@ -111,6 +116,14 @@ Each of `asr`, `detect` and `hints` has `provider`, `model` and `endpoint`. The 
 | Chinese voice | `practice.voiceZh`: a Windows voice id, empty for the first one | `""` |
 | Stop reading when I start speaking | `audio.stopTtsOnSpeech` | `true` |
 | Filler words | `practice.fillersZh`, `practice.fillersEn` | see [Practice mode](/guide/practice#review-report) |
+
+## Meetings
+
+| Setting | Key | Default |
+| --- | --- | --- |
+| Save a recap of each meeting | `history.saveMeetings` | `true` |
+| Also save everything that was said | `history.saveTranscript` | `false` |
+| Keep meetings for (days; 0 keeps them all) | `history.keepDays` | `90` |
 
 ## Diagnostics
 

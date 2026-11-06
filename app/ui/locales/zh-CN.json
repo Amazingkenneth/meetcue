@@ -678,7 +678,7 @@
     "confirmTitle": "以下内容将被永久删除：",
     "itemKeys": "保存在系统凭据管理器中的全部 API 密钥",
     "itemSettings": "你的设置，包括资料和快捷键",
-    "itemRecords": "练习报告、用量与费用记录、延迟检测历史",
+    "itemRecords": "练习报告、保存的会议、用量与费用记录、延迟检测历史",
     "itemLogs": "日志和缓存的价格表",
     "confirmLead": "此操作无法撤销。请先导出需要保留的内容。",
     "typeToConfirm": "输入 {{word}} 以确认。",
