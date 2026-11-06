@@ -4,6 +4,8 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+## 0.4.0 — 2026-11-06
+
 ### Added
 
 - **Meeting recaps.** When you stop listening, MeetCue saves the questions, their hints and which points you ticked, and the panel offers **View the recap**. **Settings › Meetings** lists saved meetings to read, save as Markdown or delete. The recap costs nothing; the full transcript is saved only if you turn that on. On by default, kept 90 days. See [After the meeting](/guide/meeting#recap).
