@@ -971,7 +971,7 @@ async fn read_results(
                     t1_ms: m.map(t1_ms),
                 },
                 AsrResult::Endpoint { t_ms } => AsrResult::Endpoint { t_ms: m.map(t_ms) },
-                e @ AsrResult::Error(_) => e,
+                e @ (AsrResult::Error(_) | AsrResult::Speaker(_)) => e,
             }
         };
         if input

@@ -115,6 +115,9 @@ pub fn config_message(opts: &AsrOptions) -> serde_json::Value {
     if !opts.hotwords.is_empty() {
         cfg["context"] = json!({ "terms": opts.hotwords });
     }
+    if opts.speaker_labels {
+        cfg["enable_speaker_diarization"] = json!(true);
+    }
     cfg
 }
 
@@ -127,6 +130,19 @@ struct Token {
     end_ms: Option<i64>,
     #[serde(default)]
     is_final: bool,
+    /// Present with speaker diarization, as "1", "2", …
+    #[serde(default)]
+    speaker: Option<serde_json::Value>,
+}
+
+impl Token {
+    fn speaker(&self) -> Option<u32> {
+        match self.speaker.as_ref()? {
+            serde_json::Value::String(s) => s.trim().parse().ok(),
+            serde_json::Value::Number(n) => n.as_u64().map(|n| n as u32),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -180,6 +196,11 @@ pub fn parse_message(text: &str) -> Vec<AsrResult> {
                 t_ms: t.end_ms.or(t.start_ms).unwrap_or(f1),
             });
         } else if t.is_final {
+            if final_text.is_empty() {
+                if let Some(n) = t.speaker() {
+                    out.push(AsrResult::Speaker(n));
+                }
+            }
             final_text.push_str(&t.text);
             f0.get_or_insert(t.start_ms.unwrap_or(f1));
             f1 = t.end_ms.unwrap_or(f1);
@@ -410,6 +431,10 @@ mod tests {
             vec![AsrResult::Endpoint { t_ms: 0 }]
         );
         assert!(parse_message(r#"{"tokens":[]}"#).is_empty());
+        let labelled = parse_message(
+            r#"{"tokens":[{"text":"Hi","start_ms":0,"end_ms":100,"is_final":true,"speaker":"2"}]}"#,
+        );
+        assert_eq!(labelled[0], AsrResult::Speaker(2));
     }
 
     #[test]

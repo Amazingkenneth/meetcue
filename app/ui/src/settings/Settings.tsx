@@ -24,10 +24,11 @@ import { findPrice } from "../util/models";
 import { ProbePanel } from "./Probe";
 import { providerName } from "./providers";
 import { useDraft } from "./useDraft";
+import { MeetingsTab } from "./Meetings";
 
 type Update = (f: (s: Settings) => Settings) => Promise<void>;
 
-const TABS = ["general", "audio", "providers", "hints", "shortcuts", "diagnostics"] as const;
+const TABS = ["general", "audio", "providers", "hints", "meetings", "shortcuts", "diagnostics"] as const;
 type Tab = (typeof TABS)[number];
 
 function initialTab(): { tab: Tab; anchor: string | null } {
@@ -35,6 +36,7 @@ function initialTab(): { tab: Tab; anchor: string | null } {
   if ((TABS as readonly string[]).includes(hash)) return { tab: hash as Tab, anchor: null };
   if (hash === "probe" || hash === "keys" || hash === "budget") return { tab: "providers", anchor: hash };
   if (hash === "log") return { tab: "diagnostics", anchor: hash };
+  if (hash.startsWith("meetings-")) return { tab: "meetings", anchor: null };
   return { tab: "general", anchor: null };
 }
 
@@ -66,6 +68,9 @@ export function SettingsWindow() {
       </Tabs.Content>
       <Tabs.Content value="hints" className="tabs-content">
         <HintsTab settings={settings} update={update} />
+      </Tabs.Content>
+      <Tabs.Content value="meetings" className="tabs-content">
+        <MeetingsTab settings={settings} update={update} />
       </Tabs.Content>
       <Tabs.Content value="shortcuts" className="tabs-content">
         <ShortcutsTab settings={settings} update={update} />
@@ -204,6 +209,28 @@ function GeneralTab({ settings, update }: { settings: Settings; update: Update }
         </Field>
         <PanelLookFields settings={settings} update={update} />
         <PanelSpotsField settings={settings} />
+        <Switch
+          checked={settings.overlay.hintActions}
+          label={t("settings.hintActions")}
+          description={t("settings.hintActionsHint")}
+          onChange={(v) =>
+            void update((s) => {
+              s.overlay.hintActions = v;
+              return s;
+            })
+          }
+        />
+        <Switch
+          checked={settings.overlay.connectionAlerts}
+          label={t("settings.connectionAlerts")}
+          description={t("settings.connectionAlertsHint")}
+          onChange={(v) =>
+            void update((s) => {
+              s.overlay.connectionAlerts = v;
+              return s;
+            })
+          }
+        />
       </Section>
       <Section title={t("settings.practiceTitle")}>
         <Field label={t("settings.practiceOpen")} hint={t("settings.practiceOpenHint")}>
@@ -614,6 +641,17 @@ function AudioTab({ settings, update }: { settings: Settings; update: Update }) 
       </Section>
       <Section title={t("audio.advanced")}>
         <Switch
+          checked={settings.audio.speakerLabels}
+          label={t("audio.speakerLabels")}
+          description={t("audio.speakerLabelsHint")}
+          onChange={(v) =>
+            void update((s) => {
+              s.audio.speakerLabels = v;
+              return s;
+            })
+          }
+        />
+        <Switch
           checked={settings.audio.boostQuietVoices}
           label={t("audio.boostQuiet")}
           description={t("audio.boostQuietHint")}
@@ -985,6 +1023,7 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
             </tbody>
           </table>
         </div>
+        {!!usage?.byPurpose.length && <PurposeTable usage={usage} />}
         <div className="row" style={{ margin: "8px 0" }}>
           <span className="muted" style={{ fontSize: 12 }}>
             {t("usage.estimateNote")}
@@ -1016,9 +1055,48 @@ function ProvidersTab({ settings, update }: { settings: Settings; update: Update
   );
 }
 
+/** This month's cost by what the calls were for, so it's clear where the money goes. */
+function PurposeTable({ usage }: { usage: UsageSummary }) {
+  const { t } = useTranslation();
+  return (
+    <div className="table-wrap" style={{ marginTop: 12 }}>
+      <table className="data">
+        <thead>
+          <tr>
+            <th>{t("usage.purpose")}</th>
+            <th className="num">{t("usage.calls")}</th>
+            <th className="num">{t("usage.cost")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {usage.byPurpose.map((p) => (
+            <tr key={p.purpose}>
+              <td>{t(`usage.purposes.${p.purpose}`)}</td>
+              <td className="num">{p.calls}</td>
+              <td className="num" title={p.unpriced ? t("usage.unpricedHint") : undefined}>
+                {usd(p.micros)}
+                {p.unpriced ? "+" : ""}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type HintRule =
+  | "onlyDirectedToMe"
+  | "queueInterruptions"
+  | "trackCoverage"
+  | "earlyTrigger"
+  | "speculativeHints"
+  | "meetingMemory"
+  | "skipRepeatedSentences";
+
 function HintsTab({ settings, update }: { settings: Settings; update: Update }) {
   const { t } = useTranslation();
-  const rule = (key: "onlyDirectedToMe" | "queueInterruptions" | "trackCoverage" | "earlyTrigger" | "speculativeHints") => (
+  const rule = (key: HintRule) => (
     <Switch
       checked={settings.hints[key]}
       label={t(`hints.${key}`)}
@@ -1056,6 +1134,8 @@ function HintsTab({ settings, update }: { settings: Settings; update: Update }) 
         {rule("trackCoverage")}
         {rule("earlyTrigger")}
         {rule("speculativeHints")}
+        {rule("meetingMemory")}
+        {rule("skipRepeatedSentences")}
       </Section>
       <PromptsSection settings={settings} update={update} />
     </>

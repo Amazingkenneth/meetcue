@@ -97,6 +97,8 @@ fn engine_config(settings: &Settings, detect: ModelRef, hints: ModelRef) -> Engi
         track_coverage: settings.hints.track_coverage,
         early_trigger: settings.hints.early_trigger,
         speculative_hints: settings.hints.speculative_hints,
+        meeting_memory: settings.hints.meeting_memory,
+        skip_repeated_sentences: settings.hints.skip_repeated_sentences,
     }
 }
 
@@ -258,6 +260,7 @@ pub fn build_config_with(state: &AppState, need_asr: bool) -> Result<SessionConf
         hotwords: materials::hotwords(&texts, materials::MAX_HOTWORDS),
         endpoint_silence_ms: s.audio.endpoint_silence_ms,
         proxy: s.providers.proxy.clone(),
+        speaker_labels: s.audio.speaker_labels,
     };
     cfg.asr_model = ModelRef {
         provider: asr_p.clone(),
@@ -288,7 +291,7 @@ fn asr_signature(cfg: &ProviderConfig, opts: &AsrOptions) -> String {
     let mut key = std::collections::hash_map::DefaultHasher::new();
     cfg.key.hash(&mut key);
     format!(
-        "{}|{}|{:?}|{:x}|{:?}|{:?}|{}|{:?}",
+        "{}|{}|{:?}|{:x}|{:?}|{:?}|{}|{:?}|{}",
         cfg.provider,
         cfg.model,
         cfg.host,
@@ -296,7 +299,8 @@ fn asr_signature(cfg: &ProviderConfig, opts: &AsrOptions) -> String {
         opts.languages,
         opts.hotwords,
         opts.endpoint_silence_ms,
-        opts.proxy
+        opts.proxy,
+        opts.speaker_labels
     )
 }
 
@@ -460,8 +464,12 @@ pub async fn toggle(app: &AppHandle) -> Result<(), MeetCueError> {
 
 pub async fn stop(app: &AppHandle) {
     let state = app.state::<AppState>();
+    let was_running = state.backend.is_running();
     stop_capture(&state);
     state.backend.stop().await;
+    if was_running {
+        crate::meetings::save_finished(app);
+    }
     // Back to idle: the meters keep showing what the microphone hears.
     if let Err(e) = sync_preview(app, false) {
         tracing::warn!(code = %e.code, "level preview not resumed: {}", e.detail);
@@ -721,6 +729,7 @@ pub fn spawn_forwarder(app: &AppHandle) {
                     // belongs to the old one and must not stop its capture.
                     if *s == SessionState::Stopped && !state.backend.is_running() {
                         stop_capture(&state);
+                        crate::meetings::save_finished(&app);
                         let app = app.clone();
                         tauri::async_runtime::spawn_blocking(move || {
                             let _ = sync_preview(&app, false);

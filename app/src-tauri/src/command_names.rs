@@ -46,6 +46,7 @@ pub const COMMANDS: &[&str] = &[
     "list_voices",
     "preview_voice",
     "practice_classify",
+    "practice_generate",
     "practice_start",
     "practice_control",
     "practice_outline",
@@ -53,4 +54,8 @@ pub const COMMANDS: &[&str] = &[
     "practice_reports",
     "practice_report",
     "export_report",
+    "list_meetings",
+    "get_meeting",
+    "delete_meeting",
+    "export_meeting",
 ];

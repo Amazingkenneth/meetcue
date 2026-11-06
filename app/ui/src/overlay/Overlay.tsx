@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { backend } from "../backend";
 import type { HintLevel } from "../bindings/HintLevel";
 import type { PanelMode } from "../bindings/PanelMode";
+import type { RewriteStyle } from "../bindings/RewriteStyle";
 import type { Settings } from "../bindings/Settings";
 import type { TranscriptLine } from "../bindings/TranscriptLine";
 import {
+  connectionProblem,
   contextAround,
   coverageCount,
   currentId,
@@ -178,6 +180,16 @@ function FullPanel({
         : t("overlay.idle");
   const toggleKey = settings?.hotkeys.toggleCapture ?? "Ctrl+Alt+Space";
   const placement = usePlacement(settings);
+  const actions = !!settings?.overlay.hintActions && !practice;
+  const live = view.state === "running" || view.state === "paused";
+  // After listening stops, point to the recap of the meeting just saved.
+  const [savedId, setSavedId] = useState<string | null>(null);
+  useAppEvents((e) => {
+    if (e.type === "meetingSaved") setSavedId(e.id);
+  });
+  useEffect(() => {
+    if (view.state === "running") setSavedId(null);
+  }, [view.state]);
 
   return (
     <div className="ov" role="application" aria-label={t("overlay.title")} onMouseDown={dragHandle}>
@@ -190,6 +202,11 @@ function FullPanel({
         <button className="ov-icon" onClick={() => void backend().invoke("toggle_capture")} title={toggleKey}>
           {running ? t("overlay.pause") : view.state === "paused" ? t("overlay.resume") : t("overlay.start")}
         </button>
+        {actions && live && (
+          <button className="ov-icon" title={t("overlay.askTitle")} onClick={() => void backend().invoke("open_window", { view: "ask" })}>
+            {t("overlay.ask")}
+          </button>
+        )}
         <button
           className="ov-icon"
           aria-pressed={pinned}
@@ -236,9 +253,26 @@ function FullPanel({
 
       {view.latencyWarning !== null && <SlowToast view={view} settings={settings} />}
 
+      {settings?.overlay.connectionAlerts !== false && <ConnectionAlert view={view} />}
+
       <ErrorToast errors={problems} docsUrl={docsUrl} />
 
-      <ChatList view={view} toggleKey={toggleKey} display={display} />
+      {savedId && !live && (
+        <div className="ov-saved" role="status">
+          <span>{t("overlay.meetingSaved")}</span>
+          <button
+            className="ov-link"
+            onClick={() => void backend().invoke("open_window", { view: "settings", section: `meetings-${savedId}` })}
+          >
+            {t("overlay.viewRecap")}
+          </button>
+          <button className="ov-link" onClick={() => setSavedId(null)}>
+            {t("common.dismiss")}
+          </button>
+        </div>
+      )}
+
+      <ChatList view={view} toggleKey={toggleKey} display={display} actions={actions} />
 
       <Footer view={view} settings={settings} />
     </div>
@@ -266,7 +300,7 @@ const NONE: ReadonlySet<number> = new Set();
 
 const focus = (id: number) => void backend().invoke("user_action", { action: { type: "focus", id } });
 
-function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: string; display: HintDisplay }) {
+function ChatList({ view, toggleKey, display, actions = false }: { view: SessionView; toggleKey: string; display: HintDisplay; actions?: boolean }) {
   const { t } = useTranslation();
   const current = currentId(view);
   const latest = latestId(view);
@@ -325,6 +359,7 @@ function ChatList({ view, toggleKey, display }: { view: SessionView; toggleKey: 
             display={display}
             shownAt={shown.current.get(key) ?? 0}
             isLive={current === live}
+            actions={actions}
             onBack={latest !== null && current !== latest ? () => focus(latest) : null}
           />
         )}
@@ -437,6 +472,7 @@ function ChatBlock({
   display,
   shownAt,
   isLive,
+  actions = false,
   onBack,
 }: {
   q: QuestionView;
@@ -444,6 +480,8 @@ function ChatBlock({
   display: HintDisplay;
   shownAt: number;
   isLive: boolean;
+  /** Show the buttons that rewrite the hints. */
+  actions?: boolean;
   /** Set while an earlier question is shown: goes back to the newest one. */
   onBack: (() => void) | null;
 }) {
@@ -460,7 +498,7 @@ function ChatBlock({
     <article className="ov-block" data-current={isLive} aria-current={isLive ? "true" : undefined}>
       <header>
         <span className="mono">{at}</span>
-        <span>{t("overlay.them")}</span>
+        <span>{q.speaker ? t("overlay.speakerN", { n: q.speaker }) : t("overlay.them")}</span>
         <span className="grow" />
         {onBack && (
           <button className="ov-link ov-back" title={t("overlay.viewingOther")} onClick={onBack}>
@@ -550,7 +588,48 @@ function ChatBlock({
           {boldSegments(q.answer).map((s, i) => (s.bold ? <strong key={i}>{s.text}</strong> : <span key={i}>{s.text}</span>))}
         </p>
       )}
+      {actions && !vis.hidden && (q.answerDone || q.failedCode) && <HintActions id={q.id} />}
     </article>
+  );
+}
+
+const rewrite = (id: number, style: RewriteStyle) => void backend().invoke("user_action", { action: { type: "rewrite", id, style } });
+
+/** Rewrites the hints of a question: shorter, with more detail, or once more. */
+function HintActions({ id }: { id: number }) {
+  const { t } = useTranslation();
+  return (
+    <div className="ov-actions" role="group" aria-label={t("overlay.rewriteLabel")}>
+      <button className="ov-link" title={t("overlay.shorterTitle")} onClick={() => rewrite(id, "shorter")}>
+        {t("overlay.shorter")}
+      </button>
+      <button className="ov-link" title={t("overlay.longerTitle")} onClick={() => rewrite(id, "longer")}>
+        {t("overlay.longer")}
+      </button>
+      <button className="ov-link" title={t("overlay.againTitle")} onClick={() => rewrite(id, "again")}>
+        {t("overlay.again")}
+      </button>
+    </div>
+  );
+}
+
+/** Says plainly when recognition is gone or hints keep failing, so you don't wait for hints that won't come. */
+function ConnectionAlert({ view }: { view: SessionView }) {
+  const { t } = useTranslation();
+  const now = useNow(1000);
+  const problem = connectionProblem(view, now);
+  if (!problem) return null;
+  return (
+    <div className="ov-toast" role="alert" data-kind="connection">
+      <strong>{t(problem === "recognition" ? "overlay.recognitionDown" : "overlay.hintsDown")}</strong>
+      <p>{t(problem === "recognition" ? "overlay.recognitionDownHint" : "overlay.hintsDownHint")}</p>
+      <div className="row">
+        <span className="code" />
+        <button className="ov-link" onClick={() => void backend().invoke("open_window", { view: "settings", section: "log" })}>
+          {t("errors.openLog")}
+        </button>
+      </div>
+    </div>
   );
 }
 

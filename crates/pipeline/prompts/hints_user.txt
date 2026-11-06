@@ -1,6 +1,9 @@
 Notes from the user's knowledge base that may relate to the question (may be empty):
 {knowledge}
 
+Earlier in this meeting, questions and what the user answered (keep new hints consistent with these; may be empty):
+{memory}
+
 Recent transcript:
 {transcript}
 Current question:

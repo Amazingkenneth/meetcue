@@ -36,6 +36,11 @@ impl AppPaths {
         self.config_dir.join("practice")
     }
 
+    /// Saved meetings, one JSON file each.
+    pub fn meetings_dir(&self) -> PathBuf {
+        self.config_dir.join("meetings")
+    }
+
     pub fn latency_history(&self) -> PathBuf {
         self.config_dir.join("latency-history.json")
     }
@@ -70,6 +75,7 @@ impl AppPaths {
         fs::create_dir_all(&self.config_dir)?;
         fs::create_dir_all(self.logs_dir())?;
         fs::create_dir_all(self.practice_dir())?;
+        fs::create_dir_all(self.meetings_dir())?;
         Ok(())
     }
 

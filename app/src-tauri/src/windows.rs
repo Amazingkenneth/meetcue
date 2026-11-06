@@ -645,6 +645,7 @@ pub fn open_view(app: &AppHandle, view: &str, section: Option<&str>) -> tauri::R
         "wizard" => (900.0, 760.0),
         "practice" => (820.0, 760.0),
         "review" => (900.0, 820.0),
+        "ask" => (520.0, 220.0),
         _ => (1000.0, 760.0),
     };
     let lang = app.state::<AppState>().language();
@@ -652,7 +653,8 @@ pub fn open_view(app: &AppHandle, view: &str, section: Option<&str>) -> tauri::R
     WebviewWindowBuilder::new(app, label, WebviewUrl::App(url.into()))
         .title(format!("{title} · MeetCue"))
         .inner_size(w, h)
-        .min_inner_size(560.0, 480.0)
+        .min_inner_size(w.min(560.0), h.min(480.0))
+        .always_on_top(view == "ask")
         .center()
         .build()?;
     Ok(())

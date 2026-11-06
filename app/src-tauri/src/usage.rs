@@ -6,7 +6,7 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
-use meetcue_core::ipc::{UsageRow, UsageSummary};
+use meetcue_core::ipc::{PurposeRow, UsageRow, UsageSummary};
 use meetcue_core::{UsageKind, UsagePurpose};
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +37,25 @@ pub fn read(path: &Path) -> Vec<LedgerLine> {
 /// Summary of one month (`YYYY-MM`).
 pub fn summary(lines: &[LedgerLine], month: &str) -> UsageSummary {
     let mut rows: BTreeMap<(String, String), UsageRow> = BTreeMap::new();
+    let mut purposes: Vec<PurposeRow> = Vec::new();
     for l in lines.iter().filter(|l| l.at.starts_with(month)) {
+        let p = match purposes.iter_mut().position(|p| p.purpose == l.purpose) {
+            Some(i) => &mut purposes[i],
+            None => {
+                purposes.push(PurposeRow {
+                    purpose: l.purpose,
+                    calls: 0,
+                    micros: 0,
+                    unpriced: false,
+                });
+                purposes.last_mut().unwrap()
+            }
+        };
+        p.calls += 1;
+        match l.micros {
+            Some(m) => p.micros += m,
+            None => p.unpriced = true,
+        }
         let row = rows
             .entry((l.provider.clone(), l.model.clone()))
             .or_insert_with(|| UsageRow {
@@ -74,6 +92,10 @@ pub fn summary(lines: &[LedgerLine], month: &str) -> UsageSummary {
         month: month.to_string(),
         total_micros: rows.iter().filter_map(|r| r.micros).sum(),
         rows,
+        by_purpose: {
+            purposes.sort_by(|a, b| b.micros.cmp(&a.micros));
+            purposes
+        },
     }
 }
 

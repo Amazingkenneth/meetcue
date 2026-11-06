@@ -14,7 +14,11 @@ export type MeetCueEvent = { "type": "sessionState", state: SessionState, tMs: n
 /**
  * Transcript lines around the question, for the "context" disclosure.
  */
-context: Array<TranscriptLine>, } | { "type": "questionRemoved", id: number, } | { "type": "questionPoint", id: number, version: number, n: number, head: string, rest: string, status: PointStatus, } | { "type": "answerDelta", id: number, version: number, text: string, } | { "type": "answerDone", id: number, version: number, } | { "type": "hintsFailed", id: number, version: number, code: string, } | { "type": "coverage", id: number, statuses: Array<PointStatus>, } | { "type": "questionStatus", id: number, status: QuestionStatus, } | { "type": "queueChanged", questions: Array<QuestionBrief>, active: number | null, focus: number | null, } | { "type": "latencySample", id: number, asrMs: number, detectMs: number, generateMs: number, totalMs: number, early: boolean, } | { "type": "usage", provider: string, model: string, purpose: UsagePurpose, usage: UsageKind, 
+context: Array<TranscriptLine>, 
+/**
+ * Which participant asked, when speaker labels are on (1, 2, …).
+ */
+speaker?: number, } | { "type": "questionRemoved", id: number, } | { "type": "questionPoint", id: number, version: number, n: number, head: string, rest: string, status: PointStatus, } | { "type": "answerDelta", id: number, version: number, text: string, } | { "type": "answerDone", id: number, version: number, } | { "type": "hintsFailed", id: number, version: number, code: string, } | { "type": "coverage", id: number, statuses: Array<PointStatus>, } | { "type": "questionStatus", id: number, status: QuestionStatus, } | { "type": "queueChanged", questions: Array<QuestionBrief>, active: number | null, focus: number | null, } | { "type": "latencySample", id: number, asrMs: number, detectMs: number, generateMs: number, totalMs: number, early: boolean, } | { "type": "usage", provider: string, model: string, purpose: UsagePurpose, usage: UsageKind, 
 /**
  * Cost of this call in micro-dollars, or `None` if the price is unknown.
  */

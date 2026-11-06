@@ -921,3 +921,8 @@ pre.prompt-text {
   margin: 8px 0 0;
   color: var(--err);
 }
+
+/* Meeting recap in Settings › Meetings. */
+.recap-points { list-style: none; padding-left: 0; margin: 6px 0; }
+.recap-points li { margin: 4px 0; }
+.recap-points li[data-done="false"] { color: var(--text-2, inherit); }

@@ -15,6 +15,7 @@ pub mod knowledge;
 pub mod latency;
 pub mod live_prices;
 pub mod materials;
+pub mod meeting;
 pub mod net;
 pub mod practice;
 pub mod prefilter;

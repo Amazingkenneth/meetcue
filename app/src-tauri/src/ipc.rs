@@ -18,6 +18,7 @@ use meetcue_core::pricing::{
 use meetcue_core::settings::{EndpointChoice, Material, PanelMode, PromptSettings};
 use meetcue_core::{codes, MeetCueError, Settings, TimedEvent, UsagePurpose, UserAction};
 use meetcue_pipeline::endpoints::EndpointCatalog;
+use meetcue_pipeline::meeting::{MeetingRecord, MeetingSummary};
 use meetcue_pipeline::practice::{PracticeReport, PracticeReportSummary, PracticeScript};
 use meetcue_pipeline::probe::{self, ProbeEnv, ProbeReport, ProbeRequest};
 use meetcue_pipeline::provider::ModelInfo;
@@ -26,7 +27,9 @@ use meetcue_platform::speech::Speaker;
 
 use crate::state::{AppState, DOCS_URL};
 use crate::usage::{self, LedgerLine};
-use crate::{config, diagnostics, hotkeys, practice, prices, session, tray, windows, APP_EVENT};
+use crate::{
+    config, diagnostics, hotkeys, meetings, practice, prices, session, tray, windows, APP_EVENT,
+};
 
 type Res<T> = Result<T, MeetCueError>;
 
@@ -396,7 +399,7 @@ pub fn set_always_on_top(app: AppHandle, on: bool) -> Res<()> {
 /// clicks, and the app could not be quit.
 #[tauri::command]
 pub async fn open_window(app: AppHandle, view: String, section: Option<String>) -> Res<()> {
-    const VIEWS: &[&str] = &["settings", "wizard", "practice", "review"];
+    const VIEWS: &[&str] = &["settings", "wizard", "practice", "review", "ask"];
     if !VIEWS.contains(&view.as_str()) {
         return Err(io_err("unknown view"));
     }
@@ -664,6 +667,12 @@ pub async fn practice_classify(app: AppHandle, script: PracticeScript) -> Res<Pr
     practice::classify(&app, script).await
 }
 
+/// Writes a practice interview from the role and knowledge base.
+#[tauri::command]
+pub async fn practice_generate(app: AppHandle, count: u32) -> Res<PracticeScript> {
+    practice::generate(&app, count).await
+}
+
 #[tauri::command]
 pub async fn practice_start(app: AppHandle, script: PracticeScript) -> Res<()> {
     practice::start(&app, script).await
@@ -711,6 +720,27 @@ pub async fn export_report(app: AppHandle, id: String) -> Res<Option<String>> {
     practice::export(&app, &id).await
 }
 
+#[tauri::command]
+pub fn list_meetings(state: State<'_, AppState>) -> Vec<MeetingSummary> {
+    meetings::list(&state)
+}
+
+#[tauri::command]
+pub fn get_meeting(app: AppHandle, id: String) -> Res<MeetingRecord> {
+    meetings::get(&app, &id)
+}
+
+/// Deletes one saved meeting, or every one when `id` is empty.
+#[tauri::command]
+pub fn delete_meeting(app: AppHandle, id: String) -> Res<()> {
+    meetings::delete(&app, &id)
+}
+
+#[tauri::command]
+pub async fn export_meeting(app: AppHandle, id: String) -> Res<Option<String>> {
+    meetings::export(&app, &id).await
+}
+
 pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
     tauri::generate_handler![
         get_app_info,
@@ -756,6 +786,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         list_voices,
         preview_voice,
         practice_classify,
+        practice_generate,
         practice_start,
         practice_control,
         practice_outline,
@@ -763,5 +794,9 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool {
         practice_reports,
         practice_report,
         export_report,
+        list_meetings,
+        get_meeting,
+        delete_meeting,
+        export_meeting,
     ]
 }

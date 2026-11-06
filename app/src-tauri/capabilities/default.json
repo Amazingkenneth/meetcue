@@ -7,7 +7,8 @@
     "settings",
     "wizard",
     "practice",
-    "review"
+    "review",
+    "ask"
   ],
   "permissions": [
     "core:default",
@@ -56,12 +57,17 @@
     "allow-list-voices",
     "allow-preview-voice",
     "allow-practice-classify",
+    "allow-practice-generate",
     "allow-practice-start",
     "allow-practice-control",
     "allow-practice-outline",
     "allow-practice-jump",
     "allow-practice-reports",
     "allow-practice-report",
-    "allow-export-report"
+    "allow-export-report",
+    "allow-list-meetings",
+    "allow-get-meeting",
+    "allow-delete-meeting",
+    "allow-export-meeting"
   ]
 }

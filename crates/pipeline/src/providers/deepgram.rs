@@ -115,6 +115,9 @@ pub fn listen_url(host: &str, opts: &AsrOptions) -> String {
         ("utterance_end_ms".into(), "1000".into()),
         ("vad_events".into(), "true".into()),
     ];
+    if opts.speaker_labels {
+        q.push(("diarize".into(), "true".into()));
+    }
     for term in opts.hotwords.iter().take(50) {
         q.push(("keyterm".into(), term.clone()));
     }
@@ -142,6 +145,15 @@ fn encode(s: &str) -> String {
 struct Alternative {
     #[serde(default)]
     transcript: String,
+    #[serde(default)]
+    words: Vec<Word>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Word {
+    /// Present with `diarize=true`, numbered from 0.
+    #[serde(default)]
+    speaker: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -208,16 +220,23 @@ pub fn parse_message(text: &str) -> Vec<AsrResult> {
     };
     match env.kind.as_str() {
         "Results" => {
-            let transcript = env
+            let alt = env
                 .channel
                 .and_then(|c| serde_json::from_value::<ChannelResult>(c).ok())
-                .and_then(|c| c.alternatives.into_iter().next())
+                .and_then(|c| c.alternatives.into_iter().next());
+            let speaker = alt
+                .as_ref()
+                .and_then(|a| a.words.iter().find_map(|w| w.speaker));
+            let transcript = alt
                 .map(|a| segment(&tidy(a.transcript.trim())))
                 .unwrap_or_default();
             let (t0, t1) = (ms(env.start), ms(env.start + env.duration));
             let mut out = Vec::new();
             if env.is_final {
                 if !transcript.is_empty() {
+                    if let Some(n) = speaker {
+                        out.push(AsrResult::Speaker(n + 1));
+                    }
                     out.push(AsrResult::Final {
                         text: transcript,
                         t0_ms: t0,
@@ -427,6 +446,12 @@ mod tests {
         assert!(url.starts_with("wss://api.eu.deepgram.com/v1/listen?model=nova-3&language=en&encoding=linear16&sample_rate=16000"));
         assert!(url.contains("&endpointing=300&"));
         assert!(url.contains("&keyterm=OpenFlow%201.3&keyterm=BGP"));
+        assert!(!url.contains("diarize"));
+        let labelled = AsrOptions {
+            speaker_labels: true,
+            ..opts.clone()
+        };
+        assert!(listen_url("api.deepgram.com", &labelled).contains("&diarize=true"));
         assert!(!url.to_lowercase().contains("token"));
     }
 
@@ -457,6 +482,8 @@ mod tests {
                 t1_ms: 1700
             }]
         );
+        let labelled = r#"{"type":"Results","duration":1.0,"start":0.0,"is_final":true,"channel":{"alternatives":[{"transcript":"next one","words":[{"word":"next","speaker":1},{"word":"one","speaker":1}]}]}}"#;
+        assert_eq!(parse_message(labelled)[0], AsrResult::Speaker(2));
         let fin = r#"{"type":"Results","duration":2.0,"start":0.5,"is_final":true,"speech_final":true,"channel":{"alternatives":[{"transcript":"how do you scale it?"}]}}"#;
         assert_eq!(
             parse_message(fin),

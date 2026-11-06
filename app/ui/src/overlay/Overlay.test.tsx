@@ -177,6 +177,7 @@ describe("compactRows", () => {
         answerDone: true,
         failedCode: null,
         latencyMs: null,
+        speaker: null,
       };
       view.order.push(id);
     }

@@ -3,9 +3,10 @@ import type { AudioSettings } from "./AudioSettings";
 import type { DiagnosticsSettings } from "./DiagnosticsSettings";
 import type { GeneralSettings } from "./GeneralSettings";
 import type { HintSettings } from "./HintSettings";
+import type { HistorySettings } from "./HistorySettings";
 import type { Hotkeys } from "./Hotkeys";
 import type { OverlaySettings } from "./OverlaySettings";
 import type { PracticeSettings } from "./PracticeSettings";
 import type { ProviderSettings } from "./ProviderSettings";
 
-export type Settings = { version: number, general: GeneralSettings, audio: AudioSettings, providers: ProviderSettings, hints: HintSettings, hotkeys: Hotkeys, overlay: OverlaySettings, practice: PracticeSettings, diagnostics: DiagnosticsSettings, };
+export type Settings = { version: number, general: GeneralSettings, audio: AudioSettings, providers: ProviderSettings, hints: HintSettings, hotkeys: Hotkeys, overlay: OverlaySettings, practice: PracticeSettings, history: HistorySettings, diagnostics: DiagnosticsSettings, };

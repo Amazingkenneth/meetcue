@@ -6,6 +6,7 @@ import "./design/app.css";
 import "./i18n";
 import { backend } from "./backend";
 import type { View } from "./backend/types";
+import { AskWindow } from "./ask/Ask";
 import { Overlay } from "./overlay/Overlay";
 import { Practice } from "./practice/Practice";
 import { Review } from "./practice/Review";
@@ -13,7 +14,7 @@ import { SettingsWindow } from "./settings/Settings";
 import { useSettings } from "./state/hooks";
 import { Wizard } from "./wizard/Wizard";
 
-const VIEWS: View[] = ["overlay", "settings", "wizard", "practice", "review"];
+const VIEWS: View[] = ["overlay", "settings", "wizard", "practice", "review", "ask"];
 
 function currentView(): View | null {
   const v = new URLSearchParams(window.location.search).get("view");
@@ -94,6 +95,8 @@ function App() {
       return <Practice />;
     case "review":
       return <Review />;
+    case "ask":
+      return <AskWindow />;
     default:
       return <Gallery />;
   }

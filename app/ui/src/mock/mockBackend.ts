@@ -25,6 +25,8 @@ import defaults from "./default-settings.json";
 import defaultPrompts from "./default-prompts.json";
 import demo from "./sdn-demo.json";
 import { mockPracticeReport, mockPracticeScript } from "./practice";
+import { meetingFromView, meetingSummary, sampleMeeting } from "./meetings";
+import type { MeetingRecord } from "../bindings/MeetingRecord";
 
 type Listener<T> = (e: T) => void;
 
@@ -55,6 +57,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
   let practiceScript: PracticeScript | null = null;
   let previewTimer = 0;
   let prices = structuredClone(pricing) as PriceTable;
+  let meetings: MeetingRecord[] = [sampleMeeting()];
 
   // Activity log in the same shape as the desktop shell's log lines.
   const logs: LogLine[] = [];
@@ -218,6 +221,31 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       case "resume":
         toggle();
         break;
+      case "rewrite": {
+        const q = view.questions[a.id];
+        if (!q) break;
+        const version = q.version + 1;
+        emit({ type: "questionNew", id: q.id, version, text: q.text, short: q.short, tags: q.tags, subQuestions: q.subQuestions, status: q.status, tMs: q.tMs, context: q.context });
+        const points = a.style === "shorter" ? q.points.slice(0, 2) : q.points;
+        points.forEach((p, i) =>
+          emit({ type: "questionPoint", id: q.id, version, n: i + 1, head: p.head, rest: a.style === "longer" ? `${p.rest} For example, measure it before and after.` : p.rest, status: i === 0 ? "next" : "todo" }),
+        );
+        emit({ type: "answerDelta", id: q.id, version, text: q.answer });
+        emit({ type: "answerDone", id: q.id, version });
+        break;
+      }
+      case "ask": {
+        const text = a.text.trim();
+        if (!text) break;
+        const id = Math.max(0, ...view.order) + 1;
+        const tMs = view.startedAt !== null ? view.startedAt + Date.now() - startWall : Date.now() - startWall;
+        emit({ type: "questionNew", id, version: 1, text, short: text.slice(0, 24), tags: [], subQuestions: [], status: "active", tMs, context: [] });
+        emit({ type: "questionPoint", id, version: 1, n: 1, head: "Answer directly", rest: "Say what you would do first, in one sentence.", status: "next" });
+        emit({ type: "questionPoint", id, version: 1, n: 2, head: "Give an example", rest: "Name a project where you did it and what happened.", status: "todo" });
+        emit({ type: "answerDelta", id, version: 1, text: "I would start with the simplest version that works, then **measure** and improve it." });
+        emit({ type: "answerDone", id, version: 1 });
+        break;
+      }
     }
   };
 
@@ -262,6 +290,7 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       probes.length = 0;
       logs.length = 0;
       practiceScript = null;
+      meetings = [];
       settings = structuredClone(defaults) as unknown as Settings;
       emitApp({ type: "settingsChanged", settings: structuredClone(settings) });
       log("INFO", "meetcue", "all data erased");
@@ -316,8 +345,14 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     },
     stop_session: () => {
       clearTimers();
+      const wasActive = state === "running" || state === "paused";
       state = "stopped";
       emit({ type: "sessionState", state: "stopped", tMs: Date.now() - startWall });
+      const record = wasActive && settings.history.saveMeetings ? meetingFromView(view, Date.now() - startWall, settings.history.saveTranscript) : null;
+      if (record) {
+        meetings = [record, ...meetings.filter((m) => m.id !== record.id)];
+        emitApp({ type: "meetingSaved", id: record.id });
+      }
       return null;
     },
     toggle_capture: () => {
@@ -398,6 +433,11 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
         { provider: "soniox", model: "stt-rt-v5", calls: 4, inputTokens: 0, outputTokens: 0, cachedTokens: 0, audioMs: 5_400_000, micros: 180_000 },
         { provider: "anthropic", model: "claude-haiku-5-5", calls: 61, inputTokens: 118_000, outputTokens: 21_500, cachedTokens: 74_000, audioMs: 0, micros: 22_550 },
       ],
+      byPurpose: [
+        { purpose: "asr", calls: 4, micros: 180_000, unpriced: false },
+        { purpose: "hints", calls: 19, micros: 15_900, unpriced: false },
+        { purpose: "detect", calls: 42, micros: 6_650, unpriced: false },
+      ],
       totalMicros: 202_550,
     }),
     export_usage_csv: () => "usage.csv",
@@ -432,6 +472,11 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
       needsClassification: false,
       items: script.items.map((it) => ({ ...it, isQuestion: /[?？]$/.test(it.text), isMe: !/[?？]$/.test(it.text) })),
     }),
+    practice_generate: ({ count }) => {
+      const base = mockPracticeScript();
+      practiceScript = { ...base, title: "Questions from my knowledge base", items: base.items.slice(0, Math.max(1, count)) };
+      return practiceScript;
+    },
     practice_start: ({ script }) => {
       practiceScript = script;
       practiceIndex = 0;
@@ -464,6 +509,17 @@ export function createMockBackend(options: { speed?: number } = {}): Backend {
     ],
     practice_report: (): PracticeReport => mockPracticeReport(),
     export_report: () => "practice-report.md",
+    list_meetings: () => meetings.map(meetingSummary),
+    get_meeting: ({ id }) => {
+      const m = meetings.find((x) => x.id === id);
+      if (!m) throw { code: "MC-SYS-006", detail: "no such meeting" };
+      return structuredClone(m);
+    },
+    delete_meeting: ({ id }) => {
+      meetings = id ? meetings.filter((m) => m.id !== id) : [];
+      return null;
+    },
+    export_meeting: ({ id }) => `meeting-${id}.md`,
   };
 
   return {

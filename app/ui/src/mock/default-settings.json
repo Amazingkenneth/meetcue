@@ -19,7 +19,8 @@
     "languages": [
       "zh",
       "en"
-    ]
+    ],
+    "speakerLabels": false
   },
   "providers": {
     "asr": {
@@ -70,6 +71,8 @@
     "trackCoverage": false,
     "earlyTrigger": true,
     "speculativeHints": true,
+    "meetingMemory": true,
+    "skipRepeatedSentences": true,
     "prompts": {
       "hintsSystem": "",
       "hintsUser": ""
@@ -105,7 +108,9 @@
       null,
       null,
       null
-    ]
+    ],
+    "hintActions": true,
+    "connectionAlerts": true
   },
   "practice": {
     "playback": "realPipeline",
@@ -131,6 +136,11 @@
       "like",
       "you know"
     ]
+  },
+  "history": {
+    "saveMeetings": true,
+    "saveTranscript": false,
+    "keepDays": 90
   },
   "diagnostics": {
     "debugLogging": false

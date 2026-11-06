@@ -8,6 +8,7 @@ pub const HINTS_SYSTEM: &str = include_str!("../prompts/hints.txt");
 pub const HINTS_USER: &str = include_str!("../prompts/hints_user.txt");
 pub const FOLLOW_UP: &str = include_str!("../prompts/followup.txt");
 pub const CLASSIFY: &str = include_str!("../prompts/classify.txt");
+pub const GENERATE: &str = include_str!("../prompts/generate.txt");
 pub const REVIEW: &str = include_str!("../prompts/review.txt");
 
 /// Token budgets per prompt.
