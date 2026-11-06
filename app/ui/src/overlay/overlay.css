@@ -658,3 +658,14 @@ span.ov-snap-cell {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* Rewrite buttons under a question's hints. */
+.ov-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
+
+/* "Meeting saved" line after listening stops. */
+.ov-saved {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 6px 10px 0; padding: 6px 10px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05); color: var(--ov-text-2); font-size: 12px;
+}
+.ov-saved span { flex: 1; }

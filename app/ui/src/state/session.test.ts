@@ -153,3 +153,28 @@ describe("session reducer", () => {
     expect(s.sessionMicros).toBeGreaterThan(0);
   });
 });
+
+describe("connection problems", () => {
+  it("are reported after recognition stays lost, and cleared when it is back", async () => {
+    const { connectionProblem, DOWN_ALERT_MS } = await import("./session");
+    let s = reduce(emptySession(), { type: "sessionState", state: "running", tMs: 0 });
+    s = reduce(s, { type: "recognition", channel: "remote", connected: false });
+    const since = s.recognitionDownSince ?? 0;
+    expect(connectionProblem(s, since + 1000)).toBeNull();
+    expect(connectionProblem(s, since + DOWN_ALERT_MS)).toBe("recognition");
+    s = reduce(s, { type: "recognition", channel: "remote", connected: true });
+    expect(connectionProblem(s, since + DOWN_ALERT_MS)).toBeNull();
+  });
+
+  it("are reported after hints fail twice in a row, but not for a budget stop", async () => {
+    const { connectionProblem } = await import("./session");
+    let s = run([{ type: "sessionState", state: "running", tMs: 0 }, q(1), q(2)]);
+    s = reduce(s, { type: "hintsFailed", id: 1, version: 1, code: "MC-BUD-002" });
+    s = reduce(s, { type: "hintsFailed", id: 2, version: 1, code: "MC-LLM-004" });
+    expect(connectionProblem(s, 0)).toBeNull();
+    s = reduce(s, { type: "hintsFailed", id: 1, version: 1, code: "MC-LLM-004" });
+    expect(connectionProblem(s, 0)).toBe("hints");
+    s = reduce(s, point(2, 1));
+    expect(connectionProblem(s, 0)).toBeNull();
+  });
+});

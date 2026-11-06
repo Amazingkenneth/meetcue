@@ -3,4 +3,4 @@
 /**
  * What the pipeline used a model call for; drives cost breakdowns.
  */
-export type UsagePurpose = "asr" | "detect" | "hints" | "followUp" | "classify" | "review" | "probe";
+export type UsagePurpose = "asr" | "detect" | "hints" | "followUp" | "classify" | "review" | "probe" | "generate";

@@ -1,0 +1,19 @@
+{
+  "name": "An ordinary interview: small talk is checked and dropped, requests without a question mark count, a repeated question isn't checked twice",
+  "lines": [
+    { "ch": "remote", "t0": 0, "t1": 2500, "text": "Thanks for joining, can you hear me okay?", "detect": { "isQuestion": true, "directedToMe": true, "short": "Audio check" } },
+    { "ch": "me", "t0": 3000, "t1": 4500, "text": "Yes, I can hear you fine." },
+    { "ch": "remote", "t0": 6000, "t1": 9000, "text": "Great. Let me tell you a bit about the team first.", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 9500, "t1": 16000, "text": "We run the payments platform and handle about two thousand requests a second.", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 17000, "t1": 21000, "text": "Walk me through the last system you designed.", "detect": { "isQuestion": true, "directedToMe": true, "short": "Last system designed" } },
+    { "ch": "me", "t0": 22000, "t1": 60000, "text": "It was an event pipeline for order updates, built on Kafka with idempotent consumers." },
+    { "ch": "remote", "t0": 62000, "t1": 66000, "text": "How did you handle duplicate events in that pipeline?", "detect": { "isQuestion": true, "directedToMe": true, "short": "Duplicate events" } },
+    { "ch": "remote", "t0": 70000, "t1": 74000, "text": "How did you handle duplicate events in that pipeline?" },
+    { "ch": "me", "t0": 75000, "t1": 95000, "text": "Every event carries an id and consumers keep the ids they have applied." }
+  ],
+  "questions": [
+    "Thanks for joining, can you hear me okay?",
+    "Walk me through the last system you designed.",
+    "How did you handle duplicate events in that pipeline?"
+  ]
+}

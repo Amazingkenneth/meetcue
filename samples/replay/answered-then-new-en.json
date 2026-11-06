@@ -1,0 +1,9 @@
+{
+  "name": "A new question after the answer gets its own card even when the model calls it a continuation (0.3.11)",
+  "lines": [
+    { "ch": "remote", "t0": 0, "t1": 2000, "text": "What is a hash map?", "detect": { "isQuestion": true, "directedToMe": true, "short": "Hash map" } },
+    { "ch": "me", "t0": 3000, "t1": 9000, "text": "It maps keys to values using a hash function." },
+    { "ch": "remote", "t0": 10000, "t1": 12000, "text": "And how do you resize one?", "detect": { "isQuestion": true, "directedToMe": true, "merged": true, "short": "Resizing" } }
+  ],
+  "questions": ["What is a hash map?", "And how do you resize one?"]
+}

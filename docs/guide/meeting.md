@@ -67,6 +67,36 @@ If you use speakers instead of headphones, your microphone also hears the other 
 
 A question counts as answered only after you have spoken and then stopped, so silence before your answer never archives it.
 
+## Rewrite hints or type a question {#hint-actions}
+
+Under a question's hints, once they are written:
+
+- **Shorter** writes them again with at most three points and a two-sentence answer, for when you need to answer quickly.
+- **More detail** writes five points with specifics such as numbers, tools or an example.
+- **Another take** writes a fresh set from a different angle.
+
+**Ask** in the title bar opens a small window where you can type a question the recognizer missed or got wrong; press `Enter` and its hints appear on the panel like any other question. The panel itself never takes focus, so typing happens in that window, which closes once the question is sent.
+
+Each of these is one hint request. Turn them off with **Settings › General › Buttons to rewrite hints**.
+
+## Earlier answers stay in mind {#meeting-memory}
+
+The hint model sees the last three minutes of the conversation. With **Remember my earlier answers** on (**Settings › Hints**, on by default), it also gets one line for each earlier question with what you answered, for the whole meeting. A follow-up 20 minutes later ("going back to the migration you mentioned…") then gets hints that match what you said instead of contradicting it. The list holds the twelve most recent questions and adds at most a few hundred words to a hint request, only once questions have left the recent conversation.
+
+## Who asked {#speakers}
+
+With several interviewers, turn on **Settings › Audio › Tell speakers apart**. The question card then shows **Speaker 1**, **Speaker 2** and so on instead of **Them**. It works with Soniox and Deepgram. Soniox includes it at no extra cost; Deepgram charges extra for it, so it is off by default.
+
+## When something stops working {#connection-alerts}
+
+If speech recognition stays disconnected for 10 seconds, or two hint requests in a row fail, the panel says so plainly, so you know to answer from your own notes instead of waiting for hints. The notice goes away by itself once things work again. Turn it off with **Settings › General › Tell me when recognition or hints stop working**.
+
+## After the meeting {#recap}
+
+When you stop listening, MeetCue saves a recap of the meeting on your computer, and the panel offers **View the recap**. The recap lists every question with its points, which ones you ticked, and the sample answer. **Settings › Meetings** lists saved meetings; open one to read it, save it as Markdown or delete it.
+
+The recap is built from what the panel showed, so it costs nothing. The full transcript is not saved unless you turn on **Also save everything that was said**; only do that where recording a meeting is allowed. Meetings are deleted after 90 days unless you choose otherwise, and **Erase all data** removes them too.
+
 ## Hide the panel from screen sharing
 
 **Hide the panel when sharing the screen** is on by default. Teams, Zoom, browser screen sharing and most recording tools then capture the area behind the panel instead of the panel itself.
@@ -77,4 +107,4 @@ Some recording methods and external capture hardware can still capture the panel
 
 ## Cost during a meeting
 
-Each call's usage is recorded and converted with the downloaded price list; calls to models without a price are counted but not costed. **Settings › Providers & cost** shows this month's usage by provider. You can set a per-meeting and a monthly budget; MeetCue warns at 80% and, at 100%, only notifies you, pauses hints or ends the session, as you choose.
+Each call's usage is recorded and converted with the downloaded price list; calls to models without a price are counted but not costed. **Settings › Providers & cost** shows this month's usage by provider, and below it by what the calls were for: speech recognition, question detection, hints and so on. With **Don't check repeated sentences** on (**Settings › Hints**, on by default), a sentence that repeats one checked in the last two minutes, such as a question asked again, isn't sent to the detection model a second time. You can set a per-meeting and a monthly budget; MeetCue warns at 80% and, at 100%, only notifies you, pauses hints or ends the session, as you choose.

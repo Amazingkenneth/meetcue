@@ -315,6 +315,16 @@ impl MockLlm {
                     .collect();
                 serde_json::Value::Array(items).to_string()
             }
+            UsagePurpose::Generate => self
+                .data
+                .questions
+                .iter()
+                .map(|q| {
+                    json!({"q": q.short, "a": q.answer, "c": q.tags.first().cloned().unwrap_or_default()})
+                        .to_string()
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
             UsagePurpose::Asr => String::new(),
         }
     }

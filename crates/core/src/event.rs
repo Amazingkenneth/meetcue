@@ -130,6 +130,8 @@ pub enum UsagePurpose {
     Classify,
     Review,
     Probe,
+    /// Writing practice questions from the knowledge base.
+    Generate,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
@@ -169,6 +171,10 @@ pub enum MeetCueEvent {
         t_ms: i64,
         /// Transcript lines around the question, for the "context" disclosure.
         context: Vec<TranscriptLine>,
+        /// Which participant asked, when speaker labels are on (1, 2, …).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        speaker: Option<u32>,
     },
     QuestionRemoved {
         id: QuestionId,
@@ -296,6 +302,25 @@ pub enum UserAction {
     },
     Pause,
     Resume,
+    /// Writes the hints of a question again, shorter, with more detail, or
+    /// just once more.
+    Rewrite {
+        id: QuestionId,
+        style: RewriteStyle,
+    },
+    /// A question the user typed, for one the recognizer missed or got wrong.
+    Ask {
+        text: String,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub enum RewriteStyle {
+    Shorter,
+    Longer,
+    Again,
 }
 
 /// An event with the session-relative time it was emitted at; used for

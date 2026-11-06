@@ -87,7 +87,23 @@
     "openProbe": "Open latency probe",
     "pendingCount_one": "{{count}} waiting",
     "pendingCount_other": "{{count}} waiting",
-    "practiceLink": "Try a mock interview"
+    "practiceLink": "Try a mock interview",
+    "ask": "Ask",
+    "askTitle": "Type a question the recognizer missed or got wrong",
+    "meetingSaved": "Meeting saved.",
+    "viewRecap": "View the recap",
+    "speakerN": "Speaker {{n}}",
+    "rewriteLabel": "Rewrite the hints",
+    "shorter": "Shorter",
+    "shorterTitle": "Write the hints again, shorter",
+    "longer": "More detail",
+    "longerTitle": "Write the hints again with more specifics and an example",
+    "again": "Another take",
+    "againTitle": "Write a fresh set of hints from another angle",
+    "recognitionDown": "Speech recognition is disconnected",
+    "recognitionDownHint": "MeetCue keeps reconnecting, but no new hints come until it's back. Answer from your own notes for now.",
+    "hintsDown": "Hints keep failing",
+    "hintsDownHint": "The last hint requests didn't finish. Check the connection to your model provider, or answer from your own notes for now."
   },
   "errors": {
     "seeFix": "See the fix",
@@ -101,7 +117,8 @@
       "providers": "Providers & cost",
       "hints": "Hints",
       "shortcuts": "Shortcuts",
-      "diagnostics": "Diagnostics"
+      "diagnostics": "Diagnostics",
+      "meetings": "Meetings"
     },
     "uiLanguage": "Interface language",
     "uiLanguageHint": "Changes apply immediately in every window.",
@@ -147,7 +164,11 @@
     "panelOpacity": "Panel opacity",
     "panelOpacityHint": "A see-through panel lets you keep an eye on what is behind it.",
     "panelSizeHint": "Width and height of the panel. You can also drag its edges; the size you set is kept.",
-    "spotsHint": "Put the panel where it hides nothing, then save the spot here or from Move on the panel. Its shortcut brings the panel back there, with the same size and layout."
+    "spotsHint": "Put the panel where it hides nothing, then save the spot here or from Move on the panel. Its shortcut brings the panel back there, with the same size and layout.",
+    "hintActions": "Buttons to rewrite hints",
+    "hintActionsHint": "Shows Shorter, More detail and Another take under a question's hints, and an Ask button to type a question the recognizer missed. Each use is one hint request.",
+    "connectionAlerts": "Tell me when recognition or hints stop working",
+    "connectionAlertsHint": "Shows a notice on the panel when speech recognition stays disconnected for 10 seconds or hint requests fail twice in a row."
   },
   "audio": {
     "microphone": "Microphone (you)",
@@ -177,7 +198,9 @@
     "langZh": "Chinese",
     "langEnZh": "Mostly English, some Chinese",
     "deepgramMixed": "Deepgram can't recognise Chinese and English in the same stream, so it will only recognise {{language}}. For mixed speech, choose Soniox in Providers & cost.",
-    "appliesLive": "These settings, the microphone and the languages apply immediately, also during a meeting."
+    "appliesLive": "These settings, the microphone and the languages apply immediately, also during a meeting.",
+    "speakerLabels": "Tell speakers apart",
+    "speakerLabelsHint": "Asks the speech recognizer who said each sentence and shows \"Speaker 2\" on the question card. Works with Soniox and Deepgram. Deepgram charges extra for it; Soniox doesn't."
   },
   "providers": {
     "asrTitle": "Speech recognition",
@@ -290,7 +313,19 @@
     "minutes": "{{value}} min",
     "total": "Total",
     "estimateNote": "Estimates. Your provider's bill is authoritative.",
-    "exportCsv": "Export CSV"
+    "exportCsv": "Export CSV",
+    "purpose": "Used for",
+    "unpricedHint": "Some calls have no price in the list, so the real cost is higher.",
+    "purposes": {
+      "asr": "Speech recognition",
+      "detect": "Question detection",
+      "hints": "Hints",
+      "followUp": "Practice follow-ups",
+      "classify": "Sorting subtitles",
+      "review": "Practice feedback",
+      "probe": "Latency probe",
+      "generate": "Writing practice questions"
+    }
   },
   "hints": {
     "role": "My role",
@@ -307,7 +342,11 @@
     "earlyTrigger": "Start hints early",
     "earlyTriggerHint": "Start as soon as a question looks finished instead of waiting for the end of the sentence. Faster, but occasionally redone.",
     "speculativeHints": "Write hints while checking the question",
-    "speculativeHintsHint": "Starts the hints at the same time as the check whether a sentence is a question, instead of after it. About a second faster; a sentence that turns out not to be a question costs one unused hint request."
+    "speculativeHintsHint": "Starts the hints at the same time as the check whether a sentence is a question, instead of after it. About a second faster; a sentence that turns out not to be a question costs one unused hint request.",
+    "meetingMemory": "Remember my earlier answers",
+    "meetingMemoryHint": "Gives the hint model one line per earlier question with what you answered, for the whole meeting, so follow-ups stay consistent after the recent transcript has moved on. Adds a few hundred words to hint requests late in a long meeting.",
+    "skipRepeatedSentences": "Don't check repeated sentences",
+    "skipRepeatedSentencesHint": "A sentence that repeats one checked in the last two minutes, such as a question asked again, isn't sent to the detection model a second time. Saves detection requests."
   },
   "shortcuts": {
     "lead": "Shortcuts work while other apps have focus.",
@@ -397,7 +436,8 @@
       "settings": "Settings",
       "wizard": "First-run setup",
       "practice": "Mock interview",
-      "review": "Practice review"
+      "review": "Practice review",
+      "ask": "Type a question"
     }
   },
   "practice": {
@@ -580,7 +620,14 @@
     },
     "openLanguages": "Open language settings",
     "openSpeech": "Open speech settings",
-    "voiceGuide": "Step-by-step guide"
+    "voiceGuide": "Step-by-step guide",
+    "generatedTitle": "Questions from my knowledge base",
+    "generateTitle": "Write questions for my role",
+    "generateLead": "Uses your role and knowledge base files (Settings › Hints), such as a job description and your résumé, to write the questions an interviewer is likely to ask, with reference answers. One request to your hint model.",
+    "generateCount": "Questions",
+    "generate": "Write questions",
+    "generateEdit": "Edit role and files",
+    "generateNeedsMaterial": "Add your role or a job description in Settings › Hints first."
   },
   "review": {
     "title": "Practice review",
@@ -635,7 +682,7 @@
     "confirmTitle": "This permanently deletes:",
     "itemKeys": "All API keys saved in the system credential store",
     "itemSettings": "Your settings, including materials and shortcuts",
-    "itemRecords": "Practice reports, usage and cost records, and latency check history",
+    "itemRecords": "Practice reports, saved meetings, usage and cost records, and latency check history",
     "itemLogs": "Logs and cached price lists",
     "confirmLead": "It can't be undone. Export anything you want to keep first.",
     "typeToConfirm": "Type {{word}} to confirm.",
@@ -752,5 +799,44 @@
     "useTyped": "Use “{{model}}”",
     "useTypedHint": "Any model name {{provider}} accepts",
     "empty": "No models to show. Type the name of any {{provider}} model."
+  },
+  "ask": {
+    "title": "Type a question",
+    "placeholder": "e.g. How would you design a rate limiter?",
+    "hint": "Enter sends, Shift+Enter starts a new line.",
+    "send": "Get hints"
+  },
+  "meetings": {
+    "title": "Meeting",
+    "duration": "Duration",
+    "questions": "Questions",
+    "covered": "Points covered",
+    "sampleAnswer": "Sample answer",
+    "transcript": "Transcript",
+    "lead": "After you stop listening, MeetCue keeps a recap of the meeting on this computer: the questions, the hints you saw and which points you ticked. Nothing is sent anywhere.",
+    "save": "Save a recap of each meeting",
+    "saveHint": "Free: the recap is built from what the panel showed, without extra model calls.",
+    "saveTranscript": "Also save everything that was said",
+    "saveTranscriptHint": "Keeps the full transcript of both sides with the recap. Off by default; only turn it on where recording a meeting is allowed.",
+    "keep": "Keep meetings for",
+    "keepHint": "Older meetings are deleted when a new one is saved.",
+    "keepForever": "Forever",
+    "keepDays_one": "{{count}} day",
+    "keepDays_other": "{{count}} days",
+    "listTitle": "Saved meetings",
+    "empty": "No meetings saved yet. They appear here after you stop listening.",
+    "when": "When",
+    "firstQuestion": "First question",
+    "deleteAllConfirm": "Delete every saved meeting?",
+    "deleteAll": "Delete all",
+    "back": "All meetings",
+    "missing": "This meeting is no longer saved.",
+    "recapTitle": "Meeting on {{when}}",
+    "recapFacts": "{{duration}} · {{n}} questions · {{done}}/{{total}} points covered · {{cost}}",
+    "export": "Save as Markdown",
+    "delete": "Delete",
+    "exported": "Saved to {{path}}",
+    "noQuestions": "No questions were detected in this meeting.",
+    "notCovered": "Not covered"
   }
 }

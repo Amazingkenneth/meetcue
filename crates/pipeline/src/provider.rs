@@ -22,6 +22,8 @@ pub struct AsrOptions {
     pub endpoint_silence_ms: u32,
     /// Explicit proxy URL; `None` uses the system settings.
     pub proxy: Option<String>,
+    /// Ask for speaker labels, where the provider offers them.
+    pub speaker_labels: bool,
 }
 
 /// A recognition result. Times are offsets from the start of the audio sent
@@ -40,6 +42,9 @@ pub enum AsrResult {
         t0_ms: i64,
         t1_ms: i64,
     },
+    /// The text that follows was said by this participant (from speaker
+    /// labels, numbered from 1 in the order the recognizer met them).
+    Speaker(u32),
     /// The speaker finished the sentence.
     Endpoint {
         t_ms: i64,

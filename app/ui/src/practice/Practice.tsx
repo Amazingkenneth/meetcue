@@ -89,6 +89,9 @@ export function Practice() {
   const loadSample = (name: string) =>
     run("import", async () => chose(await backend().invoke("practice_sample", { name })));
 
+  const generate = (count: number) =>
+    run("import", async () => chose(await backend().invoke("practice_generate", { count })));
+
   if (!settings) return <p className="app-body muted">{t("common.loading")}</p>;
   const running = started || progress !== null;
   const current: Step = running ? "practise" : step;
@@ -128,6 +131,8 @@ export function Practice() {
             busy={busy === "import"}
             onImport={importFile}
             onSample={loadSample}
+            onGenerate={generate}
+            hasMaterial={settings.hints.materials.length > 0 || settings.hints.role.trim().length > 0}
             finished={finished}
             onBack={() => setStep("sound")}
           />
@@ -334,17 +339,23 @@ function ChooseStep({
   busy,
   onImport,
   onSample,
+  onGenerate,
+  hasMaterial,
   finished,
   onBack,
 }: {
   busy: boolean;
   onImport: () => void;
   onSample: (file: string) => void;
+  onGenerate: (count: number) => void;
+  /** A role or knowledge base files to write questions from. */
+  hasMaterial: boolean;
   finished: boolean;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
   const [reports, setReports] = useState<PracticeReportSummary[]>([]);
+  const [count, setCount] = useState(10);
   useEffect(() => {
     void backend()
       .invoke("practice_reports")
@@ -369,6 +380,25 @@ function ChooseStep({
             </li>
           ))}
         </ul>
+      </Section>
+      <Section title={t("practice.generateTitle")} lead={t("practice.generateLead")}>
+        <div className="row">
+          <label htmlFor="gen-count">{t("practice.generateCount")}</label>
+          <select id="gen-count" value={count} onChange={(e) => setCount(Number(e.target.value))}>
+            {[5, 10, 15, 20].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+          <button className="btn" onClick={() => onGenerate(count)} disabled={busy || !hasMaterial}>
+            {t("practice.generate")}
+          </button>
+          <button className="btn-link" onClick={() => void backend().invoke("open_window", { view: "settings", section: "hints" })}>
+            {t("practice.generateEdit")}
+          </button>
+        </div>
+        {!hasMaterial && <p className="muted">{t("practice.generateNeedsMaterial")}</p>}
       </Section>
       <Section title={t("practice.importTitle")} lead={t("practice.importHint")}>
         <button className="btn" onClick={onImport} disabled={busy}>

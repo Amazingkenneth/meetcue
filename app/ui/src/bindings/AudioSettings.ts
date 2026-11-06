@@ -31,4 +31,9 @@ stopTtsOnSpeech: boolean,
 /**
  * Languages spoken in meetings, as ISO codes (`zh`, `en`).
  */
-languages: Array<string>, };
+languages: Array<string>, 
+/**
+ * Ask the recognizer which participant said each sentence and show it
+ * on the question card. Off by default: some providers charge extra.
+ */
+speakerLabels: boolean, };

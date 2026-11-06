@@ -162,8 +162,23 @@ pub struct UsageSummary {
     /// `YYYY-MM`.
     pub month: String,
     pub rows: Vec<UsageRow>,
+    /// The same calls by what they were for (recognition, detection, hints…).
+    pub by_purpose: Vec<PurposeRow>,
     #[ts(type = "number")]
     pub total_micros: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct PurposeRow {
+    pub purpose: crate::UsagePurpose,
+    pub calls: u32,
+    /// Cost of the calls that have a price, in micro-dollars.
+    #[ts(type = "number")]
+    pub micros: u64,
+    /// Some calls had no price, so `micros` is a lower bound.
+    pub unpriced: bool,
 }
 
 /// One line of the application log, for the activity log view.
@@ -217,6 +232,10 @@ pub enum AppEvent {
     },
     PracticeFinished {
         report_id: String,
+    },
+    /// A meeting was saved when listening stopped.
+    MeetingSaved {
+        id: String,
     },
     /// A newer price list was loaded.
     PricingChanged {

@@ -11,8 +11,8 @@ This page explains what MeetCue sends to which provider, what it keeps on your c
 ## What goes to your language model provider
 
 - For detection: the recognised sentence and a few sentences of context.
-- For hints: the question, recent conversation, your role, a short overview of your knowledge base, and the passages of it that match the question.
-- In practice mode: questions, your recognised answers, reference answers for feedback, and subtitle lines to classify.
+- For hints: the question, recent conversation, your role, a short overview of your knowledge base, and the passages of it that match the question. With **Remember my earlier answers** on, also one line per earlier question of the meeting with what you answered, as recognised.
+- In practice mode: questions, your recognised answers, reference answers for feedback, and subtitle lines to classify. **Write questions** sends your role and an excerpt of your knowledge base.
 - During the latency probe: a short built-in sample transcript.
 
 ## Price lookups
@@ -26,12 +26,14 @@ Each provider's own privacy policy and data retention terms apply to what you se
 | Data | Location |
 | --- | --- |
 | API keys | Windows Credential Manager, entries named `MeetCue` |
-| Settings, role, custom prompts and extracted knowledge base text | `settings.json` in the settings folder |
+| Settings, role and custom prompts | `settings.json` in the settings folder |
+| Text extracted from knowledge base files | `knowledge.json` |
 | Latency results | `latency-history.json` |
 | Usage and cost per call (no content) | `usage.jsonl` |
 | Logs, kept 7 days, without transcripts unless debug logging is on (the last lines are also shown in **Settings › Diagnostics › Activity log**) | `logs\` |
 | Last price list, for offline use | `pricing.json` |
 | Practice reports | `practice\` |
+| Meeting recaps: questions, hints and ticks, and the transcript only if you turned that on (**Settings › Meetings**) | `meetings\` |
 
 See [Settings](/reference/settings#where-settings-are-stored) for the folder location. Audio is never saved to disk.
 
@@ -39,7 +41,7 @@ See [Settings](/reference/settings#where-settings-are-stored) for the folder loc
 
 - No telemetry, usage statistics or crash reports are collected.
 - API keys are never sent to the interface, written to files or logged.
-- Diagnostics exports never include keys, transcripts, knowledge base files, custom prompts or practice records.
+- Diagnostics exports never include keys, transcripts, knowledge base files, custom prompts, practice records or saved meetings.
 - Nothing is sent anywhere while listening is paused, except a latency probe you start yourself.
 
 ## Delete your data

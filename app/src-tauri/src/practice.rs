@@ -26,7 +26,7 @@ use meetcue_pipeline::backend::now_ms;
 use meetcue_pipeline::engine::ModelRef;
 use meetcue_pipeline::practice::schedule::{Pacer, PacerConfig, PacerInput, PacerOutput};
 use meetcue_pipeline::practice::{
-    parse, review, PracticeReport, PracticeReportSummary, PracticeScript,
+    generate, parse, review, PracticeReport, PracticeReportSummary, PracticeScript,
 };
 use meetcue_pipeline::provider::{complete, LlmChunk, LlmProvider, LlmRequest};
 use meetcue_pipeline::text::{self, Lang};
@@ -190,6 +190,37 @@ pub async fn classify(
     }
     parse::apply_classification(&mut script, &questions);
     Ok(script)
+}
+
+/// Writes `count` practice questions from the role and the knowledge base,
+/// with reference answers, in the hint language (or the interface language
+/// when hints follow the question).
+pub async fn generate(app: &AppHandle, count: u32) -> Result<PracticeScript, MeetCueError> {
+    let state = app.state::<AppState>();
+    let (llm, model) = session::hint_llm(&state)?;
+    let s = state.settings();
+    let lang = match s.general.hint_language {
+        HintLanguage::ZhCn => Lang::Zh,
+        HintLanguage::En => Lang::En,
+        HintLanguage::FollowQuestion => {
+            if state.language().starts_with("zh") {
+                Lang::Zh
+            } else {
+                Lang::En
+            }
+        }
+    };
+    let req = generate::request(
+        &model.model,
+        &s.hints.role,
+        &s.hints.materials,
+        count,
+        lang.prompt_name(),
+    );
+    let text = call(app, llm.as_ref(), &model, req).await?;
+    let title = crate::i18n::t(state.language(), "practice.generatedTitle");
+    generate::parse(&text, &title)
+        .ok_or_else(|| MeetCueError::new(codes::LLM_BAD_OUTPUT, "no questions in the reply"))
 }
 
 /// Runs one model call to completion and records its usage.

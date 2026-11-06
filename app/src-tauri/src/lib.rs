@@ -10,6 +10,7 @@ mod hotkeys;
 mod i18n;
 mod ipc;
 mod logging;
+mod meetings;
 mod practice;
 mod prices;
 mod selftest;

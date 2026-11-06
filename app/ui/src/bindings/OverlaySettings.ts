@@ -20,4 +20,14 @@ textScale: number,
 /**
  * Saved panel spots, one per spot shortcut.
  */
-spots: Array<PanelSpot | null>, };
+spots: Array<PanelSpot | null>, 
+/**
+ * Buttons on the question card to rewrite hints shorter, longer or
+ * again, and to type a question the recognizer missed.
+ */
+hintActions: boolean, 
+/**
+ * Show a notice on the panel when recognition stays disconnected or
+ * hints keep failing.
+ */
+connectionAlerts: boolean, };

@@ -25,6 +25,7 @@ pub struct Settings {
     pub hotkeys: Hotkeys,
     pub overlay: OverlaySettings,
     pub practice: PracticeSettings,
+    pub history: HistorySettings,
     pub diagnostics: DiagnosticsSettings,
 }
 
@@ -39,6 +40,7 @@ impl Default for Settings {
             hotkeys: Default::default(),
             overlay: Default::default(),
             practice: Default::default(),
+            history: Default::default(),
             diagnostics: Default::default(),
         }
     }
@@ -168,6 +170,9 @@ pub struct AudioSettings {
     pub stop_tts_on_speech: bool,
     /// Languages spoken in meetings, as ISO codes (`zh`, `en`).
     pub languages: Vec<String>,
+    /// Ask the recognizer which participant said each sentence and show it
+    /// on the question card. Off by default: some providers charge extra.
+    pub speaker_labels: bool,
 }
 
 impl Default for AudioSettings {
@@ -181,6 +186,7 @@ impl Default for AudioSettings {
             endpoint_silence_ms: 700,
             stop_tts_on_speech: true,
             languages: vec!["zh".into(), "en".into()],
+            speaker_labels: false,
         }
     }
 }
@@ -311,6 +317,13 @@ pub struct HintSettings {
     /// Write hints while detection is still checking the sentence, and
     /// discard them if it isn't a question.
     pub speculative_hints: bool,
+    /// Give the hint model a short list of the earlier questions and what
+    /// the user answered, for the whole meeting, so follow-ups stay
+    /// consistent after the recent transcript has moved on.
+    pub meeting_memory: bool,
+    /// Don't ask the detection model again about a sentence that repeats one
+    /// it just judged, such as a speaker restating a remark.
+    pub skip_repeated_sentences: bool,
     pub prompts: PromptSettings,
 }
 
@@ -324,6 +337,8 @@ impl Default for HintSettings {
             track_coverage: false,
             early_trigger: true,
             speculative_hints: true,
+            meeting_memory: true,
+            skip_repeated_sentences: true,
             prompts: PromptSettings::default(),
         }
     }
@@ -405,6 +420,12 @@ pub struct OverlaySettings {
     pub text_scale: f32,
     /// Saved panel spots, one per spot shortcut.
     pub spots: Vec<Option<PanelSpot>>,
+    /// Buttons on the question card to rewrite hints shorter, longer or
+    /// again, and to type a question the recognizer missed.
+    pub hint_actions: bool,
+    /// Show a notice on the panel when recognition stays disconnected or
+    /// hints keep failing.
+    pub connection_alerts: bool,
 }
 
 impl Default for OverlaySettings {
@@ -420,6 +441,8 @@ impl Default for OverlaySettings {
             opacity: 1.0,
             text_scale: 1.0,
             spots: vec![None; PANEL_SPOTS],
+            hint_actions: true,
+            connection_alerts: true,
         }
     }
 }
@@ -560,6 +583,30 @@ impl Default for PracticeSettings {
                 .map(String::from)
                 .to_vec(),
             fillers_en: ["um", "uh", "like", "you know"].map(String::from).to_vec(),
+        }
+    }
+}
+
+/// What MeetCue keeps of a meeting once listening stops. Everything stays in
+/// the settings folder on this computer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export)]
+pub struct HistorySettings {
+    /// Save the questions, hints and ticks of each meeting for the recap.
+    pub save_meetings: bool,
+    /// Also save everything that was said. Off by default.
+    pub save_transcript: bool,
+    /// Meetings older than this many days are deleted; 0 keeps them all.
+    pub keep_days: u32,
+}
+
+impl Default for HistorySettings {
+    fn default() -> Self {
+        Self {
+            save_meetings: true,
+            save_transcript: false,
+            keep_days: 90,
         }
     }
 }

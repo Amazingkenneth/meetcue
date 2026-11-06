@@ -35,6 +35,8 @@ export interface QuestionView {
   answerDone: boolean;
   failedCode: string | null;
   latencyMs: number | null;
+  /** Who asked, when speaker labels are on. */
+  speaker: number | null;
 }
 
 export interface Partial {
@@ -60,6 +62,10 @@ export interface SessionView {
   levels: Record<Channel, number>;
   /// Whether each channel's recognition stream is open; null before it reports.
   recognition: Record<Channel, boolean | null>;
+  /** When recognition of some channel was lost, until every channel is back. */
+  recognitionDownSince: number | null;
+  /** Hint requests that failed in a row, reset by the next hint that arrives. */
+  hintFailures: number;
   latencies: number[];
   /// How the last hint's time split between recognition, detection and hints.
   lastLatency: LatencyBreakdown | null;
@@ -90,6 +96,8 @@ export function emptySession(): SessionView {
     partial: { me: null, remote: null },
     levels: { me: -100, remote: -100 },
     recognition: { me: null, remote: null },
+    recognitionDownSince: null,
+    hintFailures: 0,
     latencies: [],
     lastLatency: null,
     latencyWarning: null,
@@ -151,6 +159,7 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
         answerDone: reset ? false : existing.answerDone,
         failedCode: reset ? null : existing.failedCode,
         latencyMs: existing?.latencyMs ?? null,
+        speaker: e.speaker ?? null,
       };
       let next: SessionView = {
         ...s,
@@ -177,7 +186,7 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
       if (!q || e.version > q.version) return buffer(s, e.id, e);
       if (e.version < q.version) return s;
       const point: PointView = { n: e.n, head: e.head, rest: e.rest, status: e.status };
-      return withQuestion(s, e.id, (q) => ({ ...q, points: [...q.points, point] }));
+      return withQuestion({ ...s, hintFailures: 0 }, e.id, (q) => ({ ...q, points: [...q.points, point] }));
     }
     case "answerDelta": {
       const q = s.questions[e.id];
@@ -195,7 +204,9 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
       const q = s.questions[e.id];
       if (!q || e.version > q.version) return buffer(s, e.id, e);
       if (e.version < q.version) return s;
-      return withQuestion(s, e.id, (q) => ({ ...q, failedCode: e.code }));
+      // A budget stop is not a connection problem.
+      const hintFailures = e.code.startsWith("MC-BUD") ? s.hintFailures : s.hintFailures + 1;
+      return withQuestion({ ...s, hintFailures }, e.id, (q) => ({ ...q, failedCode: e.code }));
     }
     case "coverage": {
       if (!s.questions[e.id]) return buffer(s, e.id, e);
@@ -230,7 +241,8 @@ export function reduce(prev: SessionView, e: MeetCueEvent): SessionView {
       const recognition = { ...s.recognition, [e.channel]: e.connected };
       const recovered = recognition.me !== false && recognition.remote !== false;
       const errors = recovered ? s.errors.filter((x) => !CONNECTION_ERRORS.has(x.code)) : s.errors;
-      return { ...s, recognition, errors };
+      const recognitionDownSince = recovered ? null : (s.recognitionDownSince ?? Date.now());
+      return { ...s, recognition, errors, recognitionDownSince };
     }
     case "error": {
       const err = { code: e.code, detail: e.detail, at: Date.now() };
@@ -289,4 +301,17 @@ export function contextAround(s: SessionView, q: QuestionView, before = 3, after
   const idx = s.transcript.findIndex((l) => l.channel === "remote" && l.t1Ms >= q.tMs - 50);
   if (idx < 0) return q.context;
   return s.transcript.slice(Math.max(0, idx - before), idx + after + 1);
+}
+
+/** Recognition stays lost this long before the panel says so. */
+export const DOWN_ALERT_MS = 10_000;
+/** This many hint requests failing in a row is worth a notice. */
+export const FAILURES_ALERT = 2;
+
+/** Which connection problem the panel should point out now, if any. */
+export function connectionProblem(s: SessionView, now: number): "recognition" | "hints" | null {
+  if (s.state !== "running") return null;
+  if (s.recognitionDownSince !== null && now - s.recognitionDownSince >= DOWN_ALERT_MS) return "recognition";
+  if (s.hintFailures >= FAILURES_ALERT) return "hints";
+  return null;
 }

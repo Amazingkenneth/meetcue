@@ -269,6 +269,7 @@ async fn time_asr(cfg: &ProviderConfig, env: &ProbeEnv) -> Result<(f64, f64, u64
             hotwords: Vec::new(),
             endpoint_silence_ms: env.sentence_wait_ms as u32,
             proxy: cfg.proxy.clone(),
+            speaker_labels: false,
         })
         .await?;
     let mut results = stream.results();

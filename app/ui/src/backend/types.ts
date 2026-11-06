@@ -8,6 +8,8 @@ import type { DeviceList } from "../bindings/DeviceList";
 import type { HotkeyState } from "../bindings/HotkeyState";
 import type { HourlyEstimate } from "../bindings/HourlyEstimate";
 import type { LogLine } from "../bindings/LogLine";
+import type { MeetingRecord } from "../bindings/MeetingRecord";
+import type { MeetingSummary } from "../bindings/MeetingSummary";
 import type { CostAssumptions } from "../bindings/CostAssumptions";
 import type { KnowledgePreview } from "../bindings/KnowledgePreview";
 import type { MaterialImport } from "../bindings/MaterialImport";
@@ -31,7 +33,7 @@ import type { Voice } from "../bindings/Voice";
 import type { VerifyResult } from "../bindings/VerifyResult";
 
 export type ModelSlot = "asr" | "detect" | "hints";
-export type View = "overlay" | "settings" | "wizard" | "practice" | "review";
+export type View = "overlay" | "settings" | "wizard" | "practice" | "review" | "ask";
 export type PracticeControl = "pause" | "resume" | "skip" | "stop" | "answered" | "repeat";
 
 
@@ -82,6 +84,7 @@ export interface Commands {
   list_voices: { args: undefined; result: Voice[] };
   preview_voice: { args: { voice: string; lang: "zh" | "en" }; result: null };
   practice_classify: { args: { script: PracticeScript }; result: PracticeScript };
+  practice_generate: { args: { count: number }; result: PracticeScript };
   practice_start: { args: { script: PracticeScript }; result: null };
   practice_control: { args: { control: PracticeControl }; result: null };
   practice_outline: { args: undefined; result: string[] };
@@ -89,6 +92,10 @@ export interface Commands {
   practice_reports: { args: undefined; result: PracticeReportSummary[] };
   practice_report: { args: { id: string }; result: PracticeReport };
   export_report: { args: { id: string }; result: string | null };
+  list_meetings: { args: undefined; result: MeetingSummary[] };
+  get_meeting: { args: { id: string }; result: MeetingRecord };
+  delete_meeting: { args: { id: string }; result: null };
+  export_meeting: { args: { id: string }; result: string | null };
 }
 
 export type CommandName = keyof Commands;

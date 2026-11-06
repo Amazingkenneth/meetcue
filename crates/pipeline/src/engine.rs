@@ -11,7 +11,8 @@ use std::sync::Arc;
 use meetcue_core::settings::{BudgetSettings, HintLanguage};
 use meetcue_core::{
     codes, Channel, MeetCueError, MeetCueEvent, PointStatus, PriceEntry, QuestionBrief, QuestionId,
-    QuestionStatus, SessionState, TranscriptLine, UsageKind, UsagePurpose, UserAction,
+    QuestionStatus, RewriteStyle, SessionState, TranscriptLine, UsageKind, UsagePurpose,
+    UserAction,
 };
 
 use crate::coverage::{self, AnswerText, PointVocab};
@@ -23,7 +24,9 @@ use crate::prefilter;
 use crate::prompts;
 use crate::provider::{AsrResult, LlmRequest};
 use crate::queue::{Admission, QuestionQueue};
-use crate::text::{dominant_lang, edit_ratio, extends, join_parts, meaningful_len, Lang};
+use crate::text::{
+    dominant_lang, edit_ratio, extends, join_parts, meaningful_len, truncate_chars, Lang,
+};
 use crate::transcript::{format_for_prompt, TranscriptBuffer};
 use crate::usage::{BudgetOutcome, CostMeter};
 
@@ -72,6 +75,19 @@ pub const PENDING_STALE_MS: i64 = 120_000;
 /// A hint request still running after this long is given up, so a reply that
 /// never ends cannot hold a hint slot for the rest of the meeting.
 pub const HINTS_GIVE_UP_MS: i64 = 120_000;
+/// A sentence this close to one judged in the last [`REPEAT_WINDOW_MS`] is
+/// not sent to detection again.
+pub const REPEAT_MAX_CHANGE: f64 = 0.2;
+pub const REPEAT_WINDOW_MS: i64 = 120_000;
+/// Sentences shorter than this are cheap to check and often repeat by
+/// chance ("好的。"), so they are always checked.
+const REPEAT_MIN_CHARS: usize = 8;
+/// The meeting memory lists at most this many earlier questions…
+const MEMORY_ITEMS: usize = 12;
+/// …in at most this many characters, keeping the newest.
+const MEMORY_CHARS: usize = 3_000;
+const MEMORY_QUESTION_CHARS: usize = 120;
+const MEMORY_ANSWER_CHARS: usize = 300;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ModelRef {
@@ -101,6 +117,11 @@ pub struct EngineConfig {
     /// whole model round trip per question; sentences that pass the
     /// pre-filter but aren't questions cost one unused hint call.
     pub speculative_hints: bool,
+    /// Tell the hint model about earlier questions and the user's answers
+    /// once they have left the recent transcript.
+    pub meeting_memory: bool,
+    /// Skip detection for sentences that repeat one judged just before.
+    pub skip_repeated_sentences: bool,
 }
 
 impl Default for EngineConfig {
@@ -119,6 +140,8 @@ impl Default for EngineConfig {
             track_coverage: false,
             early_trigger: true,
             speculative_hints: false,
+            meeting_memory: false,
+            skip_repeated_sentences: false,
         }
     }
 }
@@ -198,6 +221,8 @@ struct Utterance {
     t1: i64,
     last_change: i64,
     last_emit: i64,
+    /// Who said it, from speaker labels.
+    speaker: Option<u32>,
 }
 
 impl Utterance {
@@ -231,6 +256,7 @@ struct Candidate {
     /// More of the question arrived after detection started; detection only
     /// judged the first part.
     joined: bool,
+    speaker: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -288,6 +314,11 @@ struct Question {
     /// Points ticked (true) or unticked (false) by hand, by index.
     manual: HashMap<usize, bool>,
     user_spoke: bool,
+    /// What the user said while answering, as recognized.
+    said: String,
+    speaker: Option<u32>,
+    /// How the next hint request should change the hints, once.
+    rewrite: Option<RewriteStyle>,
     latency: Latency,
 }
 
@@ -347,6 +378,10 @@ pub struct Engine {
     hints_prefix_at: Option<i64>,
     meter: CostMeter,
     latency: LatencyMonitor,
+    /// Speaker of the sentence being handled, for the question it may become.
+    sentence_speaker: Option<u32>,
+    /// Sentences detection judged recently, with when, to skip repeats.
+    judged: VecDeque<(i64, String)>,
 }
 
 fn idx(ch: Channel) -> usize {
@@ -381,6 +416,8 @@ impl Engine {
             hints_prefix_at: None,
             meter,
             latency: LatencyMonitor::default(),
+            sentence_speaker: None,
+            judged: VecDeque::new(),
         }
     }
 
@@ -503,6 +540,9 @@ impl Engine {
                 u.t1 = u.t1.max(t_ms);
                 self.close_utterance(ch, now, out);
             }
+            AsrResult::Speaker(n) => {
+                u.speaker.get_or_insert(n);
+            }
             AsrResult::Error(e) => out.push(Output::Emit(MeetCueEvent::Error {
                 code: e.code,
                 detail: e.detail,
@@ -551,6 +591,7 @@ impl Engine {
             t1_ms: u.t1,
         };
         let utterance = u.id;
+        let speaker = u.speaker;
         *u = Utterance {
             id: next_id,
             ..Default::default()
@@ -560,6 +601,7 @@ impl Engine {
             Channel::Remote => {
                 self.transcript.push(line.clone());
                 out.push(Output::Emit(transcript_final(&line, utterance)));
+                self.sentence_speaker = speaker;
                 self.on_remote_sentence(line, utterance, now, out);
             }
             Channel::Me => self.on_me_sentence(line, utterance, now, out),
@@ -587,6 +629,7 @@ impl Engine {
         }
         self.transcript.push(line.clone());
         out.push(Output::Emit(transcript_final(&line, utterance)));
+        self.sentence_speaker = None;
         if known_question {
             let det = Detection {
                 is_question: true,
@@ -603,6 +646,7 @@ impl Engine {
                 early: false,
                 target: Target::New,
                 joined: false,
+                speaker: None,
             };
             self.accept_detection(cand, det, None, now, out);
         } else {
@@ -630,7 +674,7 @@ impl Engine {
                         self.extend_question(id, text, line.t1_ms, now, out)
                     }
                     EarlyState::Dropped => {
-                        if prefilter::worth_checking(&line.text) {
+                        if self.worth_checking(&line.text, now) {
                             self.start_detect(&line, now, false, Target::New, out);
                         }
                     }
@@ -686,9 +730,42 @@ impl Engine {
         }
         // The model decides by meaning whether an answer is expected, so
         // requests without a question word or mark are not missed.
-        if prefilter::worth_checking(&line.text) {
+        if self.worth_checking(&line.text, now) {
             self.start_detect(&line, now, false, Target::New, out);
         }
+    }
+
+    /// Whether a sentence needs the detection model: not a back-channel,
+    /// and, when repeats are skipped, not a near copy of a sentence judged
+    /// in the last two minutes.
+    fn worth_checking(&self, text: &str, now: i64) -> bool {
+        if !prefilter::worth_checking(text) {
+            return false;
+        }
+        if !self.cfg.skip_repeated_sentences || meaningful_len(text) < REPEAT_MIN_CHARS {
+            return true;
+        }
+        let repeat = self
+            .judged
+            .iter()
+            .filter(|(at, _)| now - at <= REPEAT_WINDOW_MS)
+            .any(|(_, t)| edit_ratio(t, text) <= REPEAT_MAX_CHANGE);
+        if repeat {
+            tracing::debug!("skipped detection for a repeated sentence");
+        }
+        !repeat
+    }
+
+    /// Remembers a sentence detection judged, for [`Self::worth_checking`].
+    fn note_judged(&mut self, text: &str, now: i64) {
+        while self
+            .judged
+            .front()
+            .is_some_and(|(at, _)| now - at > REPEAT_WINDOW_MS)
+        {
+            self.judged.pop_front();
+        }
+        self.judged.push_back((now, text.to_string()));
     }
 
     /// The open question, or the sentence still being checked, that `line`
@@ -887,6 +964,7 @@ impl Engine {
         if let Some(q) = self.question_mut(active) {
             q.user_spoke = true;
             q.answer.push(&line.text);
+            q.said = join_parts(&q.said, &line.text);
         }
         if track {
             self.update_coverage(active, out);
@@ -924,6 +1002,7 @@ impl Engine {
                 early,
                 target,
                 joined: false,
+                speaker: self.sentence_speaker,
             },
         );
         out.push(Output::Detect { req, request });
@@ -1080,6 +1159,7 @@ impl Engine {
         // the user has answered, a new question that the model read as more
         // of the old one starts a card of its own.
         let mut det = det;
+        self.note_judged(&cand.text, now);
         if det.merged && cand.target == Target::New {
             let still_open = self
                 .last_open_question()
@@ -1230,6 +1310,9 @@ impl Engine {
             answer: AnswerText::default(),
             manual: HashMap::new(),
             user_spoke: false,
+            said: String::new(),
+            speaker: cand.speaker,
+            rewrite: None,
             latency,
         });
         let changes = self.queue.add(id, admission);
@@ -1268,7 +1351,10 @@ impl Engine {
             }
             return;
         }
-        let Some(q) = self.question(id) else { return };
+        let Some(q) = self.question_mut(id) else {
+            return;
+        };
+        let rewrite = q.rewrite.take();
         let version = q.version;
         let mut question = q.text.clone();
         if q.subs.len() > 1 {
@@ -1276,7 +1362,12 @@ impl Engine {
                 question.push_str(&format!("\n  {}. {}", i + 1, s));
             }
         }
-        let lang = self.output_language(&q.text);
+        let text = q.text.clone();
+        if let Some(style) = rewrite {
+            question.push_str("\n\n");
+            question.push_str(rewrite_note(style));
+        }
+        let lang = self.output_language(&text);
         let request = self.hints_request(&question, lang, now);
         let req = self.alloc_req(Req::Hints { id, version });
         self.hints_running += 1;
@@ -1330,15 +1421,21 @@ impl Engine {
         let system_template = template(&self.cfg.hints_system, prompts::HINTS_SYSTEM);
         let user_template = template(&self.cfg.hints_user, prompts::HINTS_USER);
         let transcript = format_for_prompt(self.transcript.since(now - HINTS_WINDOW_MS));
+        let memory = self.memory(now);
         let mut user = prompts::render(
             user_template,
             &[
                 ("knowledge", &knowledge),
+                ("memory", if memory.is_empty() { "(none)" } else { &memory }),
                 ("transcript", transcript.trim_end()),
                 ("question", question),
                 ("output_language", lang),
             ],
         );
+        if !memory.is_empty() && !user_template.contains("{memory}") {
+            // A custom question message from before the memory existed.
+            user = format!("{MEMORY_HEADING}\n{memory}\n\n{user}");
+        }
         if !system_template.contains("{output_language}")
             && !user_template.contains("{output_language}")
         {
@@ -1351,6 +1448,42 @@ impl Engine {
             .user(user)
             .max_tokens(prompts::HINTS_MAX_TOKENS)
             .temperature(0.3)
+    }
+
+    /// Earlier questions and what the user answered, one line each, for
+    /// questions that have left the transcript the hint model sees. Empty
+    /// when the memory is off or there is nothing to recall.
+    fn memory(&self, now: i64) -> String {
+        if !self.cfg.meeting_memory {
+            return String::new();
+        }
+        let cutoff = now - HINTS_WINDOW_MS;
+        let mut lines: Vec<String> = self
+            .questions
+            .iter()
+            .filter(|q| q.last_part_end < cutoff && !q.said.trim().is_empty())
+            .rev()
+            .take(MEMORY_ITEMS)
+            .map(|q| {
+                let asked = if q.short.trim().is_empty() {
+                    &q.text
+                } else {
+                    &q.short
+                };
+                format!(
+                    "- Q: {}\n  A: {}",
+                    truncate_chars(asked.trim(), MEMORY_QUESTION_CHARS),
+                    truncate_chars(q.said.trim(), MEMORY_ANSWER_CHARS)
+                )
+            })
+            .collect();
+        let mut total = 0;
+        lines.retain(|l| {
+            total += l.chars().count() + 1;
+            total <= MEMORY_CHARS
+        });
+        lines.reverse();
+        lines.join("\n")
     }
 
     /// Keeps the hint prompt in the provider's cache: once when the session
@@ -1765,6 +1898,7 @@ impl Engine {
             status: self.queue.status(id).unwrap_or(QuestionStatus::Pending),
             t_ms: q.t_ms,
             context: q.context.clone(),
+            speaker: q.speaker,
         })
     }
 
@@ -1835,6 +1969,48 @@ impl Engine {
                 }));
             }
             UserAction::Pause | UserAction::Resume => {}
+            UserAction::Rewrite { id, style } => {
+                let Some(q) = self.question_mut(id) else {
+                    return;
+                };
+                q.version += 1;
+                q.rewrite = Some(style);
+                q.vocab.clear();
+                q.statuses.clear();
+                q.manual.clear();
+                q.latency = Latency {
+                    speech_end: now,
+                    ..Default::default()
+                };
+                self.cancel_hints(id, out);
+                if let Some(ev) = self.question_event(id) {
+                    out.push(Output::Emit(ev));
+                }
+                self.request_hints(id, now, out);
+            }
+            UserAction::Ask { text } => {
+                let text = text.trim().to_string();
+                if text.is_empty() || self.state == SessionState::Idle {
+                    return;
+                }
+                let det = Detection {
+                    is_question: true,
+                    directed_to_me: true,
+                    ..Default::default()
+                };
+                let cand = Candidate {
+                    text,
+                    speech_start: now,
+                    speech_end: now,
+                    heard_at: now,
+                    started_at: now,
+                    early: false,
+                    target: Target::New,
+                    joined: false,
+                    speaker: None,
+                };
+                self.accept_detection(cand, det, None, now, out);
+            }
         }
     }
 
@@ -1871,8 +2047,12 @@ impl Engine {
             };
             // The rest of the previous question is joined to it once the
             // sentence ends, not detected as a question of its own.
-            if prefilter::might_be_question(&text) && self.continuation_of(&line).is_none() {
+            if prefilter::might_be_question(&text)
+                && self.worth_checking(&text, now)
+                && self.continuation_of(&line).is_none()
+            {
                 let utterance = remote.id;
+                self.sentence_speaker = remote.speaker;
                 let req = self.start_detect(&line, now, true, Target::New, out);
                 self.early = Some(EarlyLink {
                     utterance,
@@ -1965,6 +2145,20 @@ fn transcript_final(line: &TranscriptLine, utterance: u32) -> MeetCueEvent {
         text: line.text.clone(),
         t0_ms: line.t0_ms,
         t1_ms: line.t1_ms,
+    }
+}
+
+/// Heading of the meeting memory when a custom question message has no
+/// `{memory}` placeholder.
+const MEMORY_HEADING: &str =
+    "Earlier in this meeting (questions and what the user answered, oldest first):";
+
+/// What a rewrite asks of the hint model, added after the question.
+fn rewrite_note(style: RewriteStyle) -> &'static str {
+    match style {
+        RewriteStyle::Shorter => "(The user asked for a shorter version: at most three points, each one short spoken sentence, and a sample answer of two or three sentences.)",
+        RewriteStyle::Longer => "(The user asked for more detail: five points with specifics such as numbers, tools or an example, and a fuller sample answer.)",
+        RewriteStyle::Again => "(The user asked for a different take: write a fresh set of points from another angle than an obvious first answer.)",
     }
 }
 
@@ -3365,5 +3559,192 @@ mod tests {
             last_text(&h, 2).as_deref(),
             Some("And how do you resize one?")
         );
+    }
+
+    fn memory_on() -> EngineConfig {
+        EngineConfig {
+            early_trigger: false,
+            meeting_memory: true,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn earlier_answers_are_remembered_after_the_transcript_moves_on() {
+        let mut h = Harness::new(memory_on());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "How did you migrate the billing database?",
+        );
+        h.detect_reply(r#"{"isQuestion":true,"directedToMe":true,"short":"Billing migration"}"#);
+        h.say(
+            Channel::Me,
+            3000,
+            9000,
+            "We copied it table by table with dual writes for two weeks.",
+        );
+        // Still in the recent transcript: no memory needed.
+        h.say(Channel::Remote, 20_000, 22_000, "What is a hash map?");
+        h.detect_reply(YES);
+        let (_, request) = h.hints.last().unwrap();
+        assert!(!request.messages[0].content.contains("A: We copied"));
+        // Long after, the hint model still hears what the user said.
+        h.say(
+            Channel::Remote,
+            400_000,
+            402_000,
+            "Going back to the migration, what would you change?",
+        );
+        h.detect_reply(YES);
+        let (_, request) = h.hints.last().unwrap();
+        let user = &request.messages[0].content;
+        assert!(user.contains("- Q: Billing migration\n  A: We copied it table by table"));
+    }
+
+    #[test]
+    fn memory_stays_out_when_switched_off() {
+        let mut h = Harness::new(no_early());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "How did you migrate the billing database?",
+        );
+        h.detect_reply(YES);
+        h.say(Channel::Me, 3000, 9000, "We copied it table by table.");
+        h.say(
+            Channel::Remote,
+            400_000,
+            402_000,
+            "What would you change about it?",
+        );
+        h.detect_reply(YES);
+        let (_, request) = h.hints.last().unwrap();
+        assert!(!request.messages[0].content.contains("table by table"));
+    }
+
+    #[test]
+    fn a_repeated_sentence_is_not_checked_twice() {
+        let mut h = Harness::new(EngineConfig {
+            early_trigger: false,
+            skip_repeated_sentences: true,
+            ..Default::default()
+        });
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "Let me share my screen for a moment.",
+        );
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        let n = h.detects.len();
+        h.say(
+            Channel::Remote,
+            4000,
+            6000,
+            "Let me share my screen for a moment",
+        );
+        assert_eq!(h.detects.len(), n, "repeat skipped");
+        h.say(
+            Channel::Remote,
+            8000,
+            10_000,
+            "How do you shard a large table?",
+        );
+        assert_eq!(h.detects.len(), n + 1, "a new sentence is checked");
+        // Long after, the same remark is checked again.
+        h.say(
+            Channel::Remote,
+            200_000,
+            202_000,
+            "Let me share my screen for a moment.",
+        );
+        assert_eq!(h.detects.len(), n + 2);
+    }
+
+    #[test]
+    fn repeats_are_checked_when_the_switch_is_off() {
+        let mut h = Harness::new(no_early());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "Let me share my screen for a moment.",
+        );
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        let n = h.detects.len();
+        h.say(
+            Channel::Remote,
+            4000,
+            6000,
+            "Let me share my screen for a moment.",
+        );
+        assert_eq!(h.detects.len(), n + 1);
+    }
+
+    #[test]
+    fn hints_can_be_rewritten_shorter() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 2000, "What is a hash map?");
+        h.detect_reply(YES);
+        let (req, _) = h.hints.last().cloned().unwrap();
+        h.hint_points(req, &[("Keys", "map to values")]);
+        h.input(Input::Action(UserAction::Rewrite {
+            id: 1,
+            style: RewriteStyle::Shorter,
+        }));
+        let (_, request) = h.hints.last().unwrap();
+        assert!(request.messages[0].content.contains("shorter version"));
+        let version = h.events.iter().rev().find_map(|e| match e {
+            MeetCueEvent::QuestionNew { id: 1, version, .. } => Some(*version),
+            _ => None,
+        });
+        assert_eq!(version, Some(2), "a new version clears the old points");
+        // The note applies once.
+        h.input(Input::Action(UserAction::Rewrite {
+            id: 1,
+            style: RewriteStyle::Again,
+        }));
+        let (_, request) = h.hints.last().unwrap();
+        assert!(!request.messages[0].content.contains("shorter version"));
+        assert!(request.messages[0].content.contains("different take"));
+    }
+
+    #[test]
+    fn a_typed_question_gets_hints_without_detection() {
+        let mut h = Harness::new(no_early());
+        let detects = h.detects.len();
+        h.input(Input::Action(UserAction::Ask {
+            text: "  How would you design a rate limiter? ".into(),
+        }));
+        assert_eq!(h.detects.len(), detects);
+        assert_eq!(
+            last_text(&h, 1).as_deref(),
+            Some("How would you design a rate limiter?")
+        );
+        assert!(h.hints.last().unwrap().1.messages[0]
+            .content
+            .contains("rate limiter"));
+        h.input(Input::Action(UserAction::Ask { text: "  ".into() }));
+        assert!(last_text(&h, 2).is_none());
+    }
+
+    #[test]
+    fn the_speaker_label_goes_on_the_question() {
+        let mut h = Harness::new(no_early());
+        h.at(0);
+        h.input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Speaker(2),
+        });
+        h.say(Channel::Remote, 0, 2000, "What is a hash map?");
+        h.detect_reply(YES);
+        let speaker = h.events.iter().rev().find_map(|e| match e {
+            MeetCueEvent::QuestionNew { speaker, .. } => Some(*speaker),
+            _ => None,
+        });
+        assert_eq!(speaker, Some(Some(2)));
     }
 }

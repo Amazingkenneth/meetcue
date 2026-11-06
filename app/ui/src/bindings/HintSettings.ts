@@ -13,4 +13,15 @@ trackCoverage: boolean, earlyTrigger: boolean,
  * Write hints while detection is still checking the sentence, and
  * discard them if it isn't a question.
  */
-speculativeHints: boolean, prompts: PromptSettings, };
+speculativeHints: boolean, 
+/**
+ * Give the hint model a short list of the earlier questions and what
+ * the user answered, for the whole meeting, so follow-ups stay
+ * consistent after the recent transcript has moved on.
+ */
+meetingMemory: boolean, 
+/**
+ * Don't ask the detection model again about a sentence that repeats one
+ * it just judged, such as a speaker restating a remark.
+ */
+skipRepeatedSentences: boolean, prompts: PromptSettings, };

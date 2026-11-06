@@ -84,7 +84,23 @@
     "probeAgain": "最近几个问题的提示都偏慢，要重新运行延迟探测吗？",
     "openProbe": "打开延迟探测",
     "pendingCount_other": "{{count}} 个排队",
-    "practiceLink": "试试模拟面试"
+    "practiceLink": "试试模拟面试",
+    "ask": "提问",
+    "askTitle": "手动输入识别漏掉或识别错的问题",
+    "meetingSaved": "会议已保存。",
+    "viewRecap": "查看回顾",
+    "speakerN": "发言人 {{n}}",
+    "rewriteLabel": "重写提示",
+    "shorter": "更简短",
+    "shorterTitle": "重新生成更简短的提示",
+    "longer": "更详细",
+    "longerTitle": "重新生成更具体、带例子的提示",
+    "again": "换个角度",
+    "againTitle": "从另一个角度重新生成提示",
+    "recognitionDown": "语音识别已断开",
+    "recognitionDownHint": "MeetCue 正在不断重连，恢复之前不会有新的提示。请先用自己的笔记作答。",
+    "hintsDown": "提示连续失败",
+    "hintsDownHint": "最近几次提示请求没有完成。请检查与模型服务商的连接，或先用自己的笔记作答。"
   },
   "errors": {
     "seeFix": "查看解决办法",
@@ -98,7 +114,8 @@
       "providers": "供应商与费用",
       "hints": "提示",
       "shortcuts": "快捷键",
-      "diagnostics": "诊断"
+      "diagnostics": "诊断",
+      "meetings": "会议记录"
     },
     "uiLanguage": "界面语言",
     "uiLanguageHint": "修改后所有窗口立即生效。",
@@ -144,7 +161,11 @@
     "panelOpacity": "面板不透明度",
     "panelOpacityHint": "半透明的面板可以让你同时看到后面的内容。",
     "panelSizeHint": "面板的宽度和高度。也可以直接拖动面板边缘，设定的大小会被记住。",
-    "spotsHint": "先把面板放到不挡任何东西的地方，再在这里或面板的「移动」里保存。按对应快捷键即可把面板以相同大小和布局放回该位置。"
+    "spotsHint": "先把面板放到不挡任何东西的地方，再在这里或面板的「移动」里保存。按对应快捷键即可把面板以相同大小和布局放回该位置。",
+    "hintActions": "重写提示的按钮",
+    "hintActionsHint": "在问题的提示下方显示“更简短”“更详细”“换个角度”，并在标题栏显示“提问”按钮，用来手动输入识别漏掉的问题。每次使用会发起一次提示请求。",
+    "connectionAlerts": "识别或提示中断时提醒我",
+    "connectionAlertsHint": "语音识别断开超过 10 秒，或提示请求连续失败两次时，在面板上显示提醒。"
   },
   "audio": {
     "microphone": "麦克风（我）",
@@ -174,7 +195,9 @@
     "langZh": "中文",
     "langEnZh": "以英文为主，夹杂中文",
     "deepgramMixed": "Deepgram 无法在同一路音频中同时识别中文和英文，因此只会识别{{language}}。如需中英混说，请在“供应商与费用”中选择 Soniox。",
-    "appliesLive": "这些设置以及麦克风、会议语言都会立即生效，会议进行中也一样。"
+    "appliesLive": "这些设置以及麦克风、会议语言都会立即生效，会议进行中也一样。",
+    "speakerLabels": "区分发言人",
+    "speakerLabelsHint": "让语音识别标出每句话是谁说的，并在问题卡片上显示“发言人 2”。支持 Soniox 和 Deepgram。Deepgram 对此额外收费，Soniox 不收费。"
   },
   "providers": {
     "asrTitle": "语音识别",
@@ -286,7 +309,19 @@
     "minutes": "{{value}} 分钟",
     "total": "合计",
     "estimateNote": "以上为估算，以供应商账单为准。",
-    "exportCsv": "导出 CSV"
+    "exportCsv": "导出 CSV",
+    "purpose": "用途",
+    "unpricedHint": "部分调用在价格表中没有价格，实际费用更高。",
+    "purposes": {
+      "asr": "语音识别",
+      "detect": "问题检测",
+      "hints": "提示",
+      "followUp": "练习追问",
+      "classify": "字幕分类",
+      "review": "练习反馈",
+      "probe": "延迟测试",
+      "generate": "生成练习题"
+    }
   },
   "hints": {
     "role": "我的角色",
@@ -303,7 +338,11 @@
     "earlyTrigger": "提前触发",
     "earlyTriggerHint": "问题看起来说完就开始生成，不等识别判定句末。更快，偶尔需要重新生成。",
     "speculativeHints": "边判断问题边生成提示",
-    "speculativeHintsHint": "在判断一句话是不是问题的同时就开始生成提示，而不是等判断结束。大约快一秒；如果最后不是问题，会多花一次用不上的提示请求。"
+    "speculativeHintsHint": "在判断一句话是不是问题的同时就开始生成提示，而不是等判断结束。大约快一秒；如果最后不是问题，会多花一次用不上的提示请求。",
+    "meetingMemory": "记住我之前的回答",
+    "meetingMemoryHint": "在整场会议中，为提示模型提供之前每个问题和你的回答各一行，这样即使近期对话已翻过去，追问的提示也能和你之前说的保持一致。在长会议后段，每次提示请求会多几百字。",
+    "skipRepeatedSentences": "不重复检查相同的句子",
+    "skipRepeatedSentencesHint": "与两分钟内已检查过的句子几乎相同的句子（例如对方重复提问）不会再次发给检测模型，可以节省检测请求。"
   },
   "shortcuts": {
     "lead": "其他程序在前台时快捷键同样有效。",
@@ -393,7 +432,8 @@
       "settings": "设置",
       "wizard": "首次设置",
       "practice": "模拟面试",
-      "review": "练习复盘"
+      "review": "练习复盘",
+      "ask": "输入问题"
     }
   },
   "practice": {
@@ -576,7 +616,14 @@
     },
     "openLanguages": "打开语言设置",
     "openSpeech": "打开语音设置",
-    "voiceGuide": "图文步骤"
+    "voiceGuide": "图文步骤",
+    "generatedTitle": "根据我的资料生成的问题",
+    "generateTitle": "为我的岗位出题",
+    "generateLead": "根据你的角色和资料库文件（设置 › 提示），例如职位描述和简历，写出面试官可能问的问题和参考回答。会向提示模型发起一次请求。",
+    "generateCount": "题数",
+    "generate": "生成问题",
+    "generateEdit": "编辑角色和文件",
+    "generateNeedsMaterial": "请先在 设置 › 提示 中填写角色或添加职位描述。"
   },
   "review": {
     "title": "练习复盘",
@@ -631,7 +678,7 @@
     "confirmTitle": "以下内容将被永久删除：",
     "itemKeys": "保存在系统凭据管理器中的全部 API 密钥",
     "itemSettings": "你的设置，包括资料和快捷键",
-    "itemRecords": "练习报告、用量与费用记录、延迟检测历史",
+    "itemRecords": "练习报告、保存的会议、用量与费用记录、延迟检测历史",
     "itemLogs": "日志和缓存的价格表",
     "confirmLead": "此操作无法撤销。请先导出需要保留的内容。",
     "typeToConfirm": "输入 {{word}} 以确认。",
@@ -748,5 +795,43 @@
     "useTyped": "使用“{{model}}”",
     "useTypedHint": "{{provider}} 支持的任意模型名",
     "empty": "没有可显示的模型。可直接输入任意 {{provider}} 模型名。"
+  },
+  "ask": {
+    "title": "输入问题",
+    "placeholder": "例如：你会如何设计一个限流器？",
+    "hint": "Enter 发送，Shift+Enter 换行。",
+    "send": "生成提示"
+  },
+  "meetings": {
+    "title": "会议",
+    "duration": "时长",
+    "questions": "问题数",
+    "covered": "已覆盖要点",
+    "sampleAnswer": "参考回答",
+    "transcript": "对话记录",
+    "lead": "停止监听后，MeetCue 会在本机保存这场会议的回顾：问题、你看到的提示以及勾选了哪些要点。不会发送到任何地方。",
+    "save": "保存每场会议的回顾",
+    "saveHint": "免费：回顾根据面板显示的内容生成，不额外调用模型。",
+    "saveTranscript": "同时保存完整对话",
+    "saveTranscriptHint": "连同回顾一起保存双方的完整对话记录。默认关闭；仅在允许记录会议的场合开启。",
+    "keep": "会议保留时间",
+    "keepHint": "保存新会议时会删除更早的会议。",
+    "keepForever": "永久",
+    "keepDays_other": "{{count}} 天",
+    "listTitle": "已保存的会议",
+    "empty": "还没有保存的会议。停止监听后会显示在这里。",
+    "when": "时间",
+    "firstQuestion": "第一个问题",
+    "deleteAllConfirm": "删除所有已保存的会议？",
+    "deleteAll": "全部删除",
+    "back": "所有会议",
+    "missing": "这场会议已不在保存列表中。",
+    "recapTitle": "{{when}} 的会议",
+    "recapFacts": "{{duration}} · {{n}} 个问题 · 已覆盖 {{done}}/{{total}} 个要点 · {{cost}}",
+    "export": "另存为 Markdown",
+    "delete": "删除",
+    "exported": "已保存到 {{path}}",
+    "noQuestions": "这场会议中没有检测到问题。",
+    "notCovered": "未覆盖"
   }
 }

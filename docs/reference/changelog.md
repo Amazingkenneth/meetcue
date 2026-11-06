@@ -4,6 +4,21 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Added
+
+- **Meeting recaps.** When you stop listening, MeetCue saves the questions, their hints and which points you ticked, and the panel offers **View the recap**. **Settings › Meetings** lists saved meetings to read, save as Markdown or delete. The recap costs nothing; the full transcript is saved only if you turn that on. On by default, kept 90 days. See [After the meeting](/guide/meeting#recap).
+- **Remember my earlier answers** (**Settings › Hints**, on): the hint model gets one line per earlier question with what you answered, so a follow-up late in a long meeting stays consistent with what you said. See [Earlier answers stay in mind](/guide/meeting#meeting-memory).
+- **Shorter**, **More detail** and **Another take** under a question's hints, and **Ask** in the title bar to type a question the recognizer missed (**Settings › General › Buttons to rewrite hints**, on). See [Rewrite hints or type a question](/guide/meeting#hint-actions).
+- **Write questions for my role** in the mock interview: practice questions with reference answers written from your role and knowledge base, in one request. See [Questions for your own role](/guide/mock-interview#generate).
+- **Tell speakers apart** (**Settings › Audio**, off): question cards show **Speaker 1**, **Speaker 2** with Soniox or Deepgram. Off by default because Deepgram charges extra for it.
+- The panel says plainly when speech recognition stays disconnected for 10 seconds or hints fail twice in a row (**Settings › General**, on).
+- **Settings › Providers & cost** shows this month's cost by purpose: recognition, detection, hints and the rest.
+
+### Changed
+
+- **Don't check repeated sentences** (**Settings › Hints**, on): a sentence that repeats one checked in the last two minutes, such as a question asked again, is no longer sent to the detection model a second time.
+- The text extracted from knowledge base files is kept in `knowledge.json` and written only when it changes, so `settings.json` stays small. Older settings files are moved over on the next save.
+
 ## 0.3.11 — 2026-11-05
 
 ### Fixed
