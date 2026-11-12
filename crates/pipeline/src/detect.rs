@@ -38,6 +38,21 @@ pub fn request(model: &str, transcript: &str, output_language: &str) -> LlmReque
         .temperature(0.0)
 }
 
+/// Asks for a new title and list of parts for a question whose text grew
+/// after detection titled it: the rest of it arrived after a pause, so the
+/// title written for its first part no longer describes it. The reply has
+/// the shape [`parse`] reads; only `short`, `subQuestions` and `tags` are set.
+pub fn title_request(model: &str, question: &str, output_language: &str) -> LlmRequest {
+    LlmRequest::new(model, UsagePurpose::Detect)
+        .system(prompts::TITLE, true)
+        .user(format!(
+            "Question, as recognized:\n{}\n\nOutput language: {output_language}",
+            question.trim()
+        ))
+        .max_tokens(prompts::TITLE_MAX_TOKENS)
+        .temperature(0.0)
+}
+
 /// Parses the model reply. Accepts surrounding prose or code fences and
 /// booleans written as strings.
 pub fn parse(reply: &str) -> Option<Detection> {
@@ -208,6 +223,23 @@ mod tests {
         );
         assert!(display_units(&en) <= 14.0, "{en}");
         assert_eq!(short_title("SDN 部署", "whatever"), "SDN 部署");
+    }
+
+    #[test]
+    fn title_request_shape() {
+        let r = title_request("m", "上任后。一年的计划是什么？", "Simplified Chinese");
+        assert_eq!(r.system, prompts::TITLE);
+        assert!(r.cache_system);
+        assert!(r.messages[0].content.contains("上任后。一年的计划是什么？"));
+        assert!(r.messages[0]
+            .content
+            .ends_with("Output language: Simplified Chinese"));
+        let d =
+            parse(r#"{"short":"上任后一年的计划","subQuestions":["目标","步骤"],"tags":["复合"]}"#)
+                .unwrap();
+        assert!(!d.is_question);
+        assert_eq!(d.short, "上任后一年的计划");
+        assert_eq!(d.sub_questions.len(), 2);
     }
 
     #[test]

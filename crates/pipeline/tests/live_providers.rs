@@ -100,3 +100,52 @@ async fn deepgram_live() {
         asr_roundtrip(c).await;
     }
 }
+
+async fn complete(c: &ProviderConfig, req: LlmRequest) -> String {
+    let llm = providers::llm(c).unwrap();
+    let mut s = llm.stream(req).await.unwrap();
+    let mut text = String::new();
+    while let Some(c) = s.next().await {
+        if let LlmChunk::Text(t) = c.unwrap() {
+            text.push_str(&t);
+        }
+    }
+    text
+}
+
+/// A question cut by a pause right after its first words: the detection
+/// model counts the piece before it as its first half and titles the whole
+/// question, and the title model titles the joined question as a whole.
+#[tokio::test]
+#[ignore]
+async fn anthropic_keeps_the_start_of_a_cut_question() {
+    use meetcue_pipeline::detect;
+    let Some(c) = cfg("anthropic", "MEETCUE_ANTHROPIC_KEY", "claude-haiku-5-5") else {
+        return;
+    };
+    let transcript = "[Them] 你好，我们开始吧。\n[Them, 0.6 s pause] 上任后。\n[Them, 0.4 s pause] 一年的计划是什么？\n";
+    let reply = complete(
+        &c,
+        detect::request(&c.model, transcript, "Simplified Chinese"),
+    )
+    .await;
+    let d = detect::parse(&reply).unwrap_or_else(|| panic!("{reply}"));
+    assert!(d.is_question, "{reply}");
+    assert_eq!(d.lead_in, 1, "{reply}");
+    assert!(d.short.contains("上任"), "{reply}");
+
+    let reply = complete(
+        &c,
+        detect::title_request(
+            &c.model,
+            "如何制定数据中心IP。V6的迁移方案，同时保证。存量用户不受影响？",
+            "Simplified Chinese",
+        ),
+    )
+    .await;
+    let d = detect::parse(&reply).unwrap_or_else(|| panic!("{reply}"));
+    assert!(
+        d.short.contains("IPv6") || d.short.contains("IPV6"),
+        "{reply}"
+    );
+}

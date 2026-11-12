@@ -4,6 +4,11 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Fixed
+
+- A question no longer loses its first words when the interviewer pauses right after them. Recognition ends a sentence at every pause, so "上任后。" / "一年的计划是什么？" could become a card for "一年的计划是什么？" titled "一年的计划". The detection model now also sees how long each pause was, which is how it tells a sentence cut by a breath from two separate ones, and it is asked to keep such a first half with the question and in its title.
+- When the rest of a question arrives after a pause and joins its card, the detection model now writes a new title and list of parts for the whole question. Before, the title kept describing only the first part. The hints still restart at once and don't wait for the title.
+
 ## 0.4.0 — 2026-11-06
 
 ### Added

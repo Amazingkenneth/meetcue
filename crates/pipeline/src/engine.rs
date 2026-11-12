@@ -27,7 +27,7 @@ use crate::queue::{Admission, QuestionQueue};
 use crate::text::{
     dominant_lang, edit_ratio, extends, join_parts, meaningful_len, truncate_chars, Lang,
 };
-use crate::transcript::{format_for_prompt, TranscriptBuffer};
+use crate::transcript::{format_for_prompt, format_with_pauses, push_line, TranscriptBuffer};
 use crate::usage::{BudgetOutcome, CostMeter};
 
 pub type ReqId = u64;
@@ -332,6 +332,11 @@ enum Req {
     /// Hints started alongside the detection request `detect`.
     Speculative {
         detect: ReqId,
+    },
+    /// A new title for version `version` of question `id`.
+    Retitle {
+        id: QuestionId,
+        version: u32,
     },
 }
 
@@ -893,6 +898,69 @@ impl Engine {
         }
     }
 
+    /// Asks the detection model for a title and parts covering the whole
+    /// of question `id`, once its text grew without detection looking at it
+    /// again. Hints don't wait for it.
+    fn request_title(&mut self, id: QuestionId, out: &mut Vec<Output>) {
+        let Some(q) = self.question(id) else {
+            return;
+        };
+        let (text, version) = (q.text.clone(), q.version);
+        // An earlier title request for this question is out of date.
+        let stale: Vec<ReqId> = self
+            .reqs
+            .iter()
+            .filter(|(_, r)| matches!(r, Req::Retitle { id: i, .. } if *i == id))
+            .map(|(r, _)| *r)
+            .collect();
+        for req in stale {
+            self.reqs.remove(&req);
+            out.push(Output::Cancel { req });
+        }
+        let lang = self.output_language(&text);
+        let request = detect::title_request(&self.cfg.detect.model, &text, lang);
+        let req = self.alloc_req(Req::Retitle { id, version });
+        out.push(Output::Detect { req, request });
+    }
+
+    /// Takes the title written for version `version` of question `id`, if
+    /// the question hasn't changed since.
+    fn apply_title(
+        &mut self,
+        id: QuestionId,
+        version: u32,
+        reply: Result<String, MeetCueError>,
+        out: &mut Vec<Output>,
+    ) {
+        let det = match reply.map(|r| detect::parse(&r)) {
+            Ok(Some(d)) => d,
+            Ok(None) => {
+                tracing::warn!("unreadable title reply; keeping the old title");
+                return;
+            }
+            // The card works without a new title; the hints don't depend on it.
+            Err(e) => {
+                tracing::warn!("title request failed: {}", e.detail);
+                return;
+            }
+        };
+        let Some(q) = self.question_mut(id).filter(|q| q.version == version) else {
+            return;
+        };
+        if !det.short.is_empty() {
+            q.short = detect::short_title(&det.short, "");
+        }
+        if !det.sub_questions.is_empty() {
+            q.subs = det.sub_questions;
+        }
+        if !det.tags.is_empty() {
+            q.tags = det.tags;
+        }
+        if let Some(ev) = self.question_event(id) {
+            out.push(Output::Emit(ev));
+        }
+    }
+
     /// Replaces a question with its longer version and rewrites its hints.
     /// Detection already confirmed the start, so it isn't asked again.
     fn extend_question(
@@ -924,6 +992,8 @@ impl Engine {
             out.push(Output::Emit(ev));
         }
         self.request_hints(id, now, out);
+        // The title was written for the first part alone.
+        self.request_title(id, out);
     }
 
     fn on_me_sentence(
@@ -982,12 +1052,12 @@ impl Engine {
         out: &mut Vec<Output>,
     ) -> ReqId {
         let req = self.alloc_req(Req::Detect);
-        let mut transcript = format_for_prompt(self.transcript.since(now - DETECT_WINDOW_MS));
+        let recent: Vec<&TranscriptLine> = self.transcript.since(now - DETECT_WINDOW_MS).collect();
+        // The pauses tell the model where a sentence was only cut by a breath.
+        let mut transcript = format_with_pauses(recent.iter().copied());
         if early {
             // The early sentence is not in the buffer yet.
-            transcript.push_str("[Them] ");
-            transcript.push_str(&line.text);
-            transcript.push('\n');
+            push_line(&mut transcript, line, recent.last().map(|l| l.t1_ms));
         }
         let lang = self.output_language(&line.text);
         let request = detect::request(&self.cfg.detect.model, &transcript, lang);
@@ -1055,6 +1125,11 @@ impl Engine {
         now: i64,
         out: &mut Vec<Output>,
     ) {
+        if let Some(Req::Retitle { id, version }) = self.reqs.get(&req).copied() {
+            self.reqs.remove(&req);
+            self.apply_title(id, version, reply, out);
+            return;
+        }
         if self.earlier_detection_pending(req) {
             self.reqs.remove(&req);
             self.held_detects.push((req, reply));
@@ -1243,6 +1318,10 @@ impl Engine {
                 q.version += 1;
                 if merged {
                     q.text = join_parts(&q.text, &cand.text);
+                    // Detection titles the whole question when it merges a part.
+                    if !det.short.is_empty() {
+                        q.short = short;
+                    }
                 } else {
                     q.text = join_parts(&q.lead_in, &cand.text);
                     q.short = short;
@@ -2183,6 +2262,8 @@ mod tests {
         now: i64,
         events: Vec<MeetCueEvent>,
         detects: Vec<(ReqId, LlmRequest)>,
+        /// Requests for a new title, which go to the detection model too.
+        retitles: Vec<(ReqId, LlmRequest)>,
         hints: Vec<(ReqId, LlmRequest)>,
         warms: Vec<LlmRequest>,
         cancelled: Vec<ReqId>,
@@ -2200,6 +2281,7 @@ mod tests {
                 now: 0,
                 events: vec![],
                 detects: vec![],
+                retitles: vec![],
                 hints: vec![],
                 warms: vec![],
                 cancelled: vec![],
@@ -2214,6 +2296,9 @@ mod tests {
             for o in out {
                 match o {
                     Output::Emit(e) => self.events.push(e),
+                    Output::Detect { req, request } if request.system == crate::prompts::TITLE => {
+                        self.retitles.push((req, request))
+                    }
                     Output::Detect { req, request } => self.detects.push((req, request)),
                     Output::Hints { req, request } => self.hints.push((req, request)),
                     Output::WarmHints { request } => self.warms.push(request),
@@ -2975,6 +3060,118 @@ mod tests {
             ))
         );
         assert_eq!(h.statuses(), vec![(1, QuestionStatus::Active)]);
+    }
+
+    fn shorts(h: &Harness) -> Vec<(QuestionId, u32, String)> {
+        h.events
+            .iter()
+            .filter_map(|e| match e {
+                MeetCueEvent::QuestionNew {
+                    id, version, short, ..
+                } => Some((*id, *version, short.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// "上任后。" is too short to be checked on its own. The model sees how
+    /// short the pause after it was and counts it as the question's first
+    /// half, so it stays on the card.
+    #[test]
+    fn first_words_before_a_short_pause_reach_the_model_and_the_card() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 2000, "你好，我们开始吧。");
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        h.say(Channel::Remote, 2600, 3200, "上任后。");
+        assert_eq!(h.detects.len(), 1, "too short to check on its own");
+        h.say(Channel::Remote, 3600, 5500, "一年的计划是什么？");
+        let prompt = &h.detects[1].1.messages[0].content;
+        assert!(
+            prompt
+                .contains("[Them, 0.6 s pause] 上任后。\n[Them, 0.4 s pause] 一年的计划是什么？\n"),
+            "{prompt}"
+        );
+        h.detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"leadIn":1,"short":"上任后一年的计划"}"#,
+        );
+        assert_eq!(
+            texts(&h).last(),
+            Some(&(1, 1, "上任后。一年的计划是什么？".into()))
+        );
+        assert_eq!(shorts(&h).last(), Some(&(1, 1, "上任后一年的计划".into())));
+        assert!(h.hints[0].1.messages[0]
+            .content
+            .contains("上任后。一年的计划是什么？"));
+    }
+
+    /// When the rest of a question joins it without detection, the model is
+    /// asked for a title of the whole question; hints don't wait for it.
+    #[test]
+    fn a_question_that_grows_gets_a_title_for_all_of_it() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 2000, "如何制定数据中心IP。");
+        h.detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"short":"数据中心IP规划","subQuestions":[]}"#,
+        );
+        assert!(h.retitles.is_empty());
+        h.say(Channel::Remote, 2500, 4500, "V6的迁移方案，同时保证。");
+        assert_eq!(h.hints.len(), 2, "hints restart at once");
+        assert_eq!(h.retitles.len(), 1);
+        let (stale, req) = h.retitles[0].clone();
+        assert!(req.messages[0]
+            .content
+            .contains("如何制定数据中心IP。V6的迁移方案，同时保证。"));
+        h.say(Channel::Remote, 5000, 6500, "存量用户不受影响？");
+        assert_eq!(h.retitles.len(), 2);
+        assert!(h.cancelled.contains(&stale), "the older request is dropped");
+        // A late reply for the older text changes nothing.
+        h.input(Input::DetectDone {
+            req: stale,
+            reply: Ok(r#"{"short":"IPv6迁移方案"}"#.into()),
+        });
+        assert_eq!(
+            shorts(&h).last().map(|s| s.2.as_str()),
+            Some("数据中心IP规划")
+        );
+        let (req, _) = h.retitles[1].clone();
+        h.input(Input::DetectDone {
+            req,
+            reply: Ok(
+                r#"{"short":"IPv6迁移且不影响存量用户","subQuestions":["如何制定IPv6迁移方案","如何保证存量用户不受影响"]}"#
+                    .into(),
+            ),
+        });
+        assert_eq!(
+            shorts(&h).last(),
+            Some(&(1, 3, "IPv6迁移且不影响存量用户".into()))
+        );
+        let subs = h.events.iter().rev().find_map(|e| match e {
+            MeetCueEvent::QuestionNew { sub_questions, .. } => Some(sub_questions.clone()),
+            _ => None,
+        });
+        assert_eq!(subs.map(|s| s.len()), Some(2));
+        assert_eq!(h.detects.len(), 1, "detection itself is not asked again");
+    }
+
+    #[test]
+    fn a_failed_title_request_keeps_the_old_title() {
+        let mut h = Harness::new(no_early());
+        h.say(
+            Channel::Remote,
+            0,
+            2000,
+            "Talk about your thoughts on idea A",
+        );
+        h.detect_reply(r#"{"isQuestion":true,"directedToMe":true,"short":"Idea A"}"#);
+        h.say(Channel::Remote, 2500, 3500, "and idea B.");
+        let (req, _) = h.retitles[0].clone();
+        let before = h.events.len();
+        h.input(Input::DetectDone {
+            req,
+            reply: Err(MeetCueError::new("LLM_TIMEOUT", "timed out")),
+        });
+        assert_eq!(h.events.len(), before, "nothing shown for a missing title");
+        assert_eq!(shorts(&h).last().map(|s| s.2.as_str()), Some("Idea A"));
     }
 
     #[test]

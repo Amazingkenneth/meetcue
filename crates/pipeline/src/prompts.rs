@@ -4,6 +4,7 @@
 //! following; `{output_language}` selects the language of the output.
 
 pub const DETECT: &str = include_str!("../prompts/detect.txt");
+pub const TITLE: &str = include_str!("../prompts/title.txt");
 pub const HINTS_SYSTEM: &str = include_str!("../prompts/hints.txt");
 pub const HINTS_USER: &str = include_str!("../prompts/hints_user.txt");
 pub const FOLLOW_UP: &str = include_str!("../prompts/followup.txt");
@@ -13,6 +14,7 @@ pub const REVIEW: &str = include_str!("../prompts/review.txt");
 
 /// Token budgets per prompt.
 pub const DETECT_MAX_TOKENS: u32 = 200;
+pub const TITLE_MAX_TOKENS: u32 = 200;
 pub const HINTS_MAX_TOKENS: u32 = 1200;
 pub const FOLLOW_UP_MAX_TOKENS: u32 = 120;
 pub const REVIEW_MAX_TOKENS: u32 = 300;
@@ -61,6 +63,7 @@ mod tests {
         assert!(
             !DETECT.contains("{output_language}") && !HINTS_SYSTEM.contains("{output_language}")
         );
+        assert!(!TITLE.contains("{output_language}") && TITLE.contains("\"short\""));
         assert!(HINTS_USER.contains("{transcript}") && HINTS_USER.contains("{question}"));
         assert!(HINTS_USER.contains("{output_language}"));
         assert!(HINTS_USER.contains("{knowledge}") && HINTS_SYSTEM.contains("{materials}"));

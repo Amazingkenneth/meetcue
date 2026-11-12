@@ -263,11 +263,21 @@ impl MockLlm {
             .map(|m| m.content.as_str())
             .unwrap_or("");
         match req.purpose {
+            UsagePurpose::Detect if req.system == crate::prompts::TITLE => {
+                let hit = self.data.find(user);
+                json!({
+                    "short": hit.map(|q| q.short.as_str()).unwrap_or(""),
+                    "subQuestions": hit.map(|q| q.sub_questions.clone()).unwrap_or_default(),
+                    "tags": hit.map(|q| q.tags.clone()).unwrap_or_default(),
+                })
+                .to_string()
+            }
             UsagePurpose::Detect => {
+                // "[Them] …" or, after the first line, "[Them, 0.4 s pause] …".
                 let last = user
                     .lines()
                     .rev()
-                    .find_map(|l| l.strip_prefix("[Them] "))
+                    .find_map(|l| l.strip_prefix("[Them")?.split_once("] ").map(|(_, t)| t))
                     .unwrap_or("");
                 let hit = self.data.find(last);
                 let is_question = might_be_question(last);
