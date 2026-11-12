@@ -14,6 +14,7 @@ use std::path::Path;
 
 use meetcue_core::{Channel, MeetCueEvent};
 use meetcue_pipeline::engine::{Engine, EngineConfig, Input, Output};
+use meetcue_pipeline::prompts;
 use meetcue_pipeline::provider::AsrResult;
 use meetcue_pipeline::usage::CostMeter;
 use serde::Deserialize;
@@ -36,6 +37,10 @@ struct Line {
     text: String,
     #[serde(default)]
     detect: Option<serde_json::Value>,
+    /// The model's reply when this sentence makes a question longer and a new
+    /// title is asked for; without one the title request gets an empty reply.
+    #[serde(default)]
+    title: Option<serde_json::Value>,
 }
 
 struct Run {
@@ -43,6 +48,8 @@ struct Run {
     now: i64,
     /// Detection requests not answered yet, oldest first.
     detects: Vec<u64>,
+    /// Title requests not answered yet.
+    retitles: Vec<u64>,
     hints: Vec<u64>,
     /// Version, text and short title of each card.
     cards: BTreeMap<u32, (u32, String, String)>,
@@ -52,10 +59,14 @@ impl Run {
     fn absorb(&mut self, out: Vec<Output>) {
         for o in out {
             match o {
+                Output::Detect { req, request } if request.system == prompts::TITLE => {
+                    self.retitles.push(req)
+                }
                 Output::Detect { req, .. } => self.detects.push(req),
                 Output::Hints { req, .. } => self.hints.push(req),
                 Output::Cancel { req } => {
                     self.detects.retain(|r| *r != req);
+                    self.retitles.retain(|r| *r != req);
                     self.hints.retain(|r| *r != req);
                 }
                 Output::Emit(MeetCueEvent::QuestionNew {
@@ -114,6 +125,7 @@ fn replay(case: &Case) -> (Vec<String>, Vec<String>, Vec<String>) {
         engine: Engine::new(cfg, CostMeter::new(vec![], Default::default(), 0)),
         now: 0,
         detects: Vec::new(),
+        retitles: Vec::new(),
         hints: Vec::new(),
         cards: BTreeMap::new(),
     };
@@ -174,6 +186,20 @@ fn replay(case: &Case) -> (Vec<String>, Vec<String>, Vec<String>) {
                 });
             }
             (None, false) => {}
+        }
+        let title = line
+            .title
+            .as_ref()
+            .map_or_else(|| "{}".to_string(), |t| t.to_string());
+        let retitles = std::mem::take(&mut run.retitles);
+        if line.title.is_some() && retitles.is_empty() {
+            problems.push(format!("no new title asked for: {}", line.text));
+        }
+        for req in retitles {
+            run.input(Input::DetectDone {
+                req,
+                reply: Ok(title.clone()),
+            });
         }
         run.finish_hints();
     }

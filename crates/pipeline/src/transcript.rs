@@ -81,6 +81,41 @@ pub fn format_for_prompt<'a>(lines: impl IntoIterator<Item = &'a TranscriptLine>
     out
 }
 
+/// Like [`format_for_prompt`], with the silence before each line after the
+/// first in its tag ("[Them, 0.4 s pause] …"). Recognition ends a sentence at
+/// every pause, so how long the speaker stopped is what tells a question cut
+/// in two ("上任后。" / "一年的计划是什么？") from two separate sentences.
+pub fn format_with_pauses<'a>(lines: impl IntoIterator<Item = &'a TranscriptLine>) -> String {
+    let mut out = String::new();
+    let mut prev_end: Option<i64> = None;
+    for l in lines {
+        push_line(&mut out, l, prev_end);
+        prev_end = Some(l.t1_ms);
+    }
+    out
+}
+
+/// Appends `line` as [`format_with_pauses`] writes it, after a line that
+/// ended at `prev_end`.
+pub fn push_line(out: &mut String, line: &TranscriptLine, prev_end: Option<i64>) {
+    let tag = speaker_tag(line.channel);
+    match prev_end {
+        Some(end) => {
+            let gap = (line.t0_ms - end).max(0) as f64 / 1000.0;
+            out.push_str(&tag[..tag.len() - 1]);
+            if gap >= 10.0 {
+                out.push_str(", over 10 s pause]");
+            } else {
+                out.push_str(&format!(", {gap:.1} s pause]"));
+            }
+        }
+        None => out.push_str(tag),
+    }
+    out.push(' ');
+    out.push_str(line.text.trim());
+    out.push('\n');
+}
+
 pub fn speaker_tag(channel: Channel) -> &'static str {
     match channel {
         Channel::Me => "[Me]",
@@ -91,6 +126,19 @@ pub fn speaker_tag(channel: Channel) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn pauses_are_written_into_the_tags() {
+        let lines = [
+            line(Channel::Remote, 0, 600, "上任后。"),
+            line(Channel::Remote, 1000, 2500, "一年的计划是什么？"),
+            line(Channel::Me, 20_000, 30_000, "我会先摸清情况。"),
+        ];
+        assert_eq!(
+            format_with_pauses(&lines),
+            "[Them] 上任后。\n[Them, 0.4 s pause] 一年的计划是什么？\n[Me, over 10 s pause] 我会先摸清情况。\n"
+        );
+    }
 
     fn line(ch: Channel, t0: i64, t1: i64, text: &str) -> TranscriptLine {
         TranscriptLine {

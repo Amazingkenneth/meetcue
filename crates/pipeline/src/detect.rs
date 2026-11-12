@@ -7,7 +7,7 @@ use meetcue_core::UsagePurpose;
 
 use crate::prompts;
 use crate::provider::LlmRequest;
-use crate::text::{display_units, join_parts, normalize, truncate_chars};
+use crate::text::{display_units, truncate_chars};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -35,6 +35,21 @@ pub fn request(model: &str, transcript: &str, output_language: &str) -> LlmReque
             transcript.trim_end()
         ))
         .max_tokens(prompts::DETECT_MAX_TOKENS)
+        .temperature(0.0)
+}
+
+/// Asks for a new title and list of parts for a question whose text grew
+/// after detection titled it: the rest of it arrived after a pause, so the
+/// title written for its first part no longer describes it. The reply has
+/// the shape [`parse`] reads; only `short`, `subQuestions` and `tags` are set.
+pub fn title_request(model: &str, question: &str, output_language: &str) -> LlmRequest {
+    LlmRequest::new(model, UsagePurpose::Detect)
+        .system(prompts::TITLE, true)
+        .user(format!(
+            "Question, as recognized:\n{}\n\nOutput language: {output_language}",
+            question.trim()
+        ))
+        .max_tokens(prompts::TITLE_MAX_TOKENS)
         .temperature(0.0)
 }
 
@@ -124,82 +139,21 @@ pub fn short_title(short: &str, text: &str) -> String {
     } else {
         short.trim()
     };
-    fit(base, TITLE_UNITS)
-}
-
-/// Display width of a short title: 14 Chinese characters or about 28 Latin
-/// characters.
-const TITLE_UNITS: f64 = 14.0;
-/// Room for a title that had to take in words the model left out.
-const LONG_TITLE_UNITS: f64 = 22.0;
-
-/// `title` without closing punctuation, cut by display width to `units`.
-fn fit(title: &str, units: f64) -> String {
-    let base = title
-        .trim()
-        .trim_end_matches(['?', '？', '。', '.', '!', '！', '，', ',']);
-    if display_units(base) <= units {
+    let base = base.trim_end_matches(['?', '？', '。', '.', '!', '！']);
+    if display_units(base) <= 14.0 {
         return base.to_string();
     }
+    // Cut by display width: 14 CJK characters or about 28 Latin characters.
     let mut width = 0.0;
     let mut n = 0;
     for c in base.chars() {
         width += if crate::text::is_cjk(c) { 1.0 } else { 0.5 };
-        if width > units - 1.0 {
+        if width > 13.0 {
             break;
         }
         n += 1;
     }
     truncate_chars(base, n + 1)
-}
-
-/// A title in the speaker's own words, for a question whose text grew after
-/// the model wrote its title (the rest of it arrived after a pause), so the
-/// old title only describes the first part.
-pub fn verbatim_title(text: &str) -> String {
-    // Recognition ends each part at a pause with a full stop that the
-    // speaker never said.
-    let text = crate::prefilter::without_fillers(text).replace('。', "");
-    fit(&text, LONG_TITLE_UNITS)
-}
-
-/// The model's title with the first words of the question that it left out
-/// put back in front. A question cut by a pause ("上任后。" / "一年的计划是什么？")
-/// is easily titled by its second half alone ("一年的计划"), which drops what
-/// the question is about.
-pub fn title_with_fragments(title: &str, fragments: &[String]) -> String {
-    let have = normalize(title);
-    let missing: Vec<String> = fragments
-        .iter()
-        .map(|f| {
-            crate::prefilter::without_fillers(f)
-                .trim_matches(|c: char| !c.is_alphanumeric())
-                .to_string()
-        })
-        .filter(|f| !f.is_empty() && !mostly_in(&normalize(f), &have))
-        .collect();
-    if missing.is_empty() {
-        return title.to_string();
-    }
-    let joined = missing
-        .iter()
-        .chain(std::iter::once(&title.to_string()))
-        .fold(String::new(), |acc, p| join_parts(&acc, p));
-    fit(&joined, LONG_TITLE_UNITS)
-}
-
-/// Whether most of the characters of `part` (Chinese) or its words (other
-/// languages) already appear in `whole`.
-fn mostly_in(part: &str, whole: &str) -> bool {
-    let chars: Vec<char> = part.chars().collect();
-    if chars.is_empty() {
-        return true;
-    }
-    let found = chars.iter().filter(|c| whole.contains(**c)).count();
-    if chars.iter().any(|c| crate::text::is_cjk(*c)) {
-        return found * 2 > chars.len();
-    }
-    whole.contains(part)
 }
 
 #[cfg(test)]
@@ -255,35 +209,6 @@ mod tests {
     }
 
     #[test]
-    fn titles_keep_the_first_words_of_the_question() {
-        let f = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
-        assert_eq!(
-            title_with_fragments("一年的计划", &f(&["上任后。"])),
-            "上任后一年的计划"
-        );
-        // Already in the title: unchanged.
-        assert_eq!(
-            title_with_fragments("上任后一年规划", &f(&["上任后。"])),
-            "上任后一年规划"
-        );
-        assert_eq!(title_with_fragments("Q", &[]), "Q");
-        assert_eq!(
-            title_with_fragments("first-year plan", &f(&["After you join,"])),
-            "After you join first-year plan"
-        );
-        let long = title_with_fragments(
-            "最想先解决的技术和管理问题分别是什么",
-            &f(&["你入职以后。"]),
-        );
-        assert!(long.starts_with("你入职以后"), "{long}");
-        assert!(display_units(&long) <= 22.0, "{long}");
-        assert_eq!(
-            verbatim_title("嗯，如何制定数据中心IP。V6的迁移方案？"),
-            "如何制定数据中心IPV6的迁移方案"
-        );
-    }
-
-    #[test]
     fn short_titles_fit() {
         assert_eq!(
             short_title("", "控制器挂了还能转发吗？"),
@@ -298,6 +223,23 @@ mod tests {
         );
         assert!(display_units(&en) <= 14.0, "{en}");
         assert_eq!(short_title("SDN 部署", "whatever"), "SDN 部署");
+    }
+
+    #[test]
+    fn title_request_shape() {
+        let r = title_request("m", "上任后。一年的计划是什么？", "Simplified Chinese");
+        assert_eq!(r.system, prompts::TITLE);
+        assert!(r.cache_system);
+        assert!(r.messages[0].content.contains("上任后。一年的计划是什么？"));
+        assert!(r.messages[0]
+            .content
+            .ends_with("Output language: Simplified Chinese"));
+        let d =
+            parse(r#"{"short":"上任后一年的计划","subQuestions":["目标","步骤"],"tags":["复合"]}"#)
+                .unwrap();
+        assert!(!d.is_question);
+        assert_eq!(d.short, "上任后一年的计划");
+        assert_eq!(d.sub_questions.len(), 2);
     }
 
     #[test]
