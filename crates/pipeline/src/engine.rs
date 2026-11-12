@@ -45,6 +45,8 @@ pub const CONTINUATION_MS: i64 = 5_000;
 pub const LEAD_IN_MS: i64 = 30_000;
 /// At most this many lines are kept as a question's set-up.
 const MAX_LEAD_IN_LINES: usize = 5;
+/// At most this many short pieces before a question are joined to it.
+const MAX_FRAGMENT_LINES: usize = 2;
 /// The user saying at least this many letters or characters counts as
 /// answering; shorter sounds ("嗯", "OK") are back-channels.
 const ANSWER_MIN_CHARS: usize = 4;
@@ -304,6 +306,9 @@ struct Question {
     /// What the speaker said to set the question up, kept in front of its
     /// text when later parts replace it.
     lead_in: String,
+    /// The first words of the question said before a pause, part of
+    /// `lead_in`, which its title must keep.
+    opening: Vec<String>,
     /// When the latest part of the question ended.
     last_part_end: i64,
     context: Vec<TranscriptLine>,
@@ -850,6 +855,47 @@ impl Engine {
         parts
     }
 
+    /// How many of the lines just before the sentence starting at `start`
+    /// are the first words of it, cut off by a pause ("上任后。" before
+    /// "一年的计划是什么？"). These belong to the question whatever the model
+    /// counted as its set-up: they are too short to be checked on their own
+    /// and too short to mean anything without the rest. Walks back the same
+    /// way as [`Self::lead_in`].
+    fn fragments_before(&self, start: i64) -> usize {
+        let floor = self.questions.last().map(|q| q.last_part_end);
+        let mut count = 0;
+        let mut next_start = start;
+        for l in self
+            .transcript
+            .since(start - LEAD_IN_MS)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+        {
+            if l.t0_ms >= start {
+                continue;
+            }
+            if l.channel == Channel::Me {
+                if meaningful_len(&l.text) >= ANSWER_MIN_CHARS {
+                    break;
+                }
+                continue;
+            }
+            if floor.is_some_and(|f| l.t1_ms <= f)
+                || next_start - l.t1_ms > CONTINUATION_MS
+                || !prefilter::is_fragment(&l.text)
+            {
+                break;
+            }
+            count += 1;
+            next_start = l.t0_ms;
+            if count == MAX_FRAGMENT_LINES {
+                break;
+            }
+        }
+        count
+    }
+
     /// `text` with the set-up of question `id` in front of it.
     fn with_lead_in(&self, id: QuestionId, text: &str) -> String {
         match self.question(id) {
@@ -908,6 +954,8 @@ impl Engine {
         };
         q.version += 1;
         q.text = text;
+        // The title was written for the first part alone.
+        q.short = whole_title(q);
         // Parts listed for the first half no longer describe the question.
         q.subs.clear();
         q.vocab.clear();
@@ -1243,9 +1291,16 @@ impl Engine {
                 q.version += 1;
                 if merged {
                     q.text = join_parts(&q.text, &cand.text);
+                    // The model titles the whole question when it merges a
+                    // part; without a title, the old one covers only the start.
+                    q.short = if det.short.is_empty() {
+                        whole_title(q)
+                    } else {
+                        detect::title_with_fragments(&short, &q.opening)
+                    };
                 } else {
                     q.text = join_parts(&q.lead_in, &cand.text);
-                    q.short = short;
+                    q.short = detect::title_with_fragments(&short, &q.opening);
                 }
                 q.tags = det.tags;
                 if !subs.is_empty() {
@@ -1289,8 +1344,13 @@ impl Engine {
         };
         let context = self.transcript.last_before(cand.speech_end + 1, 4);
         // The set-up the speaker gave before asking belongs on the card too.
-        let lead_in = self
-            .lead_in(cand.speech_start, det.lead_in as usize)
+        // So do the first words of it said before a pause, which the model
+        // may not count as set-up.
+        let fragments = self.fragments_before(cand.speech_start);
+        let parts = self.lead_in(cand.speech_start, (det.lead_in as usize).max(fragments));
+        let opening = parts[parts.len() - fragments.min(parts.len())..].to_vec();
+        let short = detect::title_with_fragments(&short, &opening);
+        let lead_in = parts
             .into_iter()
             .fold(String::new(), |acc, l| join_parts(&acc, &l));
         self.questions.push(Question {
@@ -1302,6 +1362,7 @@ impl Engine {
             subs,
             t_ms: cand.speech_end,
             lead_in,
+            opening,
             last_part_end: cand.speech_end,
             context,
             vocab: Vec::new(),
@@ -2133,6 +2194,14 @@ enum Join {
 }
 
 /// Whether `line` starts soon enough after `end` to be its continuation.
+/// A title in the speaker's words for a question whose text grew after its
+/// title was written: what was asked after the set-up, with the first words
+/// said before a pause.
+fn whole_title(q: &Question) -> String {
+    let asked = q.text.strip_prefix(q.lead_in.as_str()).unwrap_or(&q.text);
+    detect::title_with_fragments(&detect::verbatim_title(asked), &q.opening)
+}
+
 fn within_join(end: i64, line: &TranscriptLine) -> bool {
     line.t0_ms - end <= CONTINUATION_MS && end <= line.t1_ms
 }
@@ -2892,6 +2961,89 @@ mod tests {
             })
             .collect();
         assert_eq!(versions, [(1, 1), (1, 2)]);
+    }
+
+    fn titles(h: &Harness) -> Vec<(QuestionId, u32, String)> {
+        h.events
+            .iter()
+            .filter_map(|e| match e {
+                MeetCueEvent::QuestionNew {
+                    id, version, short, ..
+                } => Some((*id, *version, short.clone())),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// "上任后。" said before a pause is too short to be checked on its own;
+    /// it stays in front of the question, in its text and in its title, also
+    /// when the rest of the question arrives after the early trigger.
+    #[test]
+    fn first_words_before_a_pause_stay_with_the_question() {
+        let mut h = Harness::new(EngineConfig {
+            speculative_hints: true,
+            ..Default::default()
+        });
+        h.say(Channel::Remote, 0, 600, "上任后。");
+        assert!(h.detects.is_empty(), "too short to check on its own");
+        h.at(1500).input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Partial {
+                text: "一年的计划是什么".into(),
+                t0_ms: 1000,
+                t1_ms: 1500,
+            },
+        });
+        h.at(2000);
+        assert_eq!(h.detects.len(), 1, "early trigger");
+        // The model neither counts the piece as set-up nor titles it.
+        h.detect_reply(
+            r#"{"isQuestion":true,"directedToMe":true,"leadIn":0,"short":"一年的计划"}"#,
+        );
+        assert_eq!(
+            texts(&h).last(),
+            Some(&(1, 1, "上任后。一年的计划是什么".into()))
+        );
+        assert_eq!(titles(&h).last(), Some(&(1, 1, "上任后一年的计划".into())));
+        // The speaker goes on after a short pause.
+        h.input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Final {
+                text: "一年的计划是什么，分几步走？".into(),
+                t0_ms: 1000,
+                t1_ms: 3500,
+            },
+        });
+        h.at(3600).input(Input::Asr {
+            channel: Channel::Remote,
+            result: AsrResult::Endpoint { t_ms: 3500 },
+        });
+        assert_eq!(
+            texts(&h).last(),
+            Some(&(1, 2, "上任后。一年的计划是什么，分几步走？".into()))
+        );
+        assert_eq!(
+            titles(&h).last(),
+            Some(&(1, 2, "上任后一年的计划是什么，分几步走".into()))
+        );
+        assert!(h.hints.last().unwrap().1.messages[0]
+            .content
+            .contains("上任后。一年的计划是什么，分几步走？"));
+    }
+
+    #[test]
+    fn acknowledgements_before_a_question_are_left_out() {
+        let mut h = Harness::new(no_early());
+        h.say(Channel::Remote, 0, 800, "好的，谢谢。");
+        h.say(Channel::Remote, 1200, 2000, "我们开始吧。");
+        h.detect_reply(r#"{"isQuestion":false}"#);
+        h.say(Channel::Remote, 2500, 4500, "你为什么离开上一家公司？");
+        h.detect_reply(r#"{"isQuestion":true,"directedToMe":true,"short":"离职原因"}"#);
+        assert_eq!(
+            texts(&h).last(),
+            Some(&(1, 1, "你为什么离开上一家公司？".into()))
+        );
+        assert_eq!(titles(&h).last(), Some(&(1, 1, "离职原因".into())));
     }
 
     #[test]

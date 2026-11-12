@@ -258,6 +258,106 @@ const BACK_CHANNELS: &[&str] = &[
     "yep", "sure", "fine", "great", "cool", "ok", "okay", "right",
 ];
 
+/// Words that carry no part of a question on their own: acknowledgements,
+/// thanks and connectives such as "好的。" / "那么，" / "OK, thanks."
+const NOT_A_FRAGMENT: &[&str] = &[
+    "谢谢",
+    "感谢",
+    "明白",
+    "了解",
+    "收到",
+    "没问题",
+    "不错",
+    "很好",
+    "挺好",
+    "好嘞",
+    "哈哈",
+    "你好",
+    "您好",
+    "大家好",
+    "那么",
+    "然后",
+    "接下来",
+    "下面",
+    "那",
+    "下一个问题",
+    "下一题",
+    "最后一个问题",
+    "thankyou",
+    "thanks",
+    "gotit",
+    "isee",
+    "alright",
+    "nice",
+    "good",
+    "mhm",
+    "hmm",
+    "hello",
+    "hi",
+    "hey",
+    "next",
+    "nextquestion",
+];
+
+/// Particles that close a Chinese sentence ("我们开始吧。"), so it is not the
+/// first half of the next one.
+const ZH_CLOSING_PARTICLES: &[char] = &['吧', '了', '啊', '呀', '哈', '嘛', '呢', '吗', '哦', '啦'];
+
+/// Most a sentence may hold, in display units (one per Chinese character,
+/// half per letter), to count as the first words of a question cut off by a
+/// pause.
+const FRAGMENT_MAX_UNITS: f64 = 8.0;
+
+/// Whether `text` is a short piece of an unfinished sentence, such as "上任后。"
+/// or "你觉得在", that the speaker paused after before saying the rest of the
+/// question ("一年的计划是什么？"). Recognizers end a sentence at each pause and
+/// often put a full stop there, so punctuation doesn't decide it: anything this
+/// short that neither asks something itself nor is only an acknowledgement or
+/// connective is taken as the start of what follows.
+pub fn is_fragment(text: &str) -> bool {
+    let text = strip_fillers(text);
+    if text.is_empty() || text.ends_with(['?', '？', '!', '！']) {
+        return false;
+    }
+    let core = text.trim_end_matches(|c: char| !c.is_alphanumeric());
+    // A Chinese sentence closed by a particle is complete. Recognizers put a
+    // full stop at every pause in Chinese, but in English they keep it for
+    // the end of a sentence ("Let's begin.") and leave a cut-off one open.
+    if core.ends_with(ZH_CLOSING_PARTICLES)
+        || (!core.chars().last().is_some_and(crate::text::is_cjk) && text.ends_with('.'))
+    {
+        return false;
+    }
+    let units: f64 = text
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .map(|c| if crate::text::is_cjk(c) { 1.0 } else { 0.5 })
+        .sum();
+    if units > FRAGMENT_MAX_UNITS {
+        return false;
+    }
+    // Strip every acknowledgement and connective; something must remain.
+    // Longest first, so "好的" is not read as "好" and a stray "的".
+    let mut words: Vec<&str> = BACK_CHANNELS
+        .iter()
+        .chain(FILLERS)
+        .chain(TAG_QUESTIONS)
+        .chain(NOT_A_FRAGMENT)
+        .copied()
+        .collect();
+    words.sort_by_key(|w| std::cmp::Reverse(w.len()));
+    let mut rest = normalize(text);
+    while let Some(w) = words.iter().find(|w| rest.starts_with(**w)) {
+        rest.drain(..w.len());
+    }
+    !rest.is_empty()
+}
+
+/// `text` without the spoken fillers it starts with ("嗯，那个，").
+pub fn without_fillers(text: &str) -> &str {
+    strip_fillers(text)
+}
+
 fn strip_fillers(text: &str) -> &str {
     let mut rest = text.trim();
     loop {
@@ -312,6 +412,33 @@ mod tests {
         ));
         assert!(might_be_question("谈谈你对微服务的看法"));
         assert!(!might_be_question("Thanks, that makes sense."));
+    }
+
+    #[test]
+    fn first_words_cut_off_by_a_pause() {
+        for t in [
+            "上任后。",
+            "上任后",
+            "嗯，你入职以后。",
+            "那你觉得在",
+            "对于这个项目，",
+            "After you join,",
+        ] {
+            assert!(is_fragment(t), "{t}");
+        }
+        for t in [
+            "好的，谢谢。",
+            "嗯。",
+            "我们开始吧。",
+            "你好。",
+            "下一个问题。",
+            "OK, thanks.",
+            "Let's begin.",
+            "上任后呢？",
+            "我们公司主要做跨境电商的支付系统。",
+        ] {
+            assert!(!is_fragment(t), "{t}");
+        }
     }
 
     #[test]

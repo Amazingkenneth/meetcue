@@ -4,6 +4,11 @@ All notable changes to MeetCue. Versions follow [Semantic Versioning](https://se
 
 ## Unreleased
 
+### Fixed
+
+- A question no longer loses its first words when the interviewer pauses right after them. Recognition ends a sentence at the pause, and a piece as short as "上任后。" was never checked on its own, so "上任后。" / "一年的计划是什么？" became a card for "一年的计划是什么？" titled "一年的计划". Short pieces said just before a question are now kept on its card and in its title.
+- A question's title in the list and the mini bar now covers the whole question after the rest of it arrives after a pause, instead of describing only the first part.
+
 ## 0.4.0 — 2026-11-06
 
 ### Added

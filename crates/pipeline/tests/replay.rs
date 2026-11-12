@@ -23,6 +23,9 @@ struct Case {
     name: String,
     lines: Vec<Line>,
     questions: Vec<String>,
+    /// The short title of every card at the end, when the case checks them.
+    #[serde(default)]
+    titles: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -41,7 +44,8 @@ struct Run {
     /// Detection requests not answered yet, oldest first.
     detects: Vec<u64>,
     hints: Vec<u64>,
-    cards: BTreeMap<u32, (u32, String)>,
+    /// Version, text and short title of each card.
+    cards: BTreeMap<u32, (u32, String, String)>,
 }
 
 impl Run {
@@ -55,11 +59,18 @@ impl Run {
                     self.hints.retain(|r| *r != req);
                 }
                 Output::Emit(MeetCueEvent::QuestionNew {
-                    id, version, text, ..
+                    id,
+                    version,
+                    text,
+                    short,
+                    ..
                 }) => {
-                    let e = self.cards.entry(id).or_insert((0, String::new()));
+                    let e = self
+                        .cards
+                        .entry(id)
+                        .or_insert((0, String::new(), String::new()));
                     if version >= e.0 {
-                        *e = (version, text);
+                        *e = (version, text, short);
                     }
                 }
                 Output::Emit(MeetCueEvent::QuestionRemoved { id }) => {
@@ -92,7 +103,7 @@ impl Run {
     }
 }
 
-fn replay(case: &Case) -> (Vec<String>, Vec<String>) {
+fn replay(case: &Case) -> (Vec<String>, Vec<String>, Vec<String>) {
     let cfg = EngineConfig {
         early_trigger: false,
         speculative_hints: true,
@@ -166,8 +177,12 @@ fn replay(case: &Case) -> (Vec<String>, Vec<String>) {
         }
         run.finish_hints();
     }
-    let cards = run.cards.into_values().map(|(_, text)| text).collect();
-    (cards, problems)
+    let (cards, titles) = run
+        .cards
+        .into_values()
+        .map(|(_, text, short)| (text, short))
+        .unzip();
+    (cards, titles, problems)
 }
 
 #[test]
@@ -185,7 +200,10 @@ fn labelled_interviews_give_the_expected_cards() {
     for file in &files {
         let case: Case = serde_json::from_str(&std::fs::read_to_string(file).unwrap())
             .unwrap_or_else(|e| panic!("{}: {e}", file.display()));
-        let (cards, problems) = replay(&case);
+        let (cards, titles, mut problems) = replay(&case);
+        if let Some(expected) = case.titles.as_ref().filter(|t| **t != titles) {
+            problems.push(format!("titles {titles:?}, expected {expected:?}"));
+        }
         if cards != case.questions || !problems.is_empty() {
             failures.insert(
                 file.file_name().unwrap().to_string_lossy().into(),

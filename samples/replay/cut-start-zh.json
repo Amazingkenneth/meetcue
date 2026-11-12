@@ -1,0 +1,20 @@
+{
+  "name": "The first words of a question said before a pause stay on its card and in its title (0.4.1)",
+  "lines": [
+    { "ch": "remote", "t0": 0, "t1": 2000, "text": "你好，我们开始吧。", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 2600, "t1": 3200, "text": "上任后。" },
+    { "ch": "remote", "t0": 3700, "t1": 5500, "text": "一年的计划是什么？", "detect": { "isQuestion": true, "directedToMe": true, "leadIn": 0, "short": "一年的计划" } },
+    { "ch": "me", "t0": 7000, "t1": 30000, "text": "我会先花三个月摸清业务和团队，然后定目标，下半年推进落地。" },
+    { "ch": "remote", "t0": 40000, "t1": 41000, "text": "好的，谢谢。", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 41500, "t1": 42500, "text": "你入职以后。", "detect": { "isQuestion": false } },
+    { "ch": "remote", "t0": 43000, "t1": 45000, "text": "最想先解决哪个问题？", "detect": { "isQuestion": true, "directedToMe": true, "leadIn": 0, "short": "最想先解决的问题" } }
+  ],
+  "questions": [
+    "上任后。一年的计划是什么？",
+    "你入职以后。最想先解决哪个问题？"
+  ],
+  "titles": [
+    "上任后一年的计划",
+    "你入职以后最想先解决的问题"
+  ]
+}
